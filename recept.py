@@ -61,7 +61,14 @@ def main():
 	from sys import stdin, stdout
 	from time import time
 
+	dev = SequenceDelta(0.0)
+
 	sd_list = [
+		SmoothDuration(duration, 3)
+		for duration in range(1, 10)
+	]
+
+	dev_sd_list = [
 		SmoothDuration(duration, 3)
 		for duration in range(1, 10)
 	]
@@ -83,9 +90,12 @@ def main():
 			else:
 				pass # keep old `n`
 
-		results = [sd.sample(n, t) for sd in sd_list]
-		results_d1 = [sd_list_d1[i].sample(v) for i, v in enumerate(results)]
-		stdout.write("event at time %i\n%r\n%r\n" % (t, liststr(results), liststr(results_d1)))
+		nd = dev.sample(n)
+
+		results     = [sd.sample(n,  t) for sd in sd_list]
+		results_dev = [sd.sample(nd, t) for sd in dev_sd_list]
+		results_d1  = [sd_list_d1[i].sample(v) for i, v in enumerate(results)]
+		stdout.write("event at time %i\n%r\n%r\n%r\n" % (t, liststr(results), liststr(results_dev), liststr(results_d1)))
 		stdout.flush()
 
 if __name__ == "__main__":
