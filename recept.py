@@ -16,6 +16,30 @@ class ExponentialSmoothing:
 	def sample(self, value):
 		return self.v.sample(value, self.w)
 
+class Window:
+	def __init__(self, window):
+		self.w = window
+		self.i = 0
+		self.n = len(window)
+
+	def next(self):
+		v = self.w[self.i]
+		self.i = (self.i + 1) % self.n
+		return v
+
+class PeriodicSmoothing:
+	def __init__(self, window = [1.0, -1.0], initial_value = 0.0):
+		self.w = WIndow(window)
+		self.v = ExponentialSmoother(initial_value)
+
+	def sample(self, value):
+		return self.v.sample(value * self.w.next(), self.w.n)
+
+class FrequenchySmoothing:
+	def __init__(self, period, phase):
+		from math import cos, sin
+		
+
 class SequenceDelta:
 	def __init__(self, prior_sequence = None):
 		self.prior_sequence = prior_sequence
@@ -55,7 +79,7 @@ class SmoothDuration:
 
 	
 def liststr(l):
-	return ", ".join("%2.2f" % e for e in l)
+	return ", ".join("%06.2f" % e for e in l)
 
 def main():
 	from sys import stdin, stdout
@@ -78,6 +102,11 @@ def main():
 		for duration in range(1, 10)
 	]
 
+	dev_sd_list_d1 = [
+		SequenceDelta(0.0)
+		for duration in range(1, 10)
+	]
+
 	n = None
 	while True:
 		line = stdin.readline()
@@ -92,10 +121,12 @@ def main():
 
 		nd = dev.sample(n)
 
-		results     = [sd.sample(n,  t) for sd in sd_list]
-		results_dev = [sd.sample(nd, t) for sd in dev_sd_list]
-		results_d1  = [sd_list_d1[i].sample(v) for i, v in enumerate(results)]
-		stdout.write("event at time %i\n%r\n%r\n%r\n" % (t, liststr(results), liststr(results_dev), liststr(results_d1)))
+		results        = [sd.sample(n,  t) for sd in sd_list]
+		results_dev    = [sd.sample(abs(nd), t) for sd in dev_sd_list]
+		results_ratio  = [n/d for n, d in zip(results_dev, results)]
+		results_d1     = [sd_list_d1[i].sample(v) for i, v in enumerate(results)]
+		results_dev_d1 = [dev_sd_list_d1[i].sample(v) for i, v in enumerate(results_dev)]
+		stdout.write("event at time %.3f: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n" % (t, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1)))
 		stdout.flush()
 
 if __name__ == "__main__":
