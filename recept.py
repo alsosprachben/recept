@@ -47,16 +47,17 @@ class PeriodicSmoothing:
 		return self.v.sample(value * self.w.next(), self.w.n)
 
 class FrequencySmoothing:
-	def __init__(self, period, phase, real_initial_value = 0.0, imag_initial_value = 0.0):
+	def __init__(self, period, phase, window_size = 1, real_initial_value = 0.0, imag_initial_value = 0.0):
 		self.real_w = CosineWindow(period, phase)
 		self.imag_w =   SineWindow(period, phase)
 		self.real_v = ExponentialSmoother(real_initial_value)
 		self.imag_v = ExponentialSmoother(imag_initial_value)
+		self.window_size = window_size
 
 	def sample(self, value):
 		return (
-			self.real_v.sample(value * self.real_w.next(), self.real_w.n)
-		+ 1j *	self.imag_v.sample(value * self.imag_w.next(), self.imag_w.n)
+			self.real_v.sample(value * self.real_w.next(), self.real_w.n * self.window_size)
+		+ 1j *	self.imag_v.sample(value * self.imag_w.next(), self.imag_w.n * self.window_size)
 		)
 
 	def sample_phase(self, value):
@@ -142,8 +143,8 @@ def main():
 	]
 
 	freq_list = [
-		(duration, FrequencySmoothing(duration, 0))
-		for duration in range(1, 100)
+		(duration, FrequencySmoothing(duration, 0, 10))
+		for duration in range(10, 100, 10)
 	]
 
 	n = None
