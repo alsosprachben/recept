@@ -131,6 +131,7 @@ def listangstr(l):
 
 def bar(n, d, s):
 	from math import log
+	#log = lambda x: x
 	chars = [" " for i in range(int(s))]
 	for i in range(int((float(min(log(n), log(d))) / log(d) * s))):
 		chars[i] = "="
