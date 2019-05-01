@@ -146,7 +146,7 @@ class PhaseFreq:
 		from cmath import phase, pi
 		tau = lambda v: ((phase(v) / (2.0 * pi)) +0.5) % 1 - 0.5
 		return "".join(
-			"(%08.3f + %08.3f = %08.3f): @%08.3f %08.3f delta=(@%08.3f %08.3f)\n" % (period, (((tau(delta) * period +0.5) % 1) - 0.5) * period, 1.0 / ((1.0/period) - tau(delta)), tau(value), abs(value), tau(delta),  abs(delta))
+			"(%08.3f + %08.3f = %08.3f): { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (period, (((tau(delta) * period +0.5) % 1) - 0.5) * period, 1.0 / ((1.0/period) - tau(delta)), tau(value), abs(value), tau(delta),  abs(delta))
 			for period, value, delta in self.derive(values)
 		)
 
