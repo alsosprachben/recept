@@ -129,6 +129,16 @@ def listangstr(l):
 	from cmath import phase
 	return "".join("%06.2f = %06.2f (@ %03.2f)\n" % (f, abs(c), (phase(c) / (2.0 * pi)) % 1.0) for f, c in l)
 
+def bar(n, d, s):
+	chars = [" " for i in range(int(s))]
+	for i in range(int((float(n) / d * s))):
+		chars[i] = "="
+
+	if n > d:
+		chars[s-1] = "!"
+
+	return "".join(chars)
+
 class PhaseFreq:
 	def __init__(self, initial_values):
 		self.prior_values = initial_values
@@ -146,7 +156,7 @@ class PhaseFreq:
 		from cmath import phase, pi
 		tau = lambda v: ((phase(v) / (2.0 * pi)) +0.5) % 1 - 0.5
 		return "".join(
-			"(%08.3f + %08.3f = %08.3f): { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (period, (((tau(delta) * period +0.5) % 1) - 0.5) * period, 1.0 / ((1.0/period) - tau(delta)), tau(value), abs(value), tau(delta),  abs(delta))
+			"(%08.3f + %08.3f = %08.3f): %s { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (period, (((tau(delta) * period +0.5) % 1) - 0.5) * period, 1.0 / ((1.0/period) - tau(delta)), bar(abs(value), period, 24), tau(value), abs(value), tau(delta),  abs(delta))
 			for period, value, delta in self.derive(values)
 		)
 
