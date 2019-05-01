@@ -130,8 +130,9 @@ def listangstr(l):
 	return "".join("%06.2f = %06.2f (@ %03.2f)\n" % (f, abs(c), (phase(c) / (2.0 * pi)) % 1.0) for f, c in l)
 
 def bar(n, d, s):
+	from math import log
 	chars = [" " for i in range(int(s))]
-	for i in range(int((float(min(n, d)) / d * s))):
+	for i in range(int((float(min(log(n), log(d))) / log(d) * s))):
 		chars[i] = "="
 
 	if n > d:
