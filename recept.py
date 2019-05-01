@@ -193,21 +193,23 @@ def main():
 		for n in range(-10, 10)
 	]
 	"""
+	from math import e
+	factor=e
 	scale=6
 	freq_list = [
-		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, 1.0 / ((2 ** (1.0/scale)) - 1)))
+		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, factor / ((2 ** (1.0/scale)) - 1)))
 		for n in range(-13, 3)
 	]
 	freq_state = PhaseFreq(0j for n in range(-13, 3))
 	scale=12
 	freq_list2 = [
-		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, 1.0 / ((2 ** (1.0/scale)) - 1)))
+		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, factor / ((2 ** (1.0/scale)) - 1)))
 		for n in range(-25, 5)
 	]
 	freq_state2 = PhaseFreq(0j for n in range(-25, 5))
 	scale=24
 	freq_list3 = [
-		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, 1.0 / ((2 ** (1.0/scale)) - 1)))
+		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, factor / ((2 ** (1.0/scale)) - 1)))
 		for n in range(-50, 10)
 	]
 	freq_state3 = PhaseFreq([0j for n in range(-50, 10)])
