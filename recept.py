@@ -38,34 +38,32 @@ class SineWindow(CosineWindow):
 	def __init__(self, period, phase):
 		CosineWindow.__init__(self, period, phase + (float(period) / 4))
 
+def complex_period(period):
+	from cmath import rect, pi
+	return rect(1, pi * 2 * period)
+
 class PeriodicSmoothing:
-	def __init__(self, window = [1.0, -1.0], initial_value = 0.0):
+	def __init__(self, window = [1.0, -1.0], window_factor = 1, initial_value = 0.0):
 		self.w = WIndow(window)
+		self.wf = window_factor
 		self.v = ExponentialSmoother(initial_value)
 
 	def sample(self, value):
-		return self.v.sample(value * self.w.next(), self.w.n)
+		return self.v.sample(value * self.w.next(), self.w.n * self.wf)
 
 class FrequencySmoothing:
-	def __init__(self, period, phase, window_size = 1, real_initial_value = 0.0, imag_initial_value = 0.0):
+	def __init__(self, period, phase, window_factor = 1, real_initial_value = 0.0, imag_initial_value = 0.0):
 		self.real_w = CosineWindow(period, phase)
 		self.imag_w =   SineWindow(period, phase)
 		self.real_v = ExponentialSmoother(real_initial_value)
 		self.imag_v = ExponentialSmoother(imag_initial_value)
-		self.window_size = window_size
+		self.wf = window_factor
 
 	def sample(self, value):
 		return (
-			self.real_v.sample(value * self.real_w.next(), self.real_w.n * self.window_size)
-		+ 1j *	self.imag_v.sample(value * self.imag_w.next(), self.imag_w.n * self.window_size)
+			self.real_v.sample(value * self.real_w.next(), self.real_w.n * self.wf)
+		+ 1j *	self.imag_v.sample(value * self.imag_w.next(), self.imag_w.n * self.wf)
 		)
-
-	def sample_phase(self, value):
-		from cmath import phase
-		return phase(self.sample(value))
-
-	def sample_amplitude(Self, value):
-		return abs(self.sample(value))
 
 class SequenceDelta:
 	def __init__(self, prior_sequence = None):
@@ -104,6 +102,21 @@ class SmoothDuration:
 		w = self.dw.sample(sequence_value)
 		return self.v.sample(value, w)
 
+class TimeSmoothing:
+	def __init__(self, period, phase, window_factor = 1, initial_value = 0.0+0.0j):
+		self.period = period
+		self.phase = phase
+		self.v = ExponentialSmoother(initial_value)
+		self.wf = window_factor
+
+	def sample(self, time, value):
+		return self.v.sample(value * complex_period(float(time + self.phase) / self.period), self.period * self.wf)
+
+class EventSmoothing:
+	def __init__(self, period, phase, initial_value = 0.0+0.0j):
+		self.period = period
+		self.phase = phase
+		self.v = ExponentialSmoother(initial_value)
 	
 def liststr(l):
 	return ", ".join("%06.2f" % e for e in l)
@@ -115,6 +128,27 @@ def listangstr(l):
 	from math import pi
 	from cmath import phase
 	return "".join("%06.2f = %06.2f (@ %03.2f)\n" % (f, abs(c), (phase(c) / (2.0 * pi)) % 1.0) for f, c in l)
+
+class PhaseFreq:
+	def __init__(self, initial_values):
+		self.prior_values = initial_values
+
+	def derive(self, values):
+		from cmath import phase
+		results = [
+			(freq, post, post / pre if phase(pre) != 0.0 else 0.0)
+			for pre, (freq, post) in zip(self.prior_values, values)
+		]
+		self.prior_values = [value for freq, value in values]
+		return results
+
+	def report(self, values):
+		from cmath import phase, pi
+		tau = lambda v: ((phase(v) / (2.0 * pi)) +0.5) % 1 - 0.5
+		return "".join(
+			"%08.3f [%08.3f] = @%08.3f %08.3f +(@%08.3f [%08.3f] %08.3f)\n" % (period, 1.0 / ((1.0/period) - tau(delta)), tau(value), abs(value), tau(delta), (((tau(delta) * period +0.5) % 1) - 0.5) * period, abs(delta))
+			for period, value, delta in self.derive(values)
+		)
 
 def main():
 	from sys import stdin, stdout
@@ -142,10 +176,31 @@ def main():
 		for duration in range(1, 10)
 	]
 
+	"""
 	freq_list = [
-		(duration, FrequencySmoothing(duration, 0, 10))
-		for duration in range(10, 100, 10)
+		(int(50 * 2 ** (float(n)/12) + 0.5), FrequencySmoothing(int(50 * 2 ** (float(n)/12) + 0.5), 0, 1.0 / ((2 ** (1.0/12)) - 1)))
+		for n in range(-10, 10)
 	]
+	"""
+	scale=6
+	freq_list = [
+		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, 1.0 / ((2 ** (1.0/scale)) - 1)))
+		for n in range(-10, 10)
+	]
+	freq_state = PhaseFreq(0j for n in range(-10, 10))
+	scale=12
+	freq_list2 = [
+		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, 1.0 / ((2 ** (1.0/scale)) - 1)))
+		for n in range(-10, 10)
+	]
+	freq_state2 = PhaseFreq(0j for n in range(-10, 10))
+	scale=24
+	freq_list3 = [
+		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, 1.0 / ((2 ** (1.0/scale)) - 1)))
+		for n in range(-10, 10)
+	]
+	freq_state3 = PhaseFreq([0j for n in range(-10, 10)])
+
 
 	n = None
 	frame = 0
@@ -163,14 +218,19 @@ def main():
 
 		nd = dev.sample(n)
 
+		"""
 		results        = [sd.sample(n,  t) for sd in sd_list]
 		results_dev    = [sd.sample(abs(nd), t) for sd in dev_sd_list]
 		results_ratio  = [num/den for num, den in zip(results_dev, results)]
 		results_d1     = [sd_list_d1[i].sample(v) for i, v in enumerate(results)]
 		results_dev_d1 = [dev_sd_list_d1[i].sample(v) for i, v in enumerate(results_dev)]
-		results_freq   = [(d, f.sample(n)) for d, f in freq_list]
+		"""
+		results_freq   = [(d, f.sample(frame, n)) for d, f in freq_list]
+		results_freq2  = [(d, f.sample(frame, n)) for d, f in freq_list2]
+		results_freq3  = [(d, f.sample(frame, n)) for d, f in freq_list3]
 		
-		stdout.write("event at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq)))
+		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
+		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, freq_state.report(results_freq), freq_state2.report(results_freq2), freq_state3.report(results_freq3)))
 		stdout.flush()
 
 if __name__ == "__main__":
