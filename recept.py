@@ -161,12 +161,12 @@ class PhaseFreq:
 		return results
 
 	def avg_period(self, sensor_period, calculated_period):
-		from math import e
+		from math import e, log
 		if sensor_period not in self.average_period:
-			self.average_period[sensor_period] = ExponentialSmoothing(sensor_period * self.wf, calculated_period)
+			self.average_period[sensor_period] = ExponentialSmoothing(sensor_period * self.wf, log(calculated_period) if calculated_period > 0 else 1.0)
 			return calculated_period
 		else:
-			return self.average_period[sensor_period].sample(calculated_period)
+			return e ** self.average_period[sensor_period].sample(log(calculated_period) if calculated_period > 0 else 1.0)
 
 	def report(self, values):
 		from cmath import phase, pi
@@ -177,12 +177,12 @@ class PhaseFreq:
 		)
 
 class PeriodArray:
-	def __init__(self, period, scale = 12, octaves = 1, factor = 1):
+	def __init__(self, period, scale = 12, octaves = 1, sensor_factor = 1, phase_factor = 1):
 		self.freq_list = [
-			(period * 2 ** (float(n)/scale), TimeSmoothing(period * 2 ** (float(n)/scale), 0, factor / ((2 ** (1.0/scale)) - 1)))
+			(period * 2 ** (float(n)/scale), TimeSmoothing(period * 2 ** (float(n)/scale), 0, sensor_factor / ((2 ** (1.0/scale)) - 1)))
 			for n in range(- scale * octaves, 1)
 		]
-		self.freq_state = PhaseFreq([0j for n in range(- scale * octaves, 1)], 1.0)
+		self.freq_state = PhaseFreq([0j for n in range(- scale * octaves, 1)], phase_factor)
 
 	def sample(self, time, value):
 		return self.freq_state.report([(d, f.sample(time, value)) for d, f in self.freq_list])
@@ -216,7 +216,7 @@ def main():
 
 	"""
 
-	pa = PeriodArray(120, 24, 5, 1)
+	pa = PeriodArray(120, 30, 4, 1, 1)
 
 	n = None
 	frame = 0
@@ -242,13 +242,15 @@ def main():
 		results_dev_d1 = [dev_sd_list_d1[i].sample(v) for i, v in enumerate(results_dev)]
 		"""
 
-		#if frame % 60 != 1:
-		#	continue
+		result = pa.sample(frame, n)
+
+		if frame % 15 != 1:
+			continue
 	
 		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
 		#stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, report, report2, report3))
 
-		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n" % (t, frame, n, nd, pa.sample(frame, n)))
+		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n" % (t, frame, n, nd, result))
 		stdout.flush()
 
 if __name__ == "__main__":
