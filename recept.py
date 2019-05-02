@@ -176,12 +176,24 @@ class PhaseFreq:
 			for period, value, delta in self.derive(values)
 		)
 
+class PeriodArray:
+	def __init__(self, period, scale = 12, octaves = 1, factor = 1):
+		self.freq_list = [
+			(period * 2 ** (float(n)/scale), TimeSmoothing(period * 2 ** (float(n)/scale), 0, factor / ((2 ** (1.0/scale)) - 1)))
+			for n in range(- scale * octaves, 1)
+		]
+		self.freq_state = PhaseFreq([0j for n in range(- scale * octaves, 1)], 1.0)
+
+	def sample(self, time, value):
+		return self.freq_state.report([(d, f.sample(time, value)) for d, f in self.freq_list])
+
 def main():
 	from sys import stdin, stdout
 	from time import time
 
 	dev = SequenceDelta(0.0)
 
+	"""
 	sd_list = [
 		SmoothDuration(duration, 3)
 		for duration in range(1, 10)
@@ -203,32 +215,8 @@ def main():
 	]
 
 	"""
-	freq_list = [
-		(int(50 * 2 ** (float(n)/12) + 0.5), FrequencySmoothing(int(50 * 2 ** (float(n)/12) + 0.5), 0, 1.0 / ((2 ** (1.0/12)) - 1)))
-		for n in range(-10, 10)
-	]
-	"""
-	from math import e
-	factor=1
-	scale=6
-	freq_list = [
-		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, factor / ((2 ** (1.0/scale)) - 1)))
-		for n in range(-13, 3)
-	]
-	freq_state = PhaseFreq([0j for n in range(-13, 3)], 1.0)
-	scale=12
-	freq_list2 = [
-		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, factor / ((2 ** (1.0/scale)) - 1)))
-		for n in range(-25, 5)
-	]
-	freq_state2 = PhaseFreq([0j for n in range(-25, 5)], 1.0)
-	scale=24
-	freq_list3 = [
-		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, factor / ((2 ** (1.0/scale)) - 1)))
-		for n in range(-50, 10)
-	]
-	freq_state3 = PhaseFreq([0j for n in range(-50, 10)], 1.0)
 
+	pa = PeriodArray(120, 24, 5, 1)
 
 	n = None
 	frame = 0
@@ -253,19 +241,14 @@ def main():
 		results_d1     = [sd_list_d1[i].sample(v) for i, v in enumerate(results)]
 		results_dev_d1 = [dev_sd_list_d1[i].sample(v) for i, v in enumerate(results_dev)]
 		"""
-		results_freq   = [(d, f.sample(frame, n)) for d, f in freq_list]
-		results_freq2  = [(d, f.sample(frame, n)) for d, f in freq_list2]
-		results_freq3  = [(d, f.sample(frame, n)) for d, f in freq_list3]
 
-		report  = freq_state.report( results_freq)
-		report2 = freq_state2.report(results_freq2)
-		report3 = freq_state3.report(results_freq3)
-	
 		#if frame % 60 != 1:
 		#	continue
 	
 		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
-		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, report, report2, report3))
+		#stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, report, report2, report3))
+
+		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n" % (t, frame, n, nd, pa.sample(frame, n)))
 		stdout.flush()
 
 if __name__ == "__main__":
