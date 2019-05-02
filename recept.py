@@ -141,13 +141,15 @@ def bar(n, d, s, use_log = True):
 		chars[i / 2] = "-" if i % 2 == 0 else "="
 
 	if n > d:
-		chars[s * 2 - 1] = "!"
+		chars[-1] = "!"
 
 	return "".join(chars)
 
 class PhaseFreq:
-	def __init__(self, initial_values):
+	def __init__(self, initial_values, window_factor = 1):
 		self.prior_values = initial_values
+		self.average_period = {}
+		self.wf = window_factor
 
 	def derive(self, values):
 		from cmath import phase
@@ -158,11 +160,19 @@ class PhaseFreq:
 		self.prior_values = [value for freq, value in values]
 		return results
 
+	def avg_period(self, sensor_period, calculated_period):
+		from math import e
+		if sensor_period not in self.average_period:
+			self.average_period[sensor_period] = ExponentialSmoothing(sensor_period * self.wf, calculated_period)
+			return calculated_period
+		else:
+			return self.average_period[sensor_period].sample(calculated_period)
+
 	def report(self, values):
 		from cmath import phase, pi
 		tau = lambda v: ((phase(v) / (2.0 * pi)) +0.5) % 1 - 0.5
 		return "".join(
-			"(%08.3f + %08.3f = %08.3f): [%s] [%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (period, (((tau(delta) * period +0.5) % 1) - 0.5) * period, 1.0 / ((1.0/period) - tau(delta)), bar(abs(value), period, 48), bar(tau(value) + 0.5, 1.0, 24, False), tau(value), abs(value), tau(delta),  abs(delta))
+			"(%08.3f + %08.3f = %08.3f ~ %08.3f): [%s] [%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (period, (((tau(delta) * period +0.5) % 1) - 0.5) * period, 1.0 / ((1.0/period) - tau(delta)), self.avg_period(period, 1.0 / ((1.0/period) - tau(delta))), bar(abs(value), period, 48), bar(tau(value) + 0.5, 1.0, 24, False), tau(value), abs(value), tau(delta),  abs(delta))
 			for period, value, delta in self.derive(values)
 		)
 
@@ -199,25 +209,25 @@ def main():
 	]
 	"""
 	from math import e
-	factor=e
+	factor=1
 	scale=6
 	freq_list = [
 		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, factor / ((2 ** (1.0/scale)) - 1)))
 		for n in range(-13, 3)
 	]
-	freq_state = PhaseFreq(0j for n in range(-13, 3))
+	freq_state = PhaseFreq([0j for n in range(-13, 3)], 1.0)
 	scale=12
 	freq_list2 = [
 		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, factor / ((2 ** (1.0/scale)) - 1)))
 		for n in range(-25, 5)
 	]
-	freq_state2 = PhaseFreq(0j for n in range(-25, 5))
+	freq_state2 = PhaseFreq([0j for n in range(-25, 5)], 1.0)
 	scale=24
 	freq_list3 = [
 		(50 * 2 ** (float(n)/scale), TimeSmoothing(50 * 2 ** (float(n)/scale), 0, factor / ((2 ** (1.0/scale)) - 1)))
 		for n in range(-50, 10)
 	]
-	freq_state3 = PhaseFreq([0j for n in range(-50, 10)])
+	freq_state3 = PhaseFreq([0j for n in range(-50, 10)], 1.0)
 
 
 	n = None
@@ -246,9 +256,16 @@ def main():
 		results_freq   = [(d, f.sample(frame, n)) for d, f in freq_list]
 		results_freq2  = [(d, f.sample(frame, n)) for d, f in freq_list2]
 		results_freq3  = [(d, f.sample(frame, n)) for d, f in freq_list3]
-		
+
+		report  = freq_state.report( results_freq)
+		report2 = freq_state2.report(results_freq2)
+		report3 = freq_state3.report(results_freq3)
+	
+		#if frame % 60 != 1:
+		#	continue
+	
 		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
-		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, freq_state.report(results_freq), freq_state2.report(results_freq2), freq_state3.report(results_freq3)))
+		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, report, report2, report3))
 		stdout.flush()
 
 if __name__ == "__main__":
