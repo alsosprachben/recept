@@ -129,15 +129,19 @@ def listangstr(l):
 	from cmath import phase
 	return "".join("%06.2f = %06.2f (@ %03.2f)\n" % (f, abs(c), (phase(c) / (2.0 * pi)) % 1.0) for f, c in l)
 
-def bar(n, d, s):
+def bar(n, d, s, use_log = True):
 	from math import log
-	#log = lambda x: x
+	nolog = lambda x: x
+	if use_log:
+		log_func = log
+	else:
+		log_func = nolog
 	chars = [" " for i in range(int(s))]
-	for i in range(int((float(min(log(n), log(d))) / log(d) * s))):
-		chars[i] = "="
+	for i in range(int((float(min(log_func(n), log_func(d))) / log_func(d) * s * 2))):
+		chars[i / 2] = "-" if i % 2 == 0 else "="
 
 	if n > d:
-		chars[s-1] = "!"
+		chars[s * 2 - 1] = "!"
 
 	return "".join(chars)
 
@@ -158,7 +162,7 @@ class PhaseFreq:
 		from cmath import phase, pi
 		tau = lambda v: ((phase(v) / (2.0 * pi)) +0.5) % 1 - 0.5
 		return "".join(
-			"(%08.3f + %08.3f = %08.3f): %s { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (period, (((tau(delta) * period +0.5) % 1) - 0.5) * period, 1.0 / ((1.0/period) - tau(delta)), bar(abs(value), period, 24), tau(value), abs(value), tau(delta),  abs(delta))
+			"(%08.3f + %08.3f = %08.3f): [%s] [%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (period, (((tau(delta) * period +0.5) % 1) - 0.5) * period, 1.0 / ((1.0/period) - tau(delta)), bar(abs(value), period, 48), bar(tau(value) + 0.5, 1.0, 24, False), tau(value), abs(value), tau(delta),  abs(delta))
 			for period, value, delta in self.derive(values)
 		)
 
