@@ -163,16 +163,30 @@ class PhaseFreq:
 	def avg_period(self, sensor_period, calculated_period):
 		from math import e, log
 		if sensor_period not in self.average_period:
-			self.average_period[sensor_period] = ExponentialSmoothing(sensor_period * self.wf, log(calculated_period) if calculated_period > 0 else 1.0)
+			self.average_period[sensor_period] = ExponentialSmoothing(sensor_period * self.wf, calculated_period if calculated_period > 0 else 1.0)
 			return calculated_period
 		else:
-			return e ** self.average_period[sensor_period].sample(log(calculated_period) if calculated_period > 0 else 1.0)
+			return self.average_period[sensor_period].sample(calculated_period)
 
 	def report(self, values):
 		from cmath import phase, pi
 		tau = lambda v: ((phase(v) / (2.0 * pi)) +0.5) % 1 - 0.5
 		return "".join(
-			"(%08.3f + %08.3f = %08.3f ~ %08.3f): [%s] [%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (period, (((tau(delta) * period +0.5) % 1) - 0.5) * period, 1.0 / ((1.0/period) - tau(delta)), self.avg_period(period, 1.0 / ((1.0/period) - tau(delta))), bar(abs(value), period, 48), bar(tau(value) + 0.5, 1.0, 24, False), tau(value), abs(value), tau(delta),  abs(delta))
+			"(%08.3f + %08.3f = %08.3f ~ %08.3f): [%s] [%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (
+				period,
+				(((tau(delta) * period +0.5) % 1) - 0.5) * period,
+				1.0 / ((1.0/period) - tau(delta)),
+				1.0 / ((1.0/period) - self.avg_period(
+					period,
+					tau(delta)
+				)),
+				bar(abs(value), period, 48),
+				bar(tau(value) + 0.5, 1.0, 24, False),
+				tau(value),
+				abs(value),
+				tau(delta),
+				abs(delta)
+			)
 			for period, value, delta in self.derive(values)
 		)
 
@@ -216,7 +230,7 @@ def main():
 
 	"""
 
-	pa = PeriodArray(120, 30, 4, 1, 1)
+	pa = PeriodArray(120, 30, 4, 1, 3)
 
 	n = None
 	frame = 0
