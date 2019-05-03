@@ -136,9 +136,9 @@ def bar(n, d, s, use_log = True):
 		log_func = log
 	else:
 		log_func = nolog
-	chars = [" " for i in range(int(s))]
+	chars = [" " for i in range(s)]
 	for i in range(int((float(min(log_func(n), log_func(d))) / log_func(d) * s * 2))):
-		chars[i / 2] = "-" if i % 2 == 0 else "="
+		chars[max(min(i / 2, s - 1), 0)] = "-" if i % 2 == 0 else "="
 
 	if n > d:
 		chars[-1] = "!"
@@ -163,32 +163,50 @@ class PhaseFreq:
 	def avg_period(self, sensor_period, calculated_period, period_weight):
 		from math import e, log
 		if sensor_period not in self.average_period:
-			self.average_period[sensor_period] = ExponentialSmoother(sensor_period) #calculated_period if calculated_period > 0 else 1.0)
+			self.average_period[sensor_period] = ExponentialSmoother(calculated_period)
 			return calculated_period
 		else:
+			instant_period = calculated_period - sensor_period
+			#convergence_weight = 10.0 / abs(instant_period)
 			return self.average_period[sensor_period].sample(calculated_period, sensor_period * self.wf)
 
-	def report(self, values):
+	def parameters(self, period, value, delta):
 		from cmath import phase, pi
 		tau = lambda v: ((phase(v) / (2.0 * pi)) +0.5) % 1 - 0.5
+
+		freq = 1.0 / period
+
+		phi       = tau(value)
+		r         = abs(value)
+		phi_t     = tau(delta)
+		r_t       = abs(delta)
+		avg_phi_t = self.avg_period(period, phi_t, 1.0)
+
+		instant_period     = 1.0 / (1.0 / period - phi_t)
+		instant_period_offset = instant_period - period
+		avg_instant_period = 1.0 / (1.0 / period - avg_phi_t)
+		avg_instant_period_offset = avg_instant_period - period
+
+		return (
+			period,
+			instant_period_offset,
+			instant_period,
+			avg_instant_period_offset,
+			avg_instant_period,
+			bar(r,               period, 24),
+			bar(phi       + 0.5, 1.0,    24, False),
+			bar(phi_t     + 0.5, 1.0,    24, False),
+			bar(avg_phi_t + 0.5, 1.0,    24, False),
+			phi,
+			r,
+			phi_t,
+			r_t
+		)
+
+
+	def report(self, values):
 		return "".join(
-			"(%08.3f + %08.3f = %08.3f ~ %08.3f): [%s] [%s] [%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (
-				period,
-				(((tau(delta) * period +0.5) % 1) - 0.5) * period,
-				1.0 / ((1.0/period) - tau(delta)),
-				1.0 / ((1.0/period) - self.avg_period(
-					period,
-					tau(delta),
-					1.0 #abs(value)
-				)),
-				bar(abs(value), period, 48),
-				bar(tau(value) + 0.5, 1.0, 24, False),
-				bar(tau(delta) + 0.5, 1.0, 24, False),
-				tau(value),
-				abs(value),
-				tau(delta),
-				abs(delta)
-			)
+			"(%08.3f (+ %08.3f = %08.3f, + %08.3f ~ %08.3f)): [%s][%s][%s][%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % self.parameters(period, value, delta)
 			for period, value, delta in self.derive(values)
 		)
 
@@ -232,7 +250,7 @@ def main():
 
 	"""
 
-	pa = PeriodArray(120, 30, 4, 1.0, 1.0)
+	pa = PeriodArray(120, 24, 5, 1.0, 10.0)
 
 	n = None
 	frame = 0
