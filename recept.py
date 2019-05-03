@@ -160,28 +160,30 @@ class PhaseFreq:
 		self.prior_values = [value for freq, value in values]
 		return results
 
-	def avg_period(self, sensor_period, calculated_period):
+	def avg_period(self, sensor_period, calculated_period, period_weight):
 		from math import e, log
 		if sensor_period not in self.average_period:
-			self.average_period[sensor_period] = ExponentialSmoothing(sensor_period * self.wf, calculated_period if calculated_period > 0 else 1.0)
+			self.average_period[sensor_period] = ExponentialSmoother(sensor_period) #calculated_period if calculated_period > 0 else 1.0)
 			return calculated_period
 		else:
-			return self.average_period[sensor_period].sample(calculated_period)
+			return self.average_period[sensor_period].sample(calculated_period, sensor_period * self.wf)
 
 	def report(self, values):
 		from cmath import phase, pi
 		tau = lambda v: ((phase(v) / (2.0 * pi)) +0.5) % 1 - 0.5
 		return "".join(
-			"(%08.3f + %08.3f = %08.3f ~ %08.3f): [%s] [%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (
+			"(%08.3f + %08.3f = %08.3f ~ %08.3f): [%s] [%s] [%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (
 				period,
 				(((tau(delta) * period +0.5) % 1) - 0.5) * period,
 				1.0 / ((1.0/period) - tau(delta)),
 				1.0 / ((1.0/period) - self.avg_period(
 					period,
-					tau(delta)
+					tau(delta),
+					1.0 #abs(value)
 				)),
 				bar(abs(value), period, 48),
 				bar(tau(value) + 0.5, 1.0, 24, False),
+				bar(tau(delta) + 0.5, 1.0, 24, False),
 				tau(value),
 				abs(value),
 				tau(delta),
@@ -230,7 +232,7 @@ def main():
 
 	"""
 
-	pa = PeriodArray(120, 30, 4, 1, 3)
+	pa = PeriodArray(120, 30, 4, 1.0, 1.0)
 
 	n = None
 	frame = 0
@@ -258,8 +260,8 @@ def main():
 
 		result = pa.sample(frame, n)
 
-		if frame % 15 != 1:
-			continue
+		#if frame % 15 != 1:
+		#	continue
 	
 		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
 		#stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, report, report2, report3))
