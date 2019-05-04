@@ -65,7 +65,7 @@ class FrequencySmoothing:
 		+ 1j *	self.imag_v.sample(value * self.imag_w.next(), self.imag_w.n * self.wf)
 		)
 
-class SequenceDelta:
+class Delta:
 	def __init__(self, prior_sequence = None):
 		self.prior_sequence = prior_sequence
 
@@ -78,10 +78,25 @@ class SequenceDelta:
 		self.prior_sequence = sequence_value
 		return delta_value
 
+
+class PhaseDelta:
+	def __init__(self, prior_angle = None):
+		self.prior_angle = prior_angle
+
+	def sample(self, angle_value):
+		from cmath import phase
+		if self.prior_angle is None:
+			delta_value = None
+		else:
+			delta_value = angle_value / self.prior_angle if self.prior_angle != 0.0 else 0.0
+
+		self.prior_angle = angle_value
+		return delta_value
+
 class DynamicWindow:
 	def __init__(self, target_duration, window_size, prior_value = None, initial_duration = 0.0):
 		self.td = target_duration
-		self.s = SequenceDelta(prior_value)
+		self.s = Delta(prior_value)
 		self.ed = ExponentialSmoothing(window_size, initial_duration)
 
 	def sample(self, sequence_value):
@@ -145,34 +160,27 @@ def bar(n, d, s, use_log = True):
 
 	return "".join(chars)
 
-class PhaseFreq:
-	def __init__(self, initial_values, window_factor = 1):
-		self.prior_values = initial_values
-		self.average_period = {}
-		self.wf = window_factor
+class PeriodSensor:
+	def __init__(self, period, phase, period_factor = 1.0, phase_factor = 1.0, initial_value = 0.0+0.0j):
+		self.period = period
+		self.period_factor = 1.0
+		self.phase  = phase
+		self.phase_factor = 1.0
+		self.sensor = TimeSmoothing(period, phase, period_factor, initial_value)
 
-	def derive(self, values):
-		from cmath import phase
-		results = [
-			(freq, post, post / pre if phase(pre) != 0.0 else 0.0)
-			for pre, (freq, post) in zip(self.prior_values, values)
-		]
-		self.prior_values = [value for freq, value in values]
-		return results
+		self.phase_delta = PhaseDelta()
+		self.avg_instant_period = ExponentialSmoother(period)
 
-	def avg_period(self, sensor_period, calculated_period, period_weight):
-		from math import e, log
-		if sensor_period not in self.average_period:
-			self.average_period[sensor_period] = ExponentialSmoother(calculated_period)
-			return calculated_period
-		else:
-			instant_period = calculated_period - sensor_period
-			#convergence_weight = 10.0 / abs(instant_period)
-			return self.average_period[sensor_period].sample(calculated_period, sensor_period * self.wf)
-
-	def parameters(self, period, value, delta):
+	def parameters(self, time, time_value):
 		from cmath import phase, pi
 		tau = lambda v: ((phase(v) / (2.0 * pi)) +0.5) % 1 - 0.5
+
+		value = self.sensor.sample(time, time_value)
+
+		period = self.period
+		delta  = self.phase_delta.sample(value)
+		if delta is None:
+			delta = 0j
 
 		freq = 1.0 / period
 
@@ -180,7 +188,7 @@ class PhaseFreq:
 		r         = abs(value)
 		phi_t     = tau(delta)
 		r_t       = abs(delta)
-		avg_phi_t = self.avg_period(period, phi_t, 1.0)
+		avg_phi_t = self.avg_instant_period.sample(phi_t, period * self.phase_factor)
 
 		instant_period     = 1.0 / (1.0 / period - phi_t)
 		instant_period_offset = instant_period - period
@@ -189,43 +197,44 @@ class PhaseFreq:
 
 		return (
 			period,
+
 			instant_period_offset,
 			instant_period,
 			avg_instant_period_offset,
 			avg_instant_period,
+
 			bar(r,               period, 24),
 			bar(phi       + 0.5, 1.0,    24, False),
 			bar(phi_t     + 0.5, 1.0,    24, False),
 			bar(avg_phi_t + 0.5, 1.0,    24, False),
+
 			phi,
 			r,
 			phi_t,
 			r_t
 		)
 
-
-	def report(self, values):
-		return "".join(
-			"(%08.3f (+ %08.3f = %08.3f, + %08.3f ~ %08.3f)): [%s][%s][%s][%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % self.parameters(period, value, delta)
-			for period, value, delta in self.derive(values)
-		)
+	def report(self, time, time_value):
+		return "(%08.3f (+ %08.3f = %08.3f, + %08.3f ~ %08.3f)): [%s][%s][%s][%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % self.parameters(time, time_value)
 
 class PeriodArray:
-	def __init__(self, period, scale = 12, octaves = 1, sensor_factor = 1, phase_factor = 1):
-		self.freq_list = [
-			(period * 2 ** (float(n)/scale), TimeSmoothing(period * 2 ** (float(n)/scale), 0, sensor_factor / ((2 ** (1.0/scale)) - 1)))
+	def __init__(self, period, scale = 12, octaves = 1, period_factor = 1, phase_factor = 1):
+		self.period_sensors = [
+			PeriodSensor(period * 2 ** (float(n)/scale), 0.0, period_factor / ((2.0 ** (1.0/scale)) - 1), phase_factor)
 			for n in range(- scale * octaves, 1)
 		]
-		self.freq_state = PhaseFreq([0j for n in range(- scale * octaves, 1)], phase_factor)
 
-	def sample(self, time, value):
-		return self.freq_state.report([(d, f.sample(time, value)) for d, f in self.freq_list])
+	def report(self, time, value):
+		return "".join(
+			period_sensor.report(time, value)
+			for period_sensor in self.period_sensors
+		)
 
 def main():
 	from sys import stdin, stdout
 	from time import time
 
-	dev = SequenceDelta(0.0)
+	dev = Delta(0.0)
 
 	"""
 	sd_list = [
@@ -239,12 +248,12 @@ def main():
 	]
 
 	sd_list_d1 = [
-		SequenceDelta(0.0)
+		Delta(0.0)
 		for duration in range(1, 10)
 	]
 
 	dev_sd_list_d1 = [
-		SequenceDelta(0.0)
+		Delta(0.0)
 		for duration in range(1, 10)
 	]
 
@@ -276,7 +285,7 @@ def main():
 		results_dev_d1 = [dev_sd_list_d1[i].sample(v) for i, v in enumerate(results_dev)]
 		"""
 
-		result = pa.sample(frame, n)
+		result = pa.report(frame, n)
 
 		#if frame % 15 != 1:
 		#	continue
