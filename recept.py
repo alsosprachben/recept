@@ -169,10 +169,14 @@ class PeriodSensor:
 		self.sensor = TimeSmoothing(period, phase, period_factor, initial_value)
 
 		self.phase_delta = PhaseDelta()
-		self.avg_instant_period = ExponentialSmoother(period)
+		self.avg_instant_period = ExponentialSmoother(0.0)
+		self.avg_instant_period_delta = PhaseDelta()
+		self.avg_instant_period_delta_avg = ExponentialSmoother(0.0)
+		self.phase_factor_convergence_weight = 1.0
 
 	def parameters(self, time, time_value):
-		from cmath import phase, pi
+		from cmath import phase, pi, rect
+		from math import log
 		tau = lambda v: ((phase(v) / (2.0 * pi)) +0.5) % 1 - 0.5
 
 		value = self.sensor.sample(time, time_value)
@@ -188,12 +192,25 @@ class PeriodSensor:
 		r         = abs(value)
 		phi_t     = tau(delta)
 		r_t       = abs(delta)
-		avg_phi_t = self.avg_instant_period.sample(phi_t, period * self.phase_factor)
+		avg_phi_t = self.avg_instant_period.sample(phi_t, period * self.phase_factor * self.phase_factor_convergence_weight)
 
-		instant_period     = 1.0 / (1.0 / period - phi_t)
+		instant_period        = 1.0 / (1.0 / period - phi_t)
 		instant_period_offset = instant_period - period
-		avg_instant_period = 1.0 / (1.0 / period - avg_phi_t)
+
+		avg_instant_period        = 1.0 / (1.0 / period - avg_phi_t)
 		avg_instant_period_offset = avg_instant_period - period
+
+		avg_instant_period_delta = self.avg_instant_period_delta.sample(rect(1.0, avg_instant_period))
+		if avg_instant_period_delta is None:
+			avg_instant_period_delta = 0j
+		avg_instant_period_delta = phase(avg_instant_period_delta)
+		if avg_instant_period_delta is None:
+			avg_instant_period_delta = 0.0
+		#print avg_instant_period
+		avg_instant_period_delta_avg = phase(self.avg_instant_period_delta_avg.sample(rect(1.0, avg_instant_period_delta), period * self.phase_factor))
+		self.phase_factor_convergence_weight = (1.0 / self.phase_factor) * max(1.0, log(1.0 / (abs(avg_instant_period_delta_avg) if avg_instant_period_delta_avg != 0.0 else 1.0)) / log(10))
+		#print self.phase_factor_convergence_weight, avg_instant_period_delta_avg, avg_instant_period_delta, avg_instant_period
+		
 
 		return (
 			period,
@@ -287,7 +304,7 @@ def main():
 
 		result = pa.report(frame, n)
 
-		#if frame % 15 != 1:
+		#if frame % 60 != 1:
 		#	continue
 	
 		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
