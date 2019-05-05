@@ -288,9 +288,10 @@ class PeriodSensor:
 		instant_period        = 1.0 / (1.0 / period - phi_t)
 		instant_period_offset = instant_period - period
 
-		avg_phi_t = self.avg_instant_period.sample(phi_t, instant_period * self.phase_factor * self.phase_factor_convergence_weight)
-		avg_instant_period        = 1.0 / (1.0 / period - avg_phi_t)
+		avg_instant_period = self.avg_instant_period.sample(instant_period, instant_period * self.phase_factor * self.phase_factor_convergence_weight)
 		avg_instant_period_offset = avg_instant_period - period
+
+		avg_phi_t = 1.0 / avg_instant_period
 
 		avg_instant_period_delta = self.avg_instant_period_delta.sample(rect(1.0, avg_instant_period))
 		if avg_instant_period_delta is None:
@@ -368,7 +369,8 @@ def main():
 
 	"""
 
-	pa = PeriodArray(120, 48, 2, 1.0, 10.0)
+	#pa = PeriodArray(120, 48, 2, 1.0, 10.0)
+	pa = PeriodArray(120, 24, 5, 1.0, 10.0)
 
 	n = None
 	frame = 0
