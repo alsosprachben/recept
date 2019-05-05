@@ -9,6 +9,10 @@ class ExponentialSmoother:
 		return self.v
 
 class ExponentialSmoothing:
+	"""
+	`ExponentialSmoother` of a fixed window size.
+	"""
+
 	def __init__(self, window_size, initial_value = 0.0):
 		self.w = window_size
 		self.v = ExponentialSmoother(initial_value)
@@ -17,17 +21,26 @@ class ExponentialSmoothing:
 		return self.v.sample(value, self.w)
 
 class Window:
+	"""
+	Repeating Iterator over a specified periodic window.
+	"""
+
 	def __init__(self, window):
 		self.w = window
 		self.i = 0
 		self.n = len(window)
 
 	def next(self):
+		"return the next window element"
 		v = self.w[self.i]
 		self.i = (self.i + 1) % self.n
 		return v
 
 class CosineWindow(Window):
+	"""
+	A window of the cosine at the specified period and phase.
+	"""
+
 	def __init__(self, period, phase):
 		from math import cos, pi
 		self.i = 0
@@ -35,14 +48,23 @@ class CosineWindow(Window):
 		self.w = [cos(2.0 * pi * ((float(i) + phase) / period)) for i in range(period)]
 
 class SineWindow(CosineWindow):
+	"""
+	A window of the sine at the specified period and phase.
+	"""
+
 	def __init__(self, period, phase):
 		CosineWindow.__init__(self, period, phase + (float(period) / 4))
 
-def complex_period(period):
+def complex_period(period, magnitude=1):
+	"return the complex number of a specified period and magnitude (default 1)"
 	from cmath import rect, pi
-	return rect(1, pi * 2 * period)
+	return rect(magnitude, pi * 2 * period)
 
 class PeriodicSmoothing:
+	"""
+	Sense a specified periodic window of an integral size.
+	"""
+
 	def __init__(self, window = [1.0, -1.0], window_factor = 1, initial_value = 0.0):
 		self.w = WIndow(window)
 		self.wf = window_factor
@@ -52,6 +74,10 @@ class PeriodicSmoothing:
 		return self.v.sample(value * self.w.next(), self.w.n * self.wf)
 
 class FrequencySmoothing:
+	"""
+	Sense a particular period and phase, using precomputed windows of integral size.
+	"""
+
 	def __init__(self, period, phase, window_factor = 1, real_initial_value = 0.0, imag_initial_value = 0.0):
 		self.real_w = CosineWindow(period, phase)
 		self.imag_w =   SineWindow(period, phase)
@@ -66,6 +92,10 @@ class FrequencySmoothing:
 		)
 
 class Delta:
+	"""
+	Derivative of a sequence of real numbers.
+	"""
+
 	def __init__(self, prior_sequence = None):
 		self.prior_sequence = prior_sequence
 
@@ -80,10 +110,15 @@ class Delta:
 
 
 class PhaseDelta:
+	"""
+	Derivative of the phase of a complex number. That is, divide the complex sample against the previous. 
+	"""
+
 	def __init__(self, prior_angle = None):
 		self.prior_angle = prior_angle
 
 	def sample(self, angle_value):
+		"Param and return value are both complex."
 		from cmath import phase
 		if self.prior_angle is None:
 			delta_value = None
@@ -92,6 +127,39 @@ class PhaseDelta:
 
 		self.prior_angle = angle_value
 		return delta_value
+
+class SignDelta:
+	"""
+	Edge Detector, using a cmp derivative.
+	"""
+
+	def __init__(self, prior_value = None):
+		self.prior_value = prior_value
+
+	def sample_cmp(self, value):
+		"`0`, `+1` start, `-1` stop"
+		s = cmp(value, self.prior_value)
+		self.prior_value = value
+		return s
+
+	def sample_start(self, value):
+		"`True` if start"
+		return self.sample_cmp(value) == 1
+
+	def sample_stop(self, value):
+		"`True` if stop"
+		return self.sample_cmp(value) == -1
+
+class Sign:
+	"""
+	Whether a signal is positive.
+	"""
+
+	def __init__(self):
+		pass
+
+	def sample(self, value):
+		return value > 0
 
 class DynamicWindow:
 	def __init__(self, target_duration, window_size, prior_value = None, initial_duration = 0.0):
@@ -220,10 +288,10 @@ class PeriodSensor:
 			avg_instant_period_offset,
 			avg_instant_period,
 
-			bar(r,               period, 24),
-			bar(phi       + 0.5, 1.0,    24, False),
-			bar(phi_t     + 0.5, 1.0,    24, False),
-			bar(avg_phi_t + 0.5, 1.0,    24, False),
+			bar(r,               period, 48),
+			bar(phi       + 0.5, 1.0,    16, False),
+			bar(phi_t     + 0.5, 1.0,    16, False),
+			bar(avg_phi_t + 0.5, 1.0,    16, False),
 
 			phi,
 			r,
