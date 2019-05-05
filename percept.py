@@ -22,7 +22,7 @@ def main():
 	
 		target_time = time()
 		for j in range(3):
-			#j = 2
+			j = 0
 			for h in range(10):
 				n = 60
 				for i in range(n):
@@ -35,7 +35,7 @@ def main():
 						x = 100 if i % n < n / 2 else -100
 					target_time += 1.0/60
 					current_time = time()
-					sleep(max(target_time - current_time, 0))
+					#sleep(max(target_time - current_time, 0))
 					stdout.write("%f\n" % x)
 					stdout.flush()
 

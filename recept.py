@@ -1,24 +1,44 @@
 #!/usr/bin/env python
 
-class ExponentialSmoother:
-	def __init__(self, initial_value = 0.0):
-		self.v = initial_value
+"""
+Infinite Impulse Response (IIR) filters for periodic analysis
+"""
 
-	def sample(self, value, factor):
-		self.v += (value - self.v) / factor
-		return self.v
+"""
+Formatting
+"""
 
-class ExponentialSmoothing:
-	"""
-	`ExponentialSmoother` of a fixed window size.
-	"""
+def liststr(l):
+	return ", ".join("%06.2f" % e for e in l)
 
-	def __init__(self, window_size, initial_value = 0.0):
-		self.w = window_size
-		self.v = ExponentialSmoother(initial_value)
+def listcompstr(l):
+	return ", ".join("%06.2f+%06.2fj" % (c.real, c.imag) for c in l)
 
-	def sample(self, value):
-		return self.v.sample(value, self.w)
+def listangstr(l):
+	from math import pi
+	from cmath import phase
+	return "".join("%06.2f = %06.2f (@ %03.2f)\n" % (f, abs(c), (phase(c) / (2.0 * pi)) % 1.0) for f, c in l)
+
+def bar(n, d, s, use_log = True):
+	from math import log
+	nolog = lambda x: x
+	if use_log:
+		log_func = log
+	else:
+		log_func = nolog
+	chars = [" " for i in range(s)]
+	for i in range(int((float(min(log_func(n), log_func(d))) / log_func(d) * s * 2))):
+		chars[max(min(i / 2, s - 1), 0)] = "-" if i % 2 == 0 else "="
+
+	if n > d:
+		chars[-1] = "!"
+
+	return "".join(chars)
+
+
+"""
+Pre-computed Windows
+"""
 
 class Window:
 	"""
@@ -55,11 +75,6 @@ class SineWindow(CosineWindow):
 	def __init__(self, period, phase):
 		CosineWindow.__init__(self, period, phase + (float(period) / 4))
 
-def complex_period(period, magnitude=1):
-	"return the complex number of a specified period and magnitude (default 1)"
-	from cmath import rect, pi
-	return rect(magnitude, pi * 2 * period)
-
 class PeriodicSmoothing:
 	"""
 	Sense a specified periodic window of an integral size.
@@ -91,6 +106,35 @@ class FrequencySmoothing:
 		+ 1j *	self.imag_v.sample(value * self.imag_w.next(), self.imag_w.n * self.wf)
 		)
 
+"""
+Real-Time, Infinite, Dynamic Windows
+"""
+
+def complex_period(period, magnitude=1):
+	"return the complex number of a specified period and magnitude (default 1)"
+	from cmath import rect, pi
+	return rect(magnitude, pi * 2 * period)
+
+class ExponentialSmoother:
+	def __init__(self, initial_value = 0.0):
+		self.v = initial_value
+
+	def sample(self, value, factor):
+		self.v += (value - self.v) / factor
+		return self.v
+
+class ExponentialSmoothing:
+	"""
+	`ExponentialSmoother` of a fixed window size.
+	"""
+
+	def __init__(self, window_size, initial_value = 0.0):
+		self.w = window_size
+		self.v = ExponentialSmoother(initial_value)
+
+	def sample(self, value):
+		return self.v.sample(value, self.w)
+
 class Delta:
 	"""
 	Derivative of a sequence of real numbers.
@@ -115,10 +159,11 @@ class PhaseDelta:
 	"""
 
 	def __init__(self, prior_angle = None):
+		"`prior_angle` must be a complex number"
 		self.prior_angle = prior_angle
 
 	def sample(self, angle_value):
-		"Param and return value are both complex."
+		"Both the param and return values are complex numbers."
 		from cmath import phase
 		if self.prior_angle is None:
 			delta_value = None
@@ -162,12 +207,18 @@ class Sign:
 		return value > 0
 
 class DynamicWindow:
+	"""
+	Provide a dynamically-adjusted window size for a particular duration, by a given time sequence.
+	"""
+
 	def __init__(self, target_duration, window_size, prior_value = None, initial_duration = 0.0):
+		"Provide a target duration, and a window size over the number of given sequence events."
 		self.td = target_duration
 		self.s = Delta(prior_value)
 		self.ed = ExponentialSmoothing(window_size, initial_duration)
 
 	def sample(self, sequence_value):
+		"Provide the next sequence value, and get an updated time window targeting the initialized duration."
 		duration_since = self.s.sample(sequence_value)
 		if duration_since is None:
 			return self.td
@@ -201,33 +252,6 @@ class EventSmoothing:
 		self.phase = phase
 		self.v = ExponentialSmoother(initial_value)
 	
-def liststr(l):
-	return ", ".join("%06.2f" % e for e in l)
-
-def listcompstr(l):
-	return ", ".join("%06.2f+%06.2fj" % (c.real, c.imag) for c in l)
-
-def listangstr(l):
-	from math import pi
-	from cmath import phase
-	return "".join("%06.2f = %06.2f (@ %03.2f)\n" % (f, abs(c), (phase(c) / (2.0 * pi)) % 1.0) for f, c in l)
-
-def bar(n, d, s, use_log = True):
-	from math import log
-	nolog = lambda x: x
-	if use_log:
-		log_func = log
-	else:
-		log_func = nolog
-	chars = [" " for i in range(s)]
-	for i in range(int((float(min(log_func(n), log_func(d))) / log_func(d) * s * 2))):
-		chars[max(min(i / 2, s - 1), 0)] = "-" if i % 2 == 0 else "="
-
-	if n > d:
-		chars[-1] = "!"
-
-	return "".join(chars)
-
 class PeriodSensor:
 	def __init__(self, period, phase, period_factor = 1.0, phase_factor = 1.0, initial_value = 0.0+0.0j):
 		self.period = period
@@ -260,11 +284,11 @@ class PeriodSensor:
 		r         = abs(value)
 		phi_t     = tau(delta)
 		r_t       = abs(delta)
-		avg_phi_t = self.avg_instant_period.sample(phi_t, period * self.phase_factor * self.phase_factor_convergence_weight)
 
 		instant_period        = 1.0 / (1.0 / period - phi_t)
 		instant_period_offset = instant_period - period
 
+		avg_phi_t = self.avg_instant_period.sample(phi_t, instant_period * self.phase_factor * self.phase_factor_convergence_weight)
 		avg_instant_period        = 1.0 / (1.0 / period - avg_phi_t)
 		avg_instant_period_offset = avg_instant_period - period
 
@@ -344,7 +368,7 @@ def main():
 
 	"""
 
-	pa = PeriodArray(120, 24, 5, 1.0, 10.0)
+	pa = PeriodArray(120, 48, 2, 1.0, 10.0)
 
 	n = None
 	frame = 0
