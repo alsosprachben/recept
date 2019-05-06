@@ -372,7 +372,7 @@ def main():
 	"""
 
 	#pa = PeriodArray(120, 48, 2, 1.0, 10.0)
-	pa = PeriodArray(120, 24, 5, 1.0, 10.0)
+	pa = PeriodArray(120, 24, 5, 1.0, 1.0)
 
 	n = None
 	frame = 0
@@ -400,8 +400,8 @@ def main():
 
 		result = pa.report(frame, n)
 
-		if frame % 15 != 1:
-			continue
+		#if frame % 15 != 1:
+		#	continue
 	
 		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
 		#stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, report, report2, report3))
