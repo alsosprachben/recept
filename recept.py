@@ -19,15 +19,34 @@ def listangstr(l):
 	from cmath import phase
 	return "".join("%06.2f = %06.2f (@ %03.2f)\n" % (f, abs(c), (phase(c) / (2.0 * pi)) % 1.0) for f, c in l)
 
-def bar(n, d, s, use_log = True):
-	from math import log
-	nolog = lambda x: x
-	if use_log:
-		log_func = log
+def bar1(n, d, s):
+	mn = max(0, min(n, d))
+	sn = float(mn) * s / d
+	si = int(sn // 1)
+	sr = sn % 1
+	s1 = "0" * si
+	if si < s:
+		s2 = [" ", "-", "+", "=", "x", "*"][int(sr * 6)]
+		#s2 = "." if sr > 0.5 else " "
 	else:
-		log_func = nolog
+		s2 = ""
+	s3 = " " * (s - si - 1)
+	return "%s%s%s" % (s1, s2, s3)
+
+def bar2(n, d, s):
+	mn = min(n, d)
+	sn = float(mn) * s / d
+	si = int(sn // 1)
+	sr = sn % 1
+	b = ["=" for c in range(si)]
+	if sr > 0.5:
+		b.append("-")
+	bs = "".join(b)
+	return bs.ljust(s)
+	
+def bar3(n, d, s):
 	chars = [" " for i in range(s)]
-	for i in range(int((float(min(log_func(n), log_func(d))) / log_func(d) * s * 2))):
+	for i in range(int((float(min(n, d)) / d * s * 2))):
 		chars[max(min(i / 2, s - 1), 0)] = "-" if i % 2 == 0 else "="
 
 	if n > d:
@@ -35,6 +54,11 @@ def bar(n, d, s, use_log = True):
 
 	return "".join(chars)
 
+bar = bar1
+
+def bar_log(n, d, s):
+	from math import log
+	return bar(log(n), log(d), s)
 
 """
 Pre-computed Windows
@@ -306,10 +330,10 @@ class PeriodSensor:
 				self.avg_instant_period_offset,
 				self.avg_instant_period,
 
-				bar(self.r,               self.period, 48),
-				bar(self.phi       + 0.5, 1.0,         16, False),
-				bar(self.phi_t     + 0.5, 1.0,         16, False),
-				bar(self.avg_phi_t + 0.5, 1.0,         16, False),
+				bar_log(self.r,           self.period, 48),
+				bar(self.phi       + 0.5, 1.0,         16),
+				bar(self.phi_t     + 0.5, 1.0,         16),
+				bar(self.avg_phi_t + 0.5, 1.0,         16),
 
 				self.phi,
 				self.r,
@@ -462,7 +486,7 @@ def main():
 
 		sensations = pa.sample(frame, n)
 
-		if frame % 600 != 1:
+		if frame % 15 != 1:
 			continue
 	
 		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
