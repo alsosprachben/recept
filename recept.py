@@ -343,7 +343,7 @@ class PeriodSensor:
 
 
 		def __str__(self):
-			return "%08.3f -> %08.3f: { r: [%s] %08.3f, [%s][%s] avg(phi/t): %08.3f }\n" % (
+			return "%08.3f -> %08.3f: { r: [%s] %08.3f, avg(phi/t): [%s][%s] %08.3f }\n" % (
 				self.period,
 
 				self.avg_instant_period,
