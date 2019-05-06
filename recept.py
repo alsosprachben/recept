@@ -416,17 +416,27 @@ class PeriodSensor:
 
 
 class PeriodArray:
+	def sample(self, time, value):
+		return [
+			period_sensor.sample(time, value)
+			for period_sensor in self.period_sensors
+		]
+
+class LogPeriodArray(PeriodArray):
 	def __init__(self, period, scale = 12, octaves = 1, period_factor = 1, phase_factor = 1):
 		self.period_sensors = [
 			PeriodSensor(period * 2 ** (float(n)/scale), 0.0, period_factor / ((2.0 ** (1.0/scale)) - 1), phase_factor)
 			for n in range(- scale * octaves, 1)
 		]
 
-	def sample(self, time, value):
-		return [
-			period_sensor.sample(time, value)
-			for period_sensor in self.period_sensors
+class LinearPeriodArray(PeriodArray):
+	def __init__(self, sampling_rate, start_frequency, stop_frequency, step_frequency, period_factor = 1, phase_factor = 1):
+		self.period_sensors = [
+			PeriodSensor(1.0 / (float(frequency) / sampling_rate), 0.0, period_factor / (float(step_frequency) / sampling_rate) * (float(frequency) / sampling_rate), phase_factor)
+			for frequency in reversed(range(start_frequency, stop_frequency, step_frequency))
 		]
+
+
 
 def main():
 	from sys import stdin, stdout
@@ -457,15 +467,16 @@ def main():
 
 	"""
 
-	#pa = PeriodArray(120, 48, 2, 1.0, 10.0)
-	pa = PeriodArray(120, 24, 5, 1.0, 1.0)
+	#pa = LogPeriodArray(120, 24, 5, 1.0, 1.0)
+	pa = LinearPeriodArray(8000, 100, 1200, 10, 1.0, 1.0)
 
 	n = None
 	frame = 0
 	while True:
 		frame += 1
 		line = stdin.readline()
-		t = time()
+		#t = time()
+		t = frame
 		try:
 			n = float(line.strip())
 		except ValueError:
@@ -486,7 +497,7 @@ def main():
 
 		sensations = pa.sample(frame, n)
 
-		if frame % 15 != 1:
+		if frame % 60 != 1:
 			continue
 	
 		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
