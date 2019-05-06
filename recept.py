@@ -261,7 +261,7 @@ class PeriodSensor:
 		self.sensor = TimeSmoothing(period, phase, period_factor, initial_value)
 
 		self.phase_delta = PhaseDelta()
-		self.avg_instant_period = ExponentialSmoother(0.0)
+		self.avg_instant_period = ExponentialSmoother(period)
 		self.avg_instant_period_delta = PhaseDelta()
 		self.avg_instant_period_delta_avg = ExponentialSmoother(0.0)
 		self.phase_factor_convergence_weight = 1.0
@@ -288,11 +288,12 @@ class PeriodSensor:
 		instant_period        = 1.0 / (1.0 / period - phi_t)
 		instant_period_offset = instant_period - period
 
-		avg_instant_period = self.avg_instant_period.sample(instant_period, instant_period * self.phase_factor * self.phase_factor_convergence_weight)
+		avg_instant_period = self.avg_instant_period.sample(instant_period, instant_period * self.phase_factor)
 		avg_instant_period_offset = avg_instant_period - period
 
-		avg_phi_t = 1.0 / avg_instant_period
+		avg_phi_t = (1.0 / period) - (1.0 / avg_instant_period)
 
+		"""
 		avg_instant_period_delta = self.avg_instant_period_delta.sample(rect(1.0, avg_instant_period))
 		if avg_instant_period_delta is None:
 			avg_instant_period_delta = 0j
@@ -303,6 +304,7 @@ class PeriodSensor:
 		avg_instant_period_delta_avg = phase(self.avg_instant_period_delta_avg.sample(rect(1.0, avg_instant_period_delta), period * self.phase_factor))
 		self.phase_factor_convergence_weight = (1.0 / self.phase_factor) * max(1.0, log(1.0 / (abs(avg_instant_period_delta_avg) if avg_instant_period_delta_avg != 0.0 else 1.0)) / log(10))
 		#print self.phase_factor_convergence_weight, avg_instant_period_delta_avg, avg_instant_period_delta, avg_instant_period
+		"""
 		
 
 		return (
@@ -398,8 +400,8 @@ def main():
 
 		result = pa.report(frame, n)
 
-		#if frame % 60 != 1:
-		#	continue
+		if frame % 15 != 1:
+			continue
 	
 		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
 		#stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, report, report2, report3))
