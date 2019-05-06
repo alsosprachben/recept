@@ -253,6 +253,73 @@ class EventSmoothing:
 		self.v = ExponentialSmoother(initial_value)
 	
 class PeriodSensor:
+
+	class Sensation:
+		def __init__(self,
+			period,
+
+			instant_period_offset,
+			instant_period,
+			avg_instant_period_offset,
+			avg_instant_period,
+
+			phi,
+			r,
+			phi_t,
+			r_t,
+			avg_phi_t
+		):
+			(
+				self.period,
+
+				self.instant_period_offset,
+				self.instant_period,
+				self.avg_instant_period_offset,
+				self.avg_instant_period,
+
+				self.phi,
+				self.r,
+				self.phi_t,
+				self.r_t,
+				self.avg_phi_t
+			) = (
+				period,
+
+				instant_period_offset,
+				instant_period,
+				avg_instant_period_offset,
+				avg_instant_period,
+
+				phi,
+				r,
+				phi_t,
+				r_t,
+				avg_phi_t
+			)
+
+		def __str__(self):
+			return "(%08.3f (+ %08.3f = %08.3f, + %08.3f ~ %08.3f)): [%s][%s][%s][%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (
+				self.period,
+
+				self.instant_period_offset,
+				self.instant_period,
+				self.avg_instant_period_offset,
+				self.avg_instant_period,
+
+				bar(self.r,               self.period, 48),
+				bar(self.phi       + 0.5, 1.0,         16, False),
+				bar(self.phi_t     + 0.5, 1.0,         16, False),
+				bar(self.avg_phi_t + 0.5, 1.0,         16, False),
+
+				self.phi,
+				self.r,
+				self.phi_t,
+				self.r_t
+			)
+
+
+
+
 	def __init__(self, period, phase, period_factor = 1.0, phase_factor = 1.0, initial_value = 0.0+0.0j):
 		self.period = period
 		self.period_factor = 1.0
@@ -262,11 +329,13 @@ class PeriodSensor:
 
 		self.phase_delta = PhaseDelta()
 		self.avg_instant_period = ExponentialSmoother(period)
+		"""
 		self.avg_instant_period_delta = PhaseDelta()
 		self.avg_instant_period_delta_avg = ExponentialSmoother(0.0)
 		self.phase_factor_convergence_weight = 1.0
+		"""
 
-	def parameters(self, time, time_value):
+	def sample(self, time, time_value):
 		from cmath import phase, pi, rect
 		from math import log
 		tau = lambda v: ((phase(v) / (2.0 * pi)) +0.5) % 1 - 0.5
@@ -306,8 +375,7 @@ class PeriodSensor:
 		#print self.phase_factor_convergence_weight, avg_instant_period_delta_avg, avg_instant_period_delta, avg_instant_period
 		"""
 		
-
-		return (
+		return self.Sensation(
 			period,
 
 			instant_period_offset,
@@ -315,19 +383,13 @@ class PeriodSensor:
 			avg_instant_period_offset,
 			avg_instant_period,
 
-			bar(r,               period, 48),
-			bar(phi       + 0.5, 1.0,    16, False),
-			bar(phi_t     + 0.5, 1.0,    16, False),
-			bar(avg_phi_t + 0.5, 1.0,    16, False),
-
 			phi,
 			r,
 			phi_t,
-			r_t
+			r_t,
+			avg_phi_t
 		)
 
-	def report(self, time, time_value):
-		return "(%08.3f (+ %08.3f = %08.3f, + %08.3f ~ %08.3f)): [%s][%s][%s][%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % self.parameters(time, time_value)
 
 class PeriodArray:
 	def __init__(self, period, scale = 12, octaves = 1, period_factor = 1, phase_factor = 1):
@@ -336,11 +398,11 @@ class PeriodArray:
 			for n in range(- scale * octaves, 1)
 		]
 
-	def report(self, time, value):
-		return "".join(
-			period_sensor.report(time, value)
+	def sample(self, time, value):
+		return [
+			period_sensor.sample(time, value)
 			for period_sensor in self.period_sensors
-		)
+		]
 
 def main():
 	from sys import stdin, stdout
@@ -398,15 +460,15 @@ def main():
 		results_dev_d1 = [dev_sd_list_d1[i].sample(v) for i, v in enumerate(results_dev)]
 		"""
 
-		result = pa.report(frame, n)
+		sensations = pa.sample(frame, n)
 
-		#if frame % 15 != 1:
-		#	continue
+		if frame % 600 != 1:
+			continue
 	
 		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
 		#stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, report, report2, report3))
 
-		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n" % (t, frame, n, nd, result))
+		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n" % (t, frame, n, nd, "".join(str(sensation) for sensation in sensations)))
 		stdout.flush()
 
 if __name__ == "__main__":
