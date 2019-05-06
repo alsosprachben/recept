@@ -24,9 +24,9 @@ def bar1(n, d, s):
 	sn = float(mn) * s / d
 	si = int(sn // 1)
 	sr = sn % 1
-	s1 = "0" * si
+	s1 = "#" * si
 	if si < s:
-		s2 = [" ", "-", "+", "=", "x", "*"][int(sr * 6)]
+		s2 = [" ", "-", "+", "="][int(sr * 4)]
 		#s2 = "." if sr > 0.5 else " "
 	else:
 		s2 = ""
@@ -513,7 +513,7 @@ def main():
 
 		sensations = pa.sample(frame, n)
 
-		#if frame % 60 != 1:
+		#if frame % 15 != 1:
 		#	continue
 	
 		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
