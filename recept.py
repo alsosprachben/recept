@@ -270,6 +270,13 @@ class TimeSmoothing:
 	def sample(self, time, value):
 		return self.v.sample(value * complex_period(float(time + self.phase) / self.period), self.period * self.wf)
 
+	def update_period(self, period):
+		self.phase = float(self.phase) / self.period * period
+		self.period = period
+
+	def update_phase(self, phase):
+		self.phase = phase
+
 class EventSmoothing:
 	def __init__(self, period, phase, initial_value = 0.0+0.0j):
 		self.period = period
@@ -374,6 +381,17 @@ class PeriodSensor:
 		self.avg_instant_period_delta_avg = ExponentialSmoother(0.0)
 		self.phase_factor_convergence_weight = 1.0
 		"""
+
+	def update_period(self, period):
+		self.period = period
+		self.sensor.update_period(period)
+
+	def update_phase(self, phase):
+		self.phase = phase
+		self.sensor.update_phase(phase)
+
+	def update_model(self, sensation):
+		self.update_period(sensation.avg_instant_period)
 
 	def sample(self, time, time_value):
 		from cmath import phase, pi, rect
@@ -483,8 +501,12 @@ def main():
 
 	"""
 
-	pa = LogPeriodArray(120, 24, 5, 1.0, 10.0)
-	#pa = LinearPeriodArray(8000, 100, 1200, 20, 1.0, 5.0)
+	#pa1 = LogPeriodArray(120, 4, 4, 1.0, 10.0)
+	#pa2 = LogPeriodArray(120, 4, 4, 10.0, 10.0)
+	#pa3 = LogPeriodArray(120, 4, 4, 100.0, 10.0)
+	pa1 = LinearPeriodArray(8000, 100, 1600, 40, 1.0, 10.0)
+	pa2 = LinearPeriodArray(8000, 100, 1600, 40, 10.0, 10.0)
+	pa3 = LinearPeriodArray(8000, 100, 1600, 40, 100.0, 10.0)
 
 	n = None
 	frame = 0
@@ -511,15 +533,32 @@ def main():
 		results_dev_d1 = [dev_sd_list_d1[i].sample(v) for i, v in enumerate(results_dev)]
 		"""
 
-		sensations = pa.sample(frame, n)
+		sensations1 = pa1.sample(frame, n)
+		for sensor, sensation in zip(pa2.period_sensors, sensations1):
+			sensor.update_model(sensation)
+		sensations2 = pa2.sample(frame, n)
+		for sensor, sensation in zip(pa3.period_sensors, sensations2):
+			sensor.update_model(sensation)
+		sensations3 = pa3.sample(frame, n)
 
-		#if frame % 15 != 1:
-		#	continue
+
+		if frame % 60 != 1:
+			continue
+
+		#if frame >= 61000:
+		#	break
 	
 		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
 		#stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, report, report2, report3))
 
-		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n" % (t, frame, n, nd, "".join(str(sensation) for sensation in sensations)))
+		from math import log
+		amp_key = lambda s: -log(s.r)/log(s.period)
+		period_key = lambda s: s.period
+		avg_instant_period_key = lambda s: s.avg_instant_period
+		report1 = "".join(str(sensation) for sensation in sensations1)
+		report2 = "".join(str(sensation) for sensation in sorted(sensations2, key = avg_instant_period_key))
+		report3 = "".join(str(sensation) for sensation in sorted(sensations3, key = avg_instant_period_key))
+		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, report1, report2, report3))
 		stdout.flush()
 
 if __name__ == "__main__":
