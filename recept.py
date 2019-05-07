@@ -328,27 +328,6 @@ class PeriodSensor:
 				avg_phi_t
 			)
 
-		def __str__2(self):
-			return "(%08.3f (+ %08.3f = %08.3f, + %08.3f ~ %08.3f)): [%s][%s][%s][%s] { phi: %08.3f, r: %08.3f, phi/t: %08.3f, r/t: %08.3f }\n" % (
-				self.period,
-
-				self.instant_period_offset,
-				self.instant_period,
-				self.avg_instant_period_offset,
-				self.avg_instant_period,
-
-				bar_log(self.r,           self.period, 48),
-				bar(self.phi       + 0.5, 1.0,         16),
-				bar(self.phi_t     + 0.5, 1.0,         16),
-				bar(self.avg_phi_t + 0.5, 1.0,         16),
-
-				self.phi,
-				self.r,
-				self.phi_t,
-				self.r_t
-			)
-
-
 		def __str__(self):
 			return "%08.3f -> %08.3f: { r: [%s] %08.3f, avg(phi/t): [%s][%s] %08.3f }\n" % (
 				self.period,
@@ -376,11 +355,6 @@ class PeriodSensor:
 
 		self.phase_delta = PhaseDelta()
 		self.avg_instant_period = ExponentialSmoother(period)
-		"""
-		self.avg_instant_period_delta = PhaseDelta()
-		self.avg_instant_period_delta_avg = ExponentialSmoother(0.0)
-		self.phase_factor_convergence_weight = 1.0
-		"""
 
 	def update_period(self, period):
 		self.period = period
@@ -390,7 +364,7 @@ class PeriodSensor:
 		self.phase = phase
 		self.sensor.update_phase(phase)
 
-	def update_model(self, sensation):
+	def update_period_from_sensation(self, sensation):
 		self.update_period(sensation.avg_instant_period)
 
 	def sample(self, time, time_value):
@@ -420,19 +394,6 @@ class PeriodSensor:
 
 		avg_phi_t = (1.0 / period) - (1.0 / avg_instant_period)
 
-		"""
-		avg_instant_period_delta = self.avg_instant_period_delta.sample(rect(1.0, avg_instant_period))
-		if avg_instant_period_delta is None:
-			avg_instant_period_delta = 0j
-		avg_instant_period_delta = phase(avg_instant_period_delta)
-		if avg_instant_period_delta is None:
-			avg_instant_period_delta = 0.0
-		#print avg_instant_period
-		avg_instant_period_delta_avg = phase(self.avg_instant_period_delta_avg.sample(rect(1.0, avg_instant_period_delta), period * self.phase_factor))
-		self.phase_factor_convergence_weight = (1.0 / self.phase_factor) * max(1.0, log(1.0 / (abs(avg_instant_period_delta_avg) if avg_instant_period_delta_avg != 0.0 else 1.0)) / log(10))
-		#print self.phase_factor_convergence_weight, avg_instant_period_delta_avg, avg_instant_period_delta, avg_instant_period
-		"""
-		
 		return self.Sensation(
 			period,
 
@@ -456,8 +417,34 @@ class PeriodArray:
 			for period_sensor in self.period_sensors
 		]
 
+	def by_unison(self, sensations, consonance_factor = 1.0):
+		from math import log
+		previous_sensation = None
+		tonal_groups = []
+		tonal_group  = []
+		for sensation in sorted(sensations, key = lambda s: -s.avg_instant_period):
+			if previous_sensation is not None:
+				#print sensation.avg_instant_period, abs(log(sensation.avg_instant_period / previous_sensation.avg_instant_period)), 1.0 / self.period_factor
+				if abs(log(sensation.avg_instant_period / previous_sensation.avg_instant_period)) > (1.0 / self.period_factor) * consonance_factor:
+					tonal_groups.append(tonal_group)
+					tonal_group = []
+			#else:
+				#print sensation.avg_instant_period
+
+			tonal_group.append(sensation)
+
+			previous_sensation = sensation
+
+		if len(tonal_group) > 1:
+			tonal_groups.append(tonal_group)
+
+		return tonal_groups
+		
+
 class LogPeriodArray(PeriodArray):
 	def __init__(self, period, scale = 12, octaves = 1, period_factor = 1.0, phase_factor = 1.0):
+		self.period_factor = period_factor
+		self.phase_factor  = phase_factor
 		self.period_sensors = [
 			PeriodSensor(period * 2 ** (float(n)/scale), 0.0, period_factor / ((2.0 ** (1.0/scale)) - 1), phase_factor)
 			for n in range(- scale * octaves, 1)
@@ -465,6 +452,8 @@ class LogPeriodArray(PeriodArray):
 
 class LinearPeriodArray(PeriodArray):
 	def __init__(self, sampling_rate, start_frequency, stop_frequency, step_frequency, period_factor = 1, phase_factor = 1):
+		self.period_factor = period_factor
+		self.phase_factor  = phase_factor
 		self.period_sensors = [
 			PeriodSensor(1.0 / (float(frequency) / sampling_rate), 0.0, period_factor / (float(step_frequency) / sampling_rate) * (float(frequency) / sampling_rate), phase_factor)
 			for frequency in reversed(range(start_frequency, stop_frequency, step_frequency))
@@ -501,9 +490,9 @@ def main():
 
 	"""
 
-	#pa1 = LogPeriodArray(120, 4, 4, 1.0, 10.0)
-	#pa2 = LogPeriodArray(120, 4, 4, 10.0, 10.0)
-	#pa3 = LogPeriodArray(120, 4, 4, 100.0, 10.0)
+	#pa1 = LogPeriodArray(120, 12, 4, 1.0, 10.0)
+	#pa2 = LogPeriodArray(120, 12, 4, 10.0, 10.0)
+	#pa3 = LogPeriodArray(120, 12, 4, 100.0, 10.0)
 	pa1 = LinearPeriodArray(8000, 100, 1600, 40, 1.0, 10.0)
 	pa2 = LinearPeriodArray(8000, 100, 1600, 40, 10.0, 10.0)
 	pa3 = LinearPeriodArray(8000, 100, 1600, 40, 100.0, 10.0)
@@ -535,11 +524,11 @@ def main():
 
 		sensations1 = pa1.sample(frame, n)
 		for sensor, sensation in zip(pa2.period_sensors, sensations1):
-			sensor.update_model(sensation)
+			sensor.update_period_from_sensation(sensation)
 		sensations2 = pa2.sample(frame, n)
-		for sensor, sensation in zip(pa3.period_sensors, sensations2):
-			sensor.update_model(sensation)
-		sensations3 = pa3.sample(frame, n)
+		#for sensor, sensation in zip(pa3.period_sensors, sensations2):
+		#	sensor.update_period_from_sensation(sensation)
+		#sensations3 = pa3.sample(frame, n)
 
 
 		if frame % 60 != 1:
@@ -556,9 +545,15 @@ def main():
 		period_key = lambda s: s.period
 		avg_instant_period_key = lambda s: s.avg_instant_period
 		report1 = "".join(str(sensation) for sensation in sensations1)
-		report2 = "".join(str(sensation) for sensation in sorted(sensations2, key = avg_instant_period_key))
-		report3 = "".join(str(sensation) for sensation in sorted(sensations3, key = avg_instant_period_key))
-		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, report1, report2, report3))
+		#report2 = "".join(str(sensation) for sensation in sorted(sensations2, key = avg_instant_period_key))
+		#report3 = "".join(str(sensation) for sensation in sorted(sensations3, key = avg_instant_period_key))
+		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n" % (t, frame, n, nd, report1))
+		for tonal_group in pa2.by_unison(sensations2):
+			report = "".join(str(sensation) for sensation in tonal_group)
+			sum_weighted_period = sum(sensation.r * sensation.period for sensation in tonal_group)
+			sum_weights         = sum(sensation.r                    for sensation in tonal_group)
+			weighted_period = sum_weighted_period / sum_weights
+			stdout.write("group: %08.3f\n%s" % (weighted_period, report))
 		stdout.flush()
 
 if __name__ == "__main__":
