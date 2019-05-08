@@ -34,11 +34,11 @@ def main():
 							x = 100.0 - (200 * i / 60)
 						else:
 							x = 100 if i % n < n / 2 else -100
-						if i == 1:# and h == 0:
-							#target_time += 1.0/40
-							target_time += 1.0/60
-							current_time = time()
-							sleep(max(target_time - current_time, 0))
+						#if i == 1:# and h == 0:
+						#	#target_time += 1.0/40
+						#	target_time += 1.0/60
+						#	current_time = time()
+						#	sleep(max(target_time - current_time, 0))
 						stdout.write("%f\n" % x)
 						stdout.flush()
 

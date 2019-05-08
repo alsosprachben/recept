@@ -462,7 +462,7 @@ class LinearPeriodArray(PeriodArray):
 
 def main():
 	from sys import stdin, stdout
-	from time import time
+	from time import time, sleep
 
 	dev = Delta(0.0)
 
@@ -489,24 +489,30 @@ def main():
 
 	"""
 
-	use_log = False
+	use_log = True
 
 	if use_log:
-		pa1 = LogPeriodArray(80, 24, 4, 1.0, 10.0)
-		pa2 = LogPeriodArray(80, 24, 4, 10.0, 10.0)
+		pa1 = LogPeriodArray(240, 4, 7, 1.0, 10.0)
+		pa2 = LogPeriodArray(240, 4, 7, 10.0, 10.0)
 		#pa3 = LogPeriodArray(120, 24, 4, 100.0, 10.0)
 	else:
 		pa1 = LinearPeriodArray(8000, 100, 1000, 10, 1.0, 10.0)
 		pa2 = LinearPeriodArray(8000, 100, 1000, 10, 10.0, 10.0)
 		#pa3 = LinearPeriodArray(8000, 100, 1600, 40, 100.0, 10.0)
 
+	sample_rate = 48000
+	frame_rate  = 24
+
+	sample = 0
+	frame  = 0
+
+	draw_time = time()
+	draw_sample = sample + float(48000) / frame_rate
 	n = None
-	frame = 0
 	while True:
-		frame += 1
+		sample += 1
 		line = stdin.readline()
-		#t = time()
-		t = float(frame) / 48000
+		t = float(sample) / sample_rate
 		try:
 			n = float(line.strip())
 		except ValueError:
@@ -525,22 +531,29 @@ def main():
 		results_dev_d1 = [dev_sd_list_d1[i].sample(v) for i, v in enumerate(results_dev)]
 		"""
 
-		sensations1 = pa1.sample(frame, n)
+		sensations1 = pa1.sample(sample, n)
 		for sensor, sensation in zip(pa2.period_sensors, sensations1):
 			sensor.update_period_from_sensation(sensation)
-		sensations2 = pa2.sample(frame, n)
+		sensations2 = pa2.sample(sample, n)
 		#for sensor, sensation in zip(pa3.period_sensors, sensations2):
 		#	sensor.update_period_from_sensation(sensation)
-		#sensations3 = pa3.sample(frame, n)
+		#sensations3 = pa3.sample(sample, n)
 
 
-		if frame % (60*1) != 1:
+		if sample < draw_sample:
 			continue
 
-		#if frame >= 61000:
-		#	break
+		current_time = time()
+		sleep_time = (draw_time + 1.0 / frame_rate) - current_time
+		if (sleep_time > 0):
+			sleep(sleep_time)
+
+		frame += 1
+
+		draw_time = current_time
+		draw_sample = sample + float(48000) / frame_rate
 	
-		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
+		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i sample %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, sample, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
 		#stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, report, report2, report3))
 
 		from math import log
@@ -551,7 +564,7 @@ def main():
 		#report2 = "".join(str(sensation) for sensation in sorted(sensations2, key = avg_instant_period_key))
 		#report3 = "".join(str(sensation) for sensation in sorted(sensations3, key = avg_instant_period_key))
 		stdout.write("\033[2J\033[;H")
-		stdout.write(" event at time %.3f frame %i: %06.2f, %06.2f\n\n" % (t, frame, n, nd))
+		stdout.write(" event at time %.3f frame %i sample %i: %06.2f, %06.2f\n\n" % (t, frame, sample, n, nd))
 		for tonal_group in pa2.by_unison(sensations2):
 			report = "".join(str(sensation) for sensation in tonal_group)
 			sum_weighted_period = sum((sensation.r * sensation.r * sensation.avg_instant_period) for sensation in tonal_group)
