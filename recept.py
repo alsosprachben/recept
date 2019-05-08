@@ -493,8 +493,8 @@ def main():
 	use_log = True
 
 	if use_log:
-		pa1 = LogPeriodArray(80, 8, 3, 1.0, 10.0)
-		pa2 = LogPeriodArray(80, 8, 3, 10.0, 10.0)
+		pa1 = LogPeriodArray(80, 6, 3, 1.0, 10.0)
+		pa2 = LogPeriodArray(80, 6, 3, 100.0, 10.0)
 		#pa3 = LogPeriodArray(120, 24, 4, 100.0, 10.0)
 	else:
 		pa1 = LinearPeriodArray(8000, 100, 1600, 40, 1.0, 10.0)
