@@ -554,8 +554,8 @@ def main():
 		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n" % (t, frame, n, nd, report1))
 		for tonal_group in pa2.by_unison(sensations2):
 			report = "".join(str(sensation) for sensation in tonal_group)
-			sum_weighted_period = sum(sensation.r * sensation.period for sensation in tonal_group)
-			sum_weights         = sum(sensation.r                    for sensation in tonal_group)
+			sum_weighted_period = sum((sensation.r * sensation.avg_instant_period) for sensation in tonal_group)
+			sum_weights         = sum( sensation.r                     for sensation in tonal_group)
 			weighted_period = sum_weighted_period / sum_weights
 			stdout.write("group: %08.3f\n%s" % (weighted_period, report))
 		stdout.flush()
