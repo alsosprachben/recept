@@ -493,13 +493,13 @@ def main():
 	use_log = True
 
 	if use_log:
-		pa1 = LogPeriodArray(120, 24, 4, 1.0, 10.0)
-		pa2 = LogPeriodArray(120, 24, 4, 10.0, 10.0)
-		pa3 = LogPeriodArray(120, 24, 4, 100.0, 10.0)
+		pa1 = LogPeriodArray(80, 12, 4, 1.0, 10.0)
+		pa2 = LogPeriodArray(80, 12, 4, 10.0, 10.0)
+		#pa3 = LogPeriodArray(120, 24, 4, 100.0, 10.0)
 	else:
 		pa1 = LinearPeriodArray(8000, 100, 1600, 40, 1.0, 10.0)
 		pa2 = LinearPeriodArray(8000, 100, 1600, 40, 10.0, 10.0)
-		pa3 = LinearPeriodArray(8000, 100, 1600, 40, 100.0, 10.0)
+		#pa3 = LinearPeriodArray(8000, 100, 1600, 40, 100.0, 10.0)
 
 	n = None
 	frame = 0
@@ -535,7 +535,7 @@ def main():
 		#sensations3 = pa3.sample(frame, n)
 
 
-		if frame % 60 != 1:
+		if frame % (60*20) != 1:
 			continue
 
 		#if frame >= 61000:
