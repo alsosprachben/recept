@@ -22,9 +22,9 @@ def main():
 	
 		target_time = time()
 		for j in range(3):
-			j = 1
-			for g in [0]: #range(40):
-				for h in [0]: #range(20):
+			#j = 0
+			for g in range(40):
+				for h in range(20):
 					n = 60
 					for i in range(n):
 						from math import pi, cos
