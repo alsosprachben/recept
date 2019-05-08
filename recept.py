@@ -492,8 +492,8 @@ def main():
 	use_log = True
 
 	if use_log:
-		pa1 = LogPeriodArray(240, 4, 7, 1.0, 10.0)
-		pa2 = LogPeriodArray(240, 4, 7, 10.0, 10.0)
+		pa1 = LogPeriodArray(100, 8, 4, 1.0, 10.0)
+		pa2 = LogPeriodArray(100, 8, 4, 10.0, 10.0)
 		#pa3 = LogPeriodArray(120, 24, 4, 100.0, 10.0)
 	else:
 		pa1 = LinearPeriodArray(8000, 100, 1000, 10, 1.0, 10.0)
@@ -501,7 +501,7 @@ def main():
 		#pa3 = LinearPeriodArray(8000, 100, 1600, 40, 100.0, 10.0)
 
 	sample_rate = 48000
-	frame_rate  = 60
+	frame_rate  = 30
 
 	sample = 0
 	frame  = 0
