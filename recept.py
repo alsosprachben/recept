@@ -369,7 +369,6 @@ class PeriodSensor:
 
 	def sample(self, time, time_value):
 		from cmath import phase, pi, rect
-		from math import log
 		tau = lambda v: ((phase(v) / (2.0 * pi)) +0.5) % 1 - 0.5
 
 		value = self.sensor.sample(time, time_value)
@@ -424,8 +423,8 @@ class PeriodArray:
 		tonal_group  = []
 		for sensation in sorted(sensations, key = lambda s: -s.avg_instant_period):
 			if previous_sensation is not None:
-				#print sensation.avg_instant_period, abs(log(sensation.avg_instant_period / previous_sensation.avg_instant_period)), 1.0 / self.period_factor
-				if abs(log(sensation.avg_instant_period / previous_sensation.avg_instant_period)) > (1.0 / self.period_factor) * consonance_factor:
+				#print previous_sensation.avg_instant_period / sensation.avg_instant_period, 1.0 + 1.0 / self.period_factor
+				if previous_sensation.avg_instant_period / sensation.avg_instant_period > (1.0 + 1.0 / self.period_factor) * consonance_factor:
 					tonal_groups.append(tonal_group)
 					tonal_group = []
 			#else:
@@ -493,8 +492,8 @@ def main():
 	use_log = True
 
 	if use_log:
-		pa1 = LogPeriodArray(80, 6, 3, 1.0, 10.0)
-		pa2 = LogPeriodArray(80, 6, 3, 100.0, 10.0)
+		pa1 = LogPeriodArray(80, 12, 4, 1.0, 10.0)
+		pa2 = LogPeriodArray(80, 12, 4, 10.0, 10.0)
 		#pa3 = LogPeriodArray(120, 24, 4, 100.0, 10.0)
 	else:
 		pa1 = LinearPeriodArray(8000, 100, 1600, 40, 1.0, 10.0)
@@ -535,7 +534,7 @@ def main():
 		#sensations3 = pa3.sample(frame, n)
 
 
-		if frame % (60*20) != 1:
+		if frame % (60*1) != 1:
 			continue
 
 		#if frame >= 61000:
@@ -555,8 +554,8 @@ def main():
 		stdout.write(" event at time %.3f frame %i: %06.2f, %06.2f\n\n" % (t, frame, n, nd))
 		for tonal_group in pa2.by_unison(sensations2):
 			report = "".join(str(sensation) for sensation in tonal_group)
-			sum_weighted_period = sum((sensation.r * sensation.avg_instant_period) for sensation in tonal_group)
-			sum_weights         = sum( sensation.r                     for sensation in tonal_group)
+			sum_weighted_period = sum((sensation.r * sensation.r * sensation.avg_instant_period) for sensation in tonal_group)
+			sum_weights         = sum( sensation.r * sensation.r                                 for sensation in tonal_group)
 			weighted_period = sum_weighted_period / sum_weights
 			stdout.write("group: %08.3f\n%s" % (weighted_period, report))
 		stdout.flush()
