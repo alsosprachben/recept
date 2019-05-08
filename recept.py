@@ -501,7 +501,7 @@ def main():
 		#pa3 = LinearPeriodArray(8000, 100, 1600, 40, 100.0, 10.0)
 
 	sample_rate = 48000
-	frame_rate  = 24
+	frame_rate  = 60
 
 	sample = 0
 	frame  = 0
@@ -563,14 +563,18 @@ def main():
 		report1 = "".join(str(sensation) for sensation in sensations1)
 		#report2 = "".join(str(sensation) for sensation in sorted(sensations2, key = avg_instant_period_key))
 		#report3 = "".join(str(sensation) for sensation in sorted(sensations3, key = avg_instant_period_key))
-		stdout.write("\033[2J\033[;H")
-		stdout.write(" event at time %.3f frame %i sample %i: %06.2f, %06.2f\n\n" % (t, frame, sample, n, nd))
+		out = ""
+		out += "\033[2J\033[;H"
+		out += " event at time %.3f frame %i sample %i: %06.2f, %06.2f\n\n" % (t, frame, sample, n, nd)
+		out += "%s\n" % report1
 		for tonal_group in pa2.by_unison(sensations2):
-			report = "".join(str(sensation) for sensation in tonal_group)
+			report = "          ".join(str(sensation) for sensation in tonal_group)
 			sum_weighted_period = sum((sensation.r * sensation.r * sensation.avg_instant_period) for sensation in tonal_group)
 			sum_weights         = sum( sensation.r * sensation.r                                 for sensation in tonal_group)
 			weighted_period = sum_weighted_period / sum_weights
-			stdout.write("group: %08.3f\n%s" % (weighted_period, report))
+			out += "%08.3f: %s" % (weighted_period, report)
+
+		stdout.write(out)
 		stdout.flush()
 
 if __name__ == "__main__":
