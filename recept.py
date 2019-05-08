@@ -493,9 +493,9 @@ def main():
 	use_log = True
 
 	if use_log:
-		pa1 = LogPeriodArray(120, 12, 4, 1.0, 10.0)
-		pa2 = LogPeriodArray(120, 12, 4, 10.0, 10.0)
-		pa3 = LogPeriodArray(120, 12, 4, 100.0, 10.0)
+		pa1 = LogPeriodArray(120, 24, 4, 1.0, 10.0)
+		pa2 = LogPeriodArray(120, 24, 4, 10.0, 10.0)
+		pa3 = LogPeriodArray(120, 24, 4, 100.0, 10.0)
 	else:
 		pa1 = LinearPeriodArray(8000, 100, 1600, 40, 1.0, 10.0)
 		pa2 = LinearPeriodArray(8000, 100, 1600, 40, 10.0, 10.0)
@@ -551,7 +551,8 @@ def main():
 		report1 = "".join(str(sensation) for sensation in sensations1)
 		#report2 = "".join(str(sensation) for sensation in sorted(sensations2, key = avg_instant_period_key))
 		#report3 = "".join(str(sensation) for sensation in sorted(sensations3, key = avg_instant_period_key))
-		stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n" % (t, frame, n, nd, report1))
+		stdout.write("\033[2J\033[;H")
+		stdout.write(" event at time %.3f frame %i: %06.2f, %06.2f\n\n" % (t, frame, n, nd))
 		for tonal_group in pa2.by_unison(sensations2):
 			report = "".join(str(sensation) for sensation in tonal_group)
 			sum_weighted_period = sum((sensation.r * sensation.avg_instant_period) for sensation in tonal_group)

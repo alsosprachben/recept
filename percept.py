@@ -22,7 +22,7 @@ def main():
 	
 		target_time = time()
 		for j in range(3):
-			#j = 2
+			#j = 0
 			for h in range(100):
 				n = 60
 				for i in range(n):
