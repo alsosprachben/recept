@@ -489,10 +489,13 @@ def main2():
 
 
 def main():
+	escape_clear = "\033[2J"
+	escape_reset = "\033[;H"
+
 	from sys import stdin, stdout
 	from time import time, sleep
 
-	use_log = False
+	use_log = True
 
 	if use_log:
 		pa1 = LogPeriodArray(100, 12, 4, 1.0, 10.0)
@@ -513,7 +516,7 @@ def main():
 	sleep_time = 0.0
 	slept_for = 0.0
 	x = 0.0
-	stdout.write("\033[2J")
+	stdout.write(escape_clear)
 	stdout.flush()
 	while True:
 		sample += 1
@@ -522,10 +525,7 @@ def main():
 		if wave_period < 30.0:
 			wave_period = 60
 
-		#print wave_period
-
 		x += 1.0 / wave_period
-		#print x, wave_period
 
 		j = int(float(sample) / sample_rate) % 3
 
@@ -565,8 +565,7 @@ def main():
 
 		report1 = "".join(str(sensation) for sensation in sensations1)
 		out = ""
-		#out += "\033[2J"
-		out += "\033[;H"
+		out += escape_reset
 		out += " event at time %.3f frame %i sample %i: %06.2f\n\n" % (t, frame, sample, n)
 		out += "%s\n" % report1
 		for tonal_group in pa2.by_unison(sensations2):
