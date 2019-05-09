@@ -61,12 +61,10 @@ def keyed_derive(keyed_sequence, previous = None):
 def keyed_sorted(keyed_sequence):
 	return sorted(keyed_sequence, key = lambda (key, element): key)
 
-sign = lambda v: cmp(v, -2.0)
+def keyed_edged(keyed_sequence, factor = 0.0):
+	return ((cmp(key, factor), element) for key, element in keyed_sequence)
 
-def keyed_edged(keyed_sequence):
-	return ((sign(key), element) for key, element in keyed_sequence)
-
-def gather_clusters(sequence, key_func):
+def gather_clusters(sequence, key_func, step_factor = 0.0):
 	clusters = []
 	cluster = []
 	for edge_sign, ((pre_pre_element, pre_post_element), (post_pre_element, post_post_element)) in keyed_edged(
@@ -78,7 +76,8 @@ def gather_clusters(sequence, key_func):
 				None
 			),
 			(0, None)
-		)
+		),
+		- step_factor
 	):
 		if edge_sign == -1 and len(cluster) > 0:
 			clusters.append(cluster)
@@ -324,6 +323,7 @@ class PeriodSensor:
 	class Sensation:
 		def __init__(self,
 			period,
+			period_factor,
 
 			instant_period_offset,
 			instant_period,
@@ -338,6 +338,7 @@ class PeriodSensor:
 		):
 			(
 				self.period,
+				self.period_factor,
 
 				self.instant_period_offset,
 				self.instant_period,
@@ -351,6 +352,7 @@ class PeriodSensor:
 				self.avg_phi_t
 			) = (
 				period,
+				period_factor,
 
 				instant_period_offset,
 				instant_period,
@@ -365,8 +367,9 @@ class PeriodSensor:
 			)
 
 		def __str__(self):
-			return "%08.3f -> %08.3f: { r: [%s] %08.3f, avg(phi/t): [%s][%s] %08.3f }\n" % (
+			return "%08.3f/%08.3f -> %08.3f: { r: [%s] %08.3f, avg(phi/t): [%s][%s] %08.3f }\n" % (
 				self.period,
+				self.period_factor,
 
 				self.avg_instant_period,
 
@@ -431,6 +434,7 @@ class PeriodSensor:
 
 		return self.Sensation(
 			period,
+			self.period_factor,
 
 			instant_period_offset,
 			instant_period,
@@ -453,7 +457,7 @@ class PeriodArray:
 		]
 
 	def by_cluster(self, sensations):
-		return gather_clusters(sensations, lambda s: -s.avg_instant_period)
+		return gather_clusters(sensations, lambda s: -s.avg_instant_period, sensations[0].period_factor)
 
 	def by_unison(self, sensations, consonance_factor = 1.0):
 		previous_sensation = None
@@ -556,7 +560,7 @@ def main():
 	from sys import stdin, stdout
 	from time import time, sleep
 
-	use_log = False
+	use_log = True
 
 	if use_log:
 		pa1 = LogPeriodArray(100, 12, 4, 1.0, 10.0)
