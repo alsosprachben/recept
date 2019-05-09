@@ -512,12 +512,18 @@ def main():
 	draw_sample = sample + float(sample_rate) / frame_rate
 	sleep_time = 0.0
 	slept_for = 0.0
+	x = 0.0
 	while True:
 		sample += 1
 
 		wave_period *= 0.99999
+		if wave_period < 30.0:
+			wave_period = 60
 
-		x = (float(sample) / wave_period)
+		#print wave_period
+
+		x += 1.0 / wave_period
+		#print x, wave_period
 
 		j = int(float(sample) / sample_rate) % 3
 
