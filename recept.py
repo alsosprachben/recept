@@ -38,6 +38,64 @@ def bar_log(n, d, s):
 	return bar(log(n), log(d), s)
 
 """
+Keyed Sequence Clustering
+"""
+
+def iter_print(sequence):
+	print "A %r" % (sequence,)
+	for element in sequence:
+		print "B %r" % (element,)
+		yield element
+
+def priors(sequence, previous = None):
+	for element in sequence:
+		yield (previous, element)
+		previous = element
+
+def enkey(sequence, key_func):
+	return ((key_func(element) if element is not None else 0, element) for element in sequence)
+
+def keyed_derive(keyed_sequence, previous = None):
+	return ((post_key - pre_key, (pre, post)) for (pre_key, pre), (post_key, post) in priors(keyed_sequence, (0, previous)))
+		
+def keyed_sorted(keyed_sequence):
+	return sorted(keyed_sequence, key = lambda (key, element): key)
+
+sign = lambda v: cmp(v, -2.0)
+
+def keyed_edged(keyed_sequence):
+	return ((sign(key), element) for key, element in keyed_sequence)
+
+def gather_clusters(sequence, key_func):
+	clusters = []
+	cluster = []
+	for edge_sign, ((pre_pre_element, pre_post_element), (post_pre_element, post_post_element)) in keyed_edged(
+		keyed_derive(
+			keyed_derive(
+				keyed_sorted(
+					enkey(sequence, key_func)
+				),
+				None
+			),
+			(0, None)
+		)
+	):
+		if edge_sign == -1 and len(cluster) > 0:
+			clusters.append(cluster)
+			cluster = []
+
+		#print ((pre_pre_element, pre_post_element), (post_pre_element, post_post_element))
+		if pre_post_element is not None:
+			#1.0 / 0
+			cluster.append(pre_post_element)
+
+	if len(cluster) > 0:
+		clusters.append(cluster)
+
+	return clusters
+		
+
+"""
 Pre-computed Windows
 """
 
@@ -106,6 +164,7 @@ class FrequencySmoothing:
 			self.real_v.sample(value * self.real_w.next(), self.real_w.n * self.wf)
 		+ 1j *	self.imag_v.sample(value * self.imag_w.next(), self.imag_w.n * self.wf)
 		)
+
 
 """
 Real-Time, Infinite, Dynamic Windows
@@ -393,8 +452,10 @@ class PeriodArray:
 			for period_sensor in self.period_sensors
 		]
 
+	def by_cluster(self, sensations):
+		return gather_clusters(sensations, lambda s: -s.avg_instant_period)
+
 	def by_unison(self, sensations, consonance_factor = 1.0):
-		from math import log
 		previous_sensation = None
 		tonal_groups = []
 		tonal_group  = []
@@ -495,7 +556,7 @@ def main():
 	from sys import stdin, stdout
 	from time import time, sleep
 
-	use_log = True
+	use_log = False
 
 	if use_log:
 		pa1 = LogPeriodArray(100, 12, 4, 1.0, 10.0)
@@ -521,9 +582,9 @@ def main():
 	while True:
 		sample += 1
 
-		wave_period *= 0.99999
-		if wave_period < 30.0:
-			wave_period = 60
+		#wave_period *= 0.999999
+		#if wave_period < 30.0:
+		#	wave_period = 60
 
 		x += 1.0 / wave_period
 
@@ -538,6 +599,7 @@ def main():
 			n = 100 if x % 1 < 0.5 else -100
 
 		t = float(sample) / sample_rate
+
 		sensations1 = pa1.sample(sample, n)
 		for sensor, sensation in zip(pa2.period_sensors, sensations1):
 			sensor.update_period_from_sensation(sensation)
@@ -568,7 +630,7 @@ def main():
 		out += escape_reset
 		out += " event at time %.3f frame %i sample %i: %06.2f\n\n" % (t, frame, sample, n)
 		out += "%s\n" % report1
-		for tonal_group in pa2.by_unison(sensations2):
+		for tonal_group in pa2.by_cluster(sensations2):
 			report = "          ".join(str(sensation) for sensation in tonal_group)
 			sum_weighted_period = sum((sensation.r * sensation.r * sensation.avg_instant_period) for sensation in tonal_group)
 			sum_weights         = sum( sensation.r * sensation.r                                 for sensation in tonal_group)
