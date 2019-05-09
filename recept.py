@@ -19,7 +19,7 @@ def listangstr(l):
 	from cmath import phase
 	return "".join("%06.2f = %06.2f (@ %03.2f)\n" % (f, abs(c), (phase(c) / (2.0 * pi)) % 1.0) for f, c in l)
 
-def bar1(n, d, s):
+def bar(n, d, s):
 	mn = max(0, min(n, d))
 	sn = float(mn) * s / d
 	si = int(sn // 1)
@@ -32,29 +32,6 @@ def bar1(n, d, s):
 		s2 = ""
 	s3 = " " * (s - si - 1)
 	return "%s%s%s" % (s1, s2, s3)
-
-def bar2(n, d, s):
-	mn = min(n, d)
-	sn = float(mn) * s / d
-	si = int(sn // 1)
-	sr = sn % 1
-	b = ["=" for c in range(si)]
-	if sr > 0.5:
-		b.append("-")
-	bs = "".join(b)
-	return bs.ljust(s)
-	
-def bar3(n, d, s):
-	chars = [" " for i in range(s)]
-	for i in range(int((float(min(n, d)) / d * s * 2))):
-		chars[max(min(i / 2, s - 1), 0)] = "-" if i % 2 == 0 else "="
-
-	if n > d:
-		chars[-1] = "!"
-
-	return "".join(chars)
-
-bar = bar1
 
 def bar_log(n, d, s):
 	from math import log
@@ -460,13 +437,9 @@ class LinearPeriodArray(PeriodArray):
 
 
 
-def main():
-	from sys import stdin, stdout
-	from time import time, sleep
+def main2():
+	from time import time
 
-	dev = Delta(0.0)
-
-	"""
 	sd_list = [
 		SmoothDuration(duration, 3)
 		for duration in range(1, 10)
@@ -487,32 +460,14 @@ def main():
 		for duration in range(1, 10)
 	]
 
-	"""
+	dev = Delta(0.0)
 
-	use_log = True
-
-	if use_log:
-		pa1 = LogPeriodArray(100, 8, 4, 1.0, 10.0)
-		pa2 = LogPeriodArray(100, 8, 4, 10.0, 10.0)
-		#pa3 = LogPeriodArray(120, 24, 4, 100.0, 10.0)
-	else:
-		pa1 = LinearPeriodArray(8000, 100, 1000, 10, 1.0, 10.0)
-		pa2 = LinearPeriodArray(8000, 100, 1000, 10, 10.0, 10.0)
-		#pa3 = LinearPeriodArray(8000, 100, 1600, 40, 100.0, 10.0)
-
-	sample_rate = 48000
-	frame_rate  = 30
-
-	sample = 0
-	frame  = 0
-
-	draw_time = time()
-	draw_sample = sample + float(48000) / frame_rate
+	frame = 0
 	n = None
 	while True:
-		sample += 1
+		frame += 1
+		t = time()
 		line = stdin.readline()
-		t = float(sample) / sample_rate
 		try:
 			n = float(line.strip())
 		except ValueError:
@@ -523,49 +478,87 @@ def main():
 
 		nd = dev.sample(n)
 
-		"""
 		results        = [sd.sample(n,  t) for sd in sd_list]
 		results_dev    = [sd.sample(abs(nd), t) for sd in dev_sd_list]
 		results_ratio  = [num/den for num, den in zip(results_dev, results)]
 		results_d1     = [sd_list_d1[i].sample(v) for i, v in enumerate(results)]
 		results_dev_d1 = [dev_sd_list_d1[i].sample(v) for i, v in enumerate(results_dev)]
-		"""
 
+		stdout.write("\033[2J\033[;Hevent at time %.3f frame %i sample %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n" % (t, frame, sample, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1)))
+
+
+
+def main():
+	from sys import stdin, stdout
+	from time import time, sleep
+
+	use_log = False
+
+	if use_log:
+		pa1 = LogPeriodArray(100, 12, 4, 1.0, 10.0)
+		pa2 = LogPeriodArray(100, 12, 4, 10.0, 10.0)
+	else:
+		pa1 = LinearPeriodArray(48000, 400, 5000, 100, 1.0, 10.0)
+		pa2 = LinearPeriodArray(48000, 400, 5000, 100, 10.0, 10.0)
+
+	frame_rate  = 40
+	sample_rate = 48000
+	wave_period = 60
+
+	sample = 0
+	frame  = 0
+
+	draw_time = time() + 1.0 / frame_rate
+	draw_sample = sample + float(sample_rate) / frame_rate
+	sleep_time = 0.0
+	slept_for = 0.0
+	while True:
+		sample += 1
+
+		wave_period *= 0.99999
+
+		x = (float(sample) / wave_period)
+
+		j = int(float(sample) / sample_rate) % 3
+
+		from math import pi, cos
+		if j  == 0:
+			n = cos(2.0 * pi * x) * 100
+		elif j == 1:
+			n = 100.0 - (200 * (x % 1))
+		else:
+			n = 100 if x % 1 < 0.5 else -100
+
+		t = float(sample) / sample_rate
 		sensations1 = pa1.sample(sample, n)
 		for sensor, sensation in zip(pa2.period_sensors, sensations1):
 			sensor.update_period_from_sensation(sensation)
 		sensations2 = pa2.sample(sample, n)
-		#for sensor, sensation in zip(pa3.period_sensors, sensations2):
-		#	sensor.update_period_from_sensation(sensation)
-		#sensations3 = pa3.sample(sample, n)
-
 
 		if sample < draw_sample:
 			continue
 
+		"""
+		print sleep_time, slept_for
 		current_time = time()
-		sleep_time = (draw_time + 1.0 / frame_rate) - current_time
+		sleep_time = draw_time - current_time
 		if (sleep_time > 0):
 			sleep(sleep_time)
+			slept_for = time() - current_time
+		else:
+			sleep_time = 0.0
+			slept_for = 0.0
+		"""
 
+		draw_time += 1.0 / frame_rate
+		draw_sample += float(sample_rate) / frame_rate
+	
 		frame += 1
 
-		draw_time = current_time
-		draw_sample = sample + float(48000) / frame_rate
-	
-		#stdout.write("\033[2J\033[;Hevent at time %.3f frame %i sample %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n%s\n%s\n%s\n" % (t, frame, sample, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1), listangstr(results_freq), listangstr(results_freq2), listangstr(results_freq3)))
-		#stdout.write("\033[2J\033[;H event at time %.3f frame %i: %06.2f, %06.2f\n\n%s\n%s\n%s\n" % (t, frame, n, nd, report, report2, report3))
-
-		from math import log
-		amp_key = lambda s: -log(s.r)/log(s.period)
-		period_key = lambda s: s.period
-		avg_instant_period_key = lambda s: s.avg_instant_period
 		report1 = "".join(str(sensation) for sensation in sensations1)
-		#report2 = "".join(str(sensation) for sensation in sorted(sensations2, key = avg_instant_period_key))
-		#report3 = "".join(str(sensation) for sensation in sorted(sensations3, key = avg_instant_period_key))
 		out = ""
 		out += "\033[2J\033[;H"
-		out += " event at time %.3f frame %i sample %i: %06.2f, %06.2f\n\n" % (t, frame, sample, n, nd)
+		out += " event at time %.3f frame %i sample %i: %06.2f\n\n" % (t, frame, sample, n)
 		out += "%s\n" % report1
 		for tonal_group in pa2.by_unison(sensations2):
 			report = "          ".join(str(sensation) for sensation in tonal_group)
