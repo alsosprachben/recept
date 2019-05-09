@@ -513,6 +513,8 @@ def main():
 	sleep_time = 0.0
 	slept_for = 0.0
 	x = 0.0
+	stdout.write("\033[2J")
+	stdout.flush()
 	while True:
 		sample += 1
 
@@ -563,7 +565,8 @@ def main():
 
 		report1 = "".join(str(sensation) for sensation in sensations1)
 		out = ""
-		out += "\033[2J\033[;H"
+		#out += "\033[2J"
+		out += "\033[;H"
 		out += " event at time %.3f frame %i sample %i: %06.2f\n\n" % (t, frame, sample, n)
 		out += "%s\n" % report1
 		for tonal_group in pa2.by_unison(sensations2):
