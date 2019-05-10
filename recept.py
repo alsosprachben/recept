@@ -580,10 +580,7 @@ def main():
 	sample = 0
 	frame  = 0
 
-	draw_time = time() + 1.0 / frame_rate
 	draw_sample = sample + float(sample_rate) / frame_rate
-	sleep_time = 0.0
-	slept_for = 0.0
 	x = 0.0
 	stdout.write(escape_clear)
 	stdout.flush()
@@ -617,19 +614,6 @@ def main():
 		if sample < draw_sample:
 			continue
 
-		"""
-		print sleep_time, slept_for
-		current_time = time()
-		sleep_time = draw_time - current_time
-		if (sleep_time > 0):
-			sleep(sleep_time)
-			slept_for = time() - current_time
-		else:
-			sleep_time = 0.0
-			slept_for = 0.0
-		"""
-
-		draw_time += 1.0 / frame_rate
 		draw_sample += float(sample_rate) / frame_rate
 	
 		frame += 1
