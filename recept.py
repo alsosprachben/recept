@@ -556,6 +556,7 @@ def main():
 	frame_rate  = 40
 	sample_rate = 48000
 	wave_period = 60
+	wave_power  = 100
 	sweep       = True
 	sweep_value = 0.999999
 	first_level  = 1.0
@@ -599,11 +600,11 @@ def main():
 
 		from math import pi, cos
 		if j  == 0:
-			n = cos(2.0 * pi * x) * 100
+			n = cos(2.0 * pi * x) * wave_power
 		elif j == 1:
-			n = 100.0 - (200 * (x % 1))
+			n = float(wave_power) - (2.0 * wave_power * (x % 1))
 		else:
-			n = 100 if x % 1 < 0.5 else -100
+			n = wave_power if x % 1 < 0.5 else -wave_power
 
 		t = float(sample) / sample_rate
 
