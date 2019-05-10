@@ -74,8 +74,12 @@ def gather_clusters(sequence, key_func, tension_factor = 1.0):
 			# within cluster threshold
 			if not in_cluster:
 				if len(cluster) > 0:
-					clusters.append((False, cluster))
-				cluster = [post]
+					cluster.pop()
+					if len(cluster) > 0:
+						clusters.append((False, cluster))
+					cluster = [pre, post]
+				else:
+					cluster = [post]
 			else:
 				cluster.append(post)
 			in_cluster = True
@@ -571,7 +575,8 @@ def main():
 	frame_rate  = 60
 	sample_rate = 48000
 	wave_period = 60
-	sweep       = False
+	sweep       = True
+	sweep_value = 0.99999
 
 	if use_log:
 		pa1 = LogPeriodArray(100, 12, 5, 1.0, 10.0)
@@ -594,7 +599,7 @@ def main():
 		sample += 1
 
 		if sweep:
-			wave_period *= 0.99999
+			wave_period *= sweep_value
 			if wave_period < 30.0:
 				wave_period = 60
 
