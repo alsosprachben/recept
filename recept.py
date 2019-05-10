@@ -570,8 +570,8 @@ def main():
 	use_log = True
 
 	if use_log:
-		pa1 = LogPeriodArray(100, 12, 4, 1.0, 10.0)
-		pa2 = LogPeriodArray(100, 12, 4, 10.0, 10.0)
+		pa1 = LogPeriodArray(100, 12, 5, 1.0, 10.0)
+		pa2 = LogPeriodArray(100, 12, 5, 10.0, 10.0)
 	else:
 		pa1 = LinearPeriodArray(48000, 400, 5000, 100, 1.0, 10.0)
 		pa2 = LinearPeriodArray(48000, 400, 5000, 100, 10.0, 10.0)
@@ -579,6 +579,7 @@ def main():
 	frame_rate  = 30
 	sample_rate = 48000
 	wave_period = 60
+	sweep       = False
 
 	sample = 0
 	frame  = 0
@@ -593,9 +594,10 @@ def main():
 	while True:
 		sample += 1
 
-		wave_period *= 0.99999
-		if wave_period < 30.0:
-			wave_period = 60
+		if sweep:
+			wave_period *= 0.99999
+			if wave_period < 30.0:
+				wave_period = 60
 
 		x += 1.0 / wave_period
 
@@ -649,7 +651,6 @@ def main():
 			avg_weight          = sum_weights ** 0.5
 			weighted_period = sum_weighted_period / sum_weights
 			out += "%s %08.3f %08.3f: %s" % ("+" if in_cluster else "-", weighted_period, avg_weight, report)
-		out += (" " * 200 + "\n") * 20
 
 		stdout.write(out)
 		stdout.flush()
