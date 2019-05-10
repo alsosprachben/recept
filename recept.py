@@ -552,19 +552,30 @@ def main():
 	from sys import stdin, stdout
 	from time import time, sleep
 
-	use_log     = False
-	frame_rate  = 60
+	use_log     = True
+	frame_rate  = 40
 	sample_rate = 48000
 	wave_period = 60
-	sweep       = False
-	sweep_value = 0.99999
+	sweep       = True
+	sweep_value = 0.999999
+	first_level  = 1.0
+	second_level = 10.0
+	phase_factor = 10.0
+
+	log_base_period = 100
+	log_octave_steps = 12
+	log_octave_count = 5
+
+	linear_freq_start = 400
+	linear_freq_stop  = 6400
+	linear_freq_step  = 100
 
 	if use_log:
-		pa1 = LogPeriodArray(100, 12, 5, 1.0, 10.0)
-		pa2 = LogPeriodArray(100, 12, 5, 10.0, 10.0)
+		pa1 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, first_level, phase_factor)
+		pa2 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, second_level, phase_factor)
 	else:
-		pa1 = LinearPeriodArray(48000, 400, 6400, 100, 1.0, 10.0)
-		pa2 = LinearPeriodArray(48000, 400, 6400, 100, 10.0, 10.0)
+		pa1 = LinearPeriodArray(sample_rate, linear_freq_start, linear_freq_stop, linear_freq_step, first_level, phase_factor)
+		pa2 = LinearPeriodArray(sample_rate, linear_freq_start, linear_freq_stop, linear_freq_step, second_level, phase_factor)
 
 	sample = 0
 	frame  = 0
@@ -629,8 +640,8 @@ def main():
 		out += " event at time %.3f frame %i sample %i: %06.2f\n\n" % (t, frame, sample, n)
 		out += "%s\n" % report1
 		#print pa2.by_cluster(sensations2, 0.0)
-		for (in_cluster, tonal_group) in pa2.by_cluster(sensations2, 10.0):
-			report = ("%s                    " % ("+" if in_cluster else "-")).join(str(sensation) for sensation in tonal_group)
+		for (in_cluster, tonal_group) in reversed(pa2.by_cluster(sensations2, second_level)):
+			report = ("%s                    " % ("+" if in_cluster else "-")).join(str(sensation) for sensation in reversed(tonal_group))
 			sum_weighted_period = sum((sensation.r * sensation.r * sensation.avg_instant_period) for sensation in tonal_group)
 			sum_weights         = sum( sensation.r * sensation.r                                 for sensation in tonal_group)
 			avg_weight          = sum_weights ** 0.5
