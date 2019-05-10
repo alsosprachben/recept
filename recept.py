@@ -567,19 +567,18 @@ def main():
 	from sys import stdin, stdout
 	from time import time, sleep
 
-	use_log = True
+	use_log     = False
+	frame_rate  = 60
+	sample_rate = 48000
+	wave_period = 60
+	sweep       = False
 
 	if use_log:
 		pa1 = LogPeriodArray(100, 12, 5, 1.0, 10.0)
 		pa2 = LogPeriodArray(100, 12, 5, 10.0, 10.0)
 	else:
-		pa1 = LinearPeriodArray(48000, 400, 5000, 100, 1.0, 10.0)
-		pa2 = LinearPeriodArray(48000, 400, 5000, 100, 10.0, 10.0)
-
-	frame_rate  = 30
-	sample_rate = 48000
-	wave_period = 60
-	sweep       = False
+		pa1 = LinearPeriodArray(48000, 400, 6400, 100, 1.0, 10.0)
+		pa2 = LinearPeriodArray(48000, 400, 6400, 100, 10.0, 10.0)
 
 	sample = 0
 	frame  = 0
