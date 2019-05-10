@@ -493,9 +493,12 @@ class LinearPeriodArray(PeriodArray):
 		]
 
 
+escape_clear = "\033[2J"
+escape_reset = "\033[;H"
 
-def main2():
-	from time import time
+def event_test():
+	from sys import stdin, stdout
+	from time import time, sleep
 
 	sd_list = [
 		SmoothDuration(duration, 3)
@@ -519,10 +522,11 @@ def main2():
 
 	dev = Delta(0.0)
 
-	frame = 0
+	stdout.write(escape_clear)
+	stdout.flush()
+	sample = 0
 	n = None
 	while True:
-		frame += 1
 		t = time()
 		line = stdin.readline()
 		try:
@@ -533,6 +537,8 @@ def main2():
 			else:
 				pass # keep old `n`
 
+		sample += 1
+
 		nd = dev.sample(n)
 
 		results        = [sd.sample(n,  t) for sd in sd_list]
@@ -541,14 +547,12 @@ def main2():
 		results_d1     = [sd_list_d1[i].sample(v) for i, v in enumerate(results)]
 		results_dev_d1 = [dev_sd_list_d1[i].sample(v) for i, v in enumerate(results_dev)]
 
-		stdout.write("\033[2J\033[;Hevent at time %.3f frame %i sample %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n" % (t, frame, sample, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1)))
+		stdout.write("%sevent at time %.3f sample %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n" % (escape_reset, t, sample, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1)))
+		stdout.flush()
 
 
 
-def main():
-	escape_clear = "\033[2J"
-	escape_reset = "\033[;H"
-
+def periodic_test():
 	from sys import stdin, stdout
 	from time import time, sleep
 
@@ -635,6 +639,10 @@ def main():
 
 		stdout.write(out)
 		stdout.flush()
+
+def main():
+	#periodic_test()
+	event_test()
 
 if __name__ == "__main__":
 	main()	
