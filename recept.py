@@ -64,13 +64,13 @@ def keyed_sorted(keyed_sequence):
 def keyed_edged(keyed_sequence, factor = 0.0):
 	return ((cmp(key, factor), element) for key, element in keyed_sequence)
 
-def gather_clusters(sequence, key_func, tension_factor = 1.0):
+def gather_clusters(sequence, key_func, tension_func, tension_factor = 1.0):
 	clusters = []
 	cluster = []
 	in_cluster = False
 	for delta, (pre, post) in keyed_derive(keyed_sorted(enkey(sequence, key_func))):
 		#print delta, -key_func(post) / post.period_factor * tension_factor
-		if delta < -key_func(post) / post.period_factor * tension_factor:
+		if delta < key_func(post) * tension_func(post, tension_factor): 
 			# within cluster threshold
 			if not in_cluster:
 				if len(cluster) > 0:
@@ -470,28 +470,9 @@ class PeriodArray:
 		]
 
 	def by_cluster(self, sensations, tension_factor = 1.0):
-		key_func     = lambda s: -s.avg_instant_period
-		return gather_clusters(sensations, key_func, tension_factor)
-
-	def by_unison(self, sensations, consonance_factor = 1.0):
-		previous_sensation = None
-		tonal_groups = []
-		tonal_group  = []
-		for sensation in sorted(sensations, key = lambda s: -s.avg_instant_period):
-			if previous_sensation is not None:
-				if sensation.consonant(previous_sensation, consonance_factor):
-					tonal_groups.append(tonal_group)
-					tonal_group = []
-
-			tonal_group.append(sensation)
-
-			previous_sensation = sensation
-
-		if len(tonal_group) > 1:
-			tonal_groups.append(tonal_group)
-
-		return tonal_groups
-		
+		key_func     = lambda sensation: sensation.avg_instant_period
+		tension_func = lambda sensation, tension_factor: 1.0 / sensation.period_factor * tension_factor
+		return gather_clusters(sensations, key_func, tension_func, tension_factor)
 
 class LogPeriodArray(PeriodArray):
 	def __init__(self, period, scale = 12, octaves = 1, period_factor = 1.0, phase_factor = 1.0):
@@ -575,7 +556,7 @@ def main():
 	frame_rate  = 60
 	sample_rate = 48000
 	wave_period = 60
-	sweep       = True
+	sweep       = False
 	sweep_value = 0.99999
 
 	if use_log:
@@ -647,8 +628,8 @@ def main():
 		out += escape_reset
 		out += " event at time %.3f frame %i sample %i: %06.2f\n\n" % (t, frame, sample, n)
 		out += "%s\n" % report1
-		#print pa2.by_cluster(sensations2)
-		for (in_cluster, tonal_group) in pa2.by_cluster(sensations2):
+		#print pa2.by_cluster(sensations2, 0.0)
+		for (in_cluster, tonal_group) in pa2.by_cluster(sensations2, 10.0):
 			report = ("%s                    " % ("+" if in_cluster else "-")).join(str(sensation) for sensation in tonal_group)
 			sum_weighted_period = sum((sensation.r * sensation.r * sensation.avg_instant_period) for sensation in tonal_group)
 			sum_weights         = sum( sensation.r * sensation.r                                 for sensation in tonal_group)
