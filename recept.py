@@ -73,7 +73,8 @@ def gather_clusters(sequence, key_func, tension_factor = 1.0):
 		),
 		None
 	):
-		if delta > post.period_factor * tension_factor:
+		#print delta ,post.avg_instant_period / post.period_factor * tension_factor
+		if delta > post.avg_instant_period / post.period_factor * tension_factor:
 			if len(cluster) > 0:
 				clusters.append(cluster)
 				cluster = []
@@ -314,7 +315,6 @@ class EventSmoothing:
 		self.v = ExponentialSmoother(initial_value)
 	
 class PeriodSensor:
-
 	class Sensation:
 		def __init__(self,
 			period,
@@ -361,6 +361,17 @@ class PeriodSensor:
 				avg_phi_t
 			)
 
+		def consonant(self, other, consonance_factor = 1.0):
+			if self.avg_instant_period < other.avg_instant_period:
+				sensation          = self
+				previous_sensation = other
+			else:
+				previous_sensation = self
+				sensation          = other
+
+			#print previous_sensation.avg_instant_period / sensation.avg_instant_period ,(1.0 + 1.0 / sensation.period_factor) * consonance_factor, sensation.period_factor
+			return previous_sensation.avg_instant_period / sensation.avg_instant_period > (1.0 + 1.0 / sensation.period_factor) * consonance_factor
+	
 		def __str__(self):
 			return "%08.3f/%08.3f -> %08.3f: { r: [%s] %08.3f, avg(phi/t): [%s][%s] %08.3f }\n" % (
 				self.period,
@@ -377,12 +388,9 @@ class PeriodSensor:
 				self.avg_phi_t,
 			)
 
-
-
-
 	def __init__(self, period, phase, period_factor = 1.0, phase_factor = 1.0, initial_value = 0.0+0.0j):
 		self.period = period
-		self.period_factor = 1.0
+		self.period_factor = period_factor
 		self.phase  = phase
 		self.phase_factor = phase_factor
 		self.sensor = TimeSmoothing(period, phase, period_factor, initial_value)
@@ -461,12 +469,9 @@ class PeriodArray:
 		tonal_group  = []
 		for sensation in sorted(sensations, key = lambda s: -s.avg_instant_period):
 			if previous_sensation is not None:
-				#print previous_sensation.avg_instant_period / sensation.avg_instant_period, 1.0 + 1.0 / self.period_factor
-				if previous_sensation.avg_instant_period / sensation.avg_instant_period > (1.0 + 1.0 / self.period_factor) * consonance_factor:
+				if sensation.consonant(previous_sensation, consonance_factor):
 					tonal_groups.append(tonal_group)
 					tonal_group = []
-			#else:
-				#print sensation.avg_instant_period
 
 			tonal_group.append(sensation)
 
@@ -556,7 +561,7 @@ def main():
 	from sys import stdin, stdout
 	from time import time, sleep
 
-	use_log = False
+	use_log = True
 
 	if use_log:
 		pa1 = LogPeriodArray(100, 12, 4, 1.0, 10.0)
@@ -637,6 +642,7 @@ def main():
 			avg_weight          = sum_weights ** 0.5
 			weighted_period = sum_weighted_period / sum_weights
 			out += "%08.3f %08.3f: %s" % (weighted_period, avg_weight, report)
+		out += (" " * 200 + "\n") * 20
 
 		stdout.write(out)
 		stdout.flush()
