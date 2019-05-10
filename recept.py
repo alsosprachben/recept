@@ -579,6 +579,7 @@ def main():
 
 	sample = 0
 	frame  = 0
+	current_wave_period = wave_period
 
 	draw_sample = sample + float(sample_rate) / frame_rate
 	x = 0.0
@@ -588,11 +589,11 @@ def main():
 		sample += 1
 
 		if sweep:
-			wave_period *= sweep_value
-			if wave_period < 30.0:
-				wave_period = 60
+			current_wave_period *= sweep_value
+			if current_wave_period < wave_period / 2:
+				current_wave_period = wave_period
 
-		x += 1.0 / wave_period
+		x += 1.0 / current_wave_period
 
 		j = int(float(sample) / sample_rate) % 3
 
@@ -619,18 +620,17 @@ def main():
 		frame += 1
 
 		report1 = "".join(str(sensation) for sensation in sensations1)
-		out = ""
-		out += escape_reset
-		out += " event at time %.3f frame %i sample %i: %06.2f\n\n" % (t, frame, sample, n)
-		out += "%s\n" % report1
 		#print pa2.by_cluster(sensations2, 0.0)
+		report2 = ""
 		for (in_cluster, tonal_group) in reversed(pa2.by_cluster(sensations2, second_level)):
 			report = ("%s                    " % ("+" if in_cluster else "-")).join(str(sensation) for sensation in reversed(tonal_group))
 			sum_weighted_period = sum((sensation.r * sensation.r * sensation.avg_instant_period) for sensation in tonal_group)
 			sum_weights         = sum( sensation.r * sensation.r                                 for sensation in tonal_group)
 			avg_weight          = sum_weights ** 0.5
 			weighted_period = sum_weighted_period / sum_weights
-			out += "%s %08.3f %08.3f: %s" % ("+" if in_cluster else "-", weighted_period, avg_weight, report)
+			report2 += "%s %08.3f %08.3f: %s" % ("+" if in_cluster else "-", weighted_period, avg_weight, report)
+
+		out = "%sevent at time %.3f frame %i sample %i: %06.2f\n\n%s\n%s" % (escape_reset, t, frame, sample, n, report1, report2)
 
 		stdout.write(out)
 		stdout.flush()
