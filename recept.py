@@ -641,8 +641,15 @@ def periodic_test():
 		stdout.flush()
 
 def main():
-	#periodic_test()
-	event_test()
+	from sys import argv, exit
+
+	if   argv[0].endswith("recept_period.py"):
+		periodic_test()
+	elif argv[0].endswith("recept_event.py"):
+		event_test()
+	else:
+		pass
+
 
 if __name__ == "__main__":
 	main()	
