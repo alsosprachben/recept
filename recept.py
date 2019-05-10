@@ -64,29 +64,24 @@ def keyed_sorted(keyed_sequence):
 def keyed_edged(keyed_sequence, factor = 0.0):
 	return ((cmp(key, factor), element) for key, element in keyed_sequence)
 
-def gather_clusters(sequence, key_func, step_factor = 0.0):
+def gather_clusters(sequence, key_func, tension_factor = 1.0):
 	clusters = []
 	cluster = []
-	for edge_sign, ((pre_pre_element, pre_post_element), (post_pre_element, post_post_element)) in keyed_edged(
-		keyed_derive(
-			keyed_derive(
-				keyed_sorted(
-					enkey(sequence, key_func)
-				),
-				None
-			),
-			(0, None)
+	for delta, (pre, post) in keyed_derive(
+		keyed_sorted(
+			enkey(sequence, key_func)
 		),
-		- step_factor
+		None
 	):
-		if edge_sign == -1 and len(cluster) > 0:
-			clusters.append(cluster)
-			cluster = []
-
-		#print ((pre_pre_element, pre_post_element), (post_pre_element, post_post_element))
-		if pre_post_element is not None:
-			#1.0 / 0
-			cluster.append(pre_post_element)
+		if delta > post.period_factor * tension_factor:
+			if len(cluster) > 0:
+				clusters.append(cluster)
+				cluster = []
+		else:
+			if pre not in cluster and pre is not None:
+				cluster.append(pre)
+			if post not in cluster:
+				cluster.append(post)
 
 	if len(cluster) > 0:
 		clusters.append(cluster)
@@ -456,8 +451,9 @@ class PeriodArray:
 			for period_sensor in self.period_sensors
 		]
 
-	def by_cluster(self, sensations):
-		return gather_clusters(sensations, lambda s: -s.avg_instant_period, sensations[0].period_factor)
+	def by_cluster(self, sensations, tension_factor = 1.0):
+		key_func     = lambda s: -s.avg_instant_period
+		return gather_clusters(sensations, key_func, tension_factor)
 
 	def by_unison(self, sensations, consonance_factor = 1.0):
 		previous_sensation = None
@@ -560,7 +556,7 @@ def main():
 	from sys import stdin, stdout
 	from time import time, sleep
 
-	use_log = True
+	use_log = False
 
 	if use_log:
 		pa1 = LogPeriodArray(100, 12, 4, 1.0, 10.0)
@@ -586,7 +582,7 @@ def main():
 	while True:
 		sample += 1
 
-		#wave_period *= 0.999999
+		#wave_period *= 0.99999
 		#if wave_period < 30.0:
 		#	wave_period = 60
 
@@ -635,11 +631,12 @@ def main():
 		out += " event at time %.3f frame %i sample %i: %06.2f\n\n" % (t, frame, sample, n)
 		out += "%s\n" % report1
 		for tonal_group in pa2.by_cluster(sensations2):
-			report = "          ".join(str(sensation) for sensation in tonal_group)
+			report = "                   ".join(str(sensation) for sensation in tonal_group)
 			sum_weighted_period = sum((sensation.r * sensation.r * sensation.avg_instant_period) for sensation in tonal_group)
 			sum_weights         = sum( sensation.r * sensation.r                                 for sensation in tonal_group)
+			avg_weight          = sum_weights ** 0.5
 			weighted_period = sum_weighted_period / sum_weights
-			out += "%08.3f: %s" % (weighted_period, report)
+			out += "%08.3f %08.3f: %s" % (weighted_period, avg_weight, report)
 
 		stdout.write(out)
 		stdout.flush()
