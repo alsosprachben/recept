@@ -67,25 +67,30 @@ def keyed_edged(keyed_sequence, factor = 0.0):
 def gather_clusters(sequence, key_func, tension_factor = 1.0):
 	clusters = []
 	cluster = []
-	for delta, (pre, post) in keyed_derive(
-		keyed_sorted(
-			enkey(sequence, key_func)
-		),
-		None
-	):
-		#print delta ,post.avg_instant_period / post.period_factor * tension_factor
-		if delta > post.avg_instant_period / post.period_factor * tension_factor:
-			if len(cluster) > 0:
-				clusters.append(cluster)
-				cluster = []
-		else:
-			if pre not in cluster and pre is not None:
-				cluster.append(pre)
-			if post not in cluster:
+	in_cluster = False
+	for delta, (pre, post) in keyed_derive(keyed_sorted(enkey(sequence, key_func))):
+		#print delta, -key_func(post) / post.period_factor * tension_factor
+		if delta < -key_func(post) / post.period_factor * tension_factor:
+			# within cluster threshold
+			if not in_cluster:
+				if len(cluster) > 0:
+					clusters.append((False, cluster))
+				cluster = [post]
+			else:
 				cluster.append(post)
+			in_cluster = True
+		else:
+			# outside cluster threshold
+			if in_cluster:
+				if len(cluster) > 0:
+					clusters.append((True, cluster))
+				cluster = [post]
+			else:
+				cluster.append(post)
+			in_cluster = False
 
 	if len(cluster) > 0:
-		clusters.append(cluster)
+		clusters.append((in_cluster, cluster))
 
 	return clusters
 		
@@ -361,16 +366,17 @@ class PeriodSensor:
 				avg_phi_t
 			)
 
-		def consonant(self, other, consonance_factor = 1.0):
-			if self.avg_instant_period < other.avg_instant_period:
-				sensation          = self
-				previous_sensation = other
-			else:
-				previous_sensation = self
-				sensation          = other
+		def consonant(self, other, consonance_factor = 1.0, harmonic = 1):
+			self_period  = self.avg_instant_period * harmonic
+			other_period = other.avg_instant_period
 
-			#print previous_sensation.avg_instant_period / sensation.avg_instant_period ,(1.0 + 1.0 / sensation.period_factor) * consonance_factor, sensation.period_factor
-			return previous_sensation.avg_instant_period / sensation.avg_instant_period > (1.0 + 1.0 / sensation.period_factor) * consonance_factor
+			if self_period < other_period:
+				ratio = other_period / self_period
+			else:
+				ratio = self_period / other_period
+
+			#print ratio, (1.0 + 1.0 / self.period_factor) * consonance_factor, self.period_factor
+			return ratio > (1.0 + 1.0 / self.period_factor) * consonance_factor
 	
 		def __str__(self):
 			return "%08.3f/%08.3f -> %08.3f: { r: [%s] %08.3f, avg(phi/t): [%s][%s] %08.3f }\n" % (
@@ -570,7 +576,7 @@ def main():
 		pa1 = LinearPeriodArray(48000, 400, 5000, 100, 1.0, 10.0)
 		pa2 = LinearPeriodArray(48000, 400, 5000, 100, 10.0, 10.0)
 
-	frame_rate  = 40
+	frame_rate  = 30
 	sample_rate = 48000
 	wave_period = 60
 
@@ -587,9 +593,9 @@ def main():
 	while True:
 		sample += 1
 
-		#wave_period *= 0.99999
-		#if wave_period < 30.0:
-		#	wave_period = 60
+		wave_period *= 0.99999
+		if wave_period < 30.0:
+			wave_period = 60
 
 		x += 1.0 / wave_period
 
@@ -635,13 +641,14 @@ def main():
 		out += escape_reset
 		out += " event at time %.3f frame %i sample %i: %06.2f\n\n" % (t, frame, sample, n)
 		out += "%s\n" % report1
-		for tonal_group in pa2.by_cluster(sensations2):
-			report = "                   ".join(str(sensation) for sensation in tonal_group)
+		#print pa2.by_cluster(sensations2)
+		for (in_cluster, tonal_group) in pa2.by_cluster(sensations2):
+			report = ("%s                    " % ("+" if in_cluster else "-")).join(str(sensation) for sensation in tonal_group)
 			sum_weighted_period = sum((sensation.r * sensation.r * sensation.avg_instant_period) for sensation in tonal_group)
 			sum_weights         = sum( sensation.r * sensation.r                                 for sensation in tonal_group)
 			avg_weight          = sum_weights ** 0.5
 			weighted_period = sum_weighted_period / sum_weights
-			out += "%08.3f %08.3f: %s" % (weighted_period, avg_weight, report)
+			out += "%s %08.3f %08.3f: %s" % ("+" if in_cluster else "-", weighted_period, avg_weight, report)
 		out += (" " * 200 + "\n") * 20
 
 		stdout.write(out)
