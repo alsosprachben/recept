@@ -557,15 +557,15 @@ def periodic_test():
 	from time import time, sleep
 
 	use_log     = True
-	frame_rate  = 40
+	frame_rate  = 480
 	sample_rate = 48000
 	wave_period = 60
 	wave_power  = 100
 	sweep       = True
-	sweep_value = 0.999999
+	sweep_value = 0.99999
 	first_level  = 1.0
-	second_level = 10.0
-	phase_factor = 10.0
+	second_level = 3000.0
+	phase_factor = 300.0
 
 	log_base_period = 100
 	log_octave_steps = 12
@@ -574,6 +574,8 @@ def periodic_test():
 	linear_freq_start = 400
 	linear_freq_stop  = 6400
 	linear_freq_step  = 100
+
+	wave_change_rate = 0.1
 
 	if use_log:
 		pa1 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, first_level, phase_factor)
@@ -600,11 +602,12 @@ def periodic_test():
 
 		x += 1.0 / current_wave_period
 
-		j = int(float(sample) / sample_rate) % 3
+		j = int(float(sample) * wave_change_rate / sample_rate) % 3
 
 		from math import pi, cos
 		if j  == 0:
-			n = cos(2.0 * pi * x) * wave_power
+			n =  cos(2.0 * pi * x)         * wave_power / 2
+			n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * 1))) * wave_power / 2
 		elif j == 1:
 			n = float(wave_power) - (2.0 * wave_power * (x % 1))
 		else:
@@ -627,13 +630,13 @@ def periodic_test():
 		report1 = "".join(str(sensation) for sensation in sensations1)
 		#print pa2.by_cluster(sensations2, 0.0)
 		report2 = ""
-		for (in_cluster, tonal_group) in reversed(pa2.by_cluster(sensations2, second_level)):
+		for (in_cluster, tonal_group) in reversed(pa2.by_cluster(sensations2, 10.0)):#second_level)):
 			report = ("%s                    " % ("+" if in_cluster else "-")).join(str(sensation) for sensation in reversed(tonal_group))
 			sum_weighted_period = sum((sensation.r * sensation.r * sensation.avg_instant_period) for sensation in tonal_group)
 			sum_weights         = sum( sensation.r * sensation.r                                 for sensation in tonal_group)
 			avg_weight          = sum_weights ** 0.5
 			weighted_period = sum_weighted_period / sum_weights
-			report2 += "%s %08.3f %08.3f: %s" % ("+" if in_cluster else "-", weighted_period, avg_weight, report)
+			report2 += ("%s %s %08.3f: %s") % ("+" if in_cluster else "-", "%08.3f" % weighted_period if in_cluster else "        ", avg_weight, report)
 
 		out = "%sevent at time %.3f frame %i sample %i: %06.2f\n\n%s\n%s" % (escape_reset, t, frame, sample, n, report1, report2)
 
