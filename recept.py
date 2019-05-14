@@ -550,39 +550,89 @@ def event_test():
 		stdout.write("%sevent at time %.3f sample %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n" % (escape_reset, t, sample, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1)))
 		stdout.flush()
 
+class FileSampler:
+	def __init__(self, f, chunk_size = 16, sample_rate = 48000, channels = 2, encoding = "i"):
+		self.f = f
+		self.sample_rate = sample_rate
+		self.channels    = channels
+		self.encoding    = encoding
+		self.chunk_size  = chunk_size
+		self._init_buf()
 
+	def _init_buf(self):
+		import array
+		self.hit_eof = False
+		self.buf     = array.array(self.encoding)
+
+	def next(self):
+		if len(self.buf) == 0:
+			if not self.hit_eof:
+				try:
+					self.buf.fromfile(self.f, self.chunk_size)
+				except EOFError:
+					self.hit_eof = True
+
+			if self.hit_eof:
+				raise StopIteration
+
+		return self.buf.pop()
+
+def note(sample_rate, period, A4 = 440.0):
+	"""
+	f = 440 * (2 ^ (n/12)
+	f / 440 = (2 ^ (n/12)
+	log(f / 440) / log(2)  = n/12
+	12 * (log(f / 440 ) / log(2)) = n
+	"""
+	from math import log
+
+	notes = ["A /A ", "A#/Bb", "B /Cb",  "B#/C ", "C#/Db", "D /D ", "D#/Eb", "E /Fb", "E#/F ", "F#/Gb", "G /G ", "G#/Ab"]
+	Hz = float(sample_rate) / float(period)
+	n = 12.0 * (log(Hz / A4) / log(2))
+	note = int(n + 0.5)
+	octave = 5 + note / 12
+	octave_note = note % 12
+	cents = 100.0 * ((((n) + 0.5) % 1) - 0.5)
+
+	return "%i%s%3.0f" % (octave, notes[octave_note], cents)
 
 def periodic_test():
 	from sys import stdin, stdout
 	from time import time, sleep
 
 	use_log     = True
-	frame_rate  = 480
-	sample_rate = 48000
+	frame_rate  = 25
+	sample_rate = 44100.0 / 4
 	wave_period = 60
 	wave_power  = 100
-	sweep       = True
-	sweep_value = 0.99999
-	first_level  = 1.0
-	second_level = 3000.0
-	phase_factor = 300.0
+	sweep       = False
+	sweep_value = 0.9999995
+	first_period_factor  = 1.0
+	first_phase_factor   = 10.0
+	second_period_factor = 1000.0
+	second_phase_factor  = 10.0
+	tension_factor = 30.0
 
-	log_base_period = 100
+	log_base_period = (float(sample_rate) / 110)
 	log_octave_steps = 12
 	log_octave_count = 5
 
-	linear_freq_start = 400
-	linear_freq_stop  = 6400
+	linear_freq_start = 200
+	linear_freq_stop  = 6200
 	linear_freq_step  = 100
 
 	wave_change_rate = 0.1
 
+	generate = False
+
+	fs = FileSampler(stdin, int(sample_rate / frame_rate), sample_rate)
+
 	if use_log:
-		pa1 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, first_level, phase_factor)
-		pa2 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, second_level, phase_factor)
+		pa1 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, first_period_factor, first_phase_factor)
+		pa2 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, second_period_factor, second_phase_factor)
 	else:
-		pa1 = LinearPeriodArray(sample_rate, linear_freq_start, linear_freq_stop, linear_freq_step, first_level, phase_factor)
-		pa2 = LinearPeriodArray(sample_rate, linear_freq_start, linear_freq_stop, linear_freq_step, second_level, phase_factor)
+		pa1 = LinearPeriodArray(sample_rate, linear_freq_start, linear_freq_stop, linear_freq_step, first_period_factor, first_phase_factor)
+		pa2 = LinearPeriodArray(sample_rate, linear_freq_start, linear_freq_stop, linear_freq_step, second_period_factor, second_phase_factor)
 
 	sample = 0
 	frame  = 0
@@ -602,16 +652,23 @@ def periodic_test():
 
 		x += 1.0 / current_wave_period
 
-		j = int(float(sample) * wave_change_rate / sample_rate) % 3
+		if generate:
+			j = int(float(sample) * wave_change_rate / sample_rate) % 3
 
-		from math import pi, cos
-		if j  == 0:
-			n =  cos(2.0 * pi * x)         * wave_power / 2
-			n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * 1))) * wave_power / 2
-		elif j == 1:
-			n = float(wave_power) - (2.0 * wave_power * (x % 1))
+			from math import pi, cos
+			if j  == 0:
+				n =  cos(2.0 * pi * x)         * wave_power / 4
+				n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * 10))) * wave_power / 4
+				n += cos(2.0 * pi * x * 2)         * wave_power / 4
+				n += cos(2.0 * pi * x * 2 * (sample_rate / (float(sample_rate) + wave_period * 10))) * wave_power / 4
+			elif j == 1:
+				n = float(wave_power) - (2.0 * wave_power * (x % 1))
+			else:
+				n = wave_power if x % 1 < 0.5 else -wave_power
 		else:
-			n = wave_power if x % 1 < 0.5 else -wave_power
+			# read from file
+			get_sample = lambda fs: float(fs.next()) / (2**32) * 10000
+			n = sum([get_sample(fs), get_sample(fs), get_sample(fs), get_sample(fs)]) / 4.0
 
 		t = float(sample) / sample_rate
 
@@ -630,13 +687,15 @@ def periodic_test():
 		report1 = "".join(str(sensation) for sensation in sensations1)
 		#print pa2.by_cluster(sensations2, 0.0)
 		report2 = ""
-		for (in_cluster, tonal_group) in reversed(pa2.by_cluster(sensations2, 10.0)):#second_level)):
-			report = ("%s                    " % ("+" if in_cluster else "-")).join(str(sensation) for sensation in reversed(tonal_group))
-			sum_weighted_period = sum((sensation.r * sensation.r * sensation.avg_instant_period) for sensation in tonal_group)
-			sum_weights         = sum( sensation.r * sensation.r                                 for sensation in tonal_group)
-			avg_weight          = sum_weights ** 0.5
+		for (in_cluster, tonal_group) in reversed(pa2.by_cluster(sensations2, tension_factor)):#second_level)):
+			report = ("%s                              " % ("+" if in_cluster else "-")).join(str(sensation) for sensation in reversed(tonal_group))
+			sum_weighted_period = sum((sensation.r * sensation.period_factor * sensation.avg_instant_period) for sensation in tonal_group)
+			sum_weights         = sum( sensation.r * sensation.period_factor                                 for sensation in tonal_group)
+			strongest           = sorted(tonal_group, key=lambda s: -s.r / s.period_factor)[0]
+			strongest_weight    = strongest.r / strongest.period_factor
+			strongest_period    = strongest.avg_instant_period
 			weighted_period = sum_weighted_period / sum_weights
-			report2 += ("%s %s %08.3f: %s") % ("+" if in_cluster else "-", "%08.3f" % weighted_period if in_cluster else "        ", avg_weight, report)
+			report2 += ("%s %s %s %08.3f: %s") % ("+" if in_cluster else "-", note(sample_rate, strongest_period), "%08.3f" % strongest_period if in_cluster else "%08.3f" % strongest_period, strongest_weight, report)
 
 		out = "%sevent at time %.3f frame %i sample %i: %06.2f\n\n%s\n%s" % (escape_reset, t, frame, sample, n, report1, report2)
 
