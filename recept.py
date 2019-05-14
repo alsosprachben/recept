@@ -64,13 +64,13 @@ def keyed_sorted(keyed_sequence):
 def keyed_edged(keyed_sequence, factor = 0.0):
 	return ((cmp(key, factor), element) for key, element in keyed_sequence)
 
-def gather_clusters(sequence, key_func, tension_func, tension_factor = 1.0):
+def gather_clusters(sequence, key_func, tension_key_func, tension_func, tension_factor = 1.0):
 	clusters = []
 	cluster = []
 	in_cluster = False
 	for delta, (pre, post) in keyed_derive(keyed_sorted(enkey(sequence, key_func))):
 		#print delta, -key_func(post) / post.period_factor * tension_factor
-		if delta < key_func(post) * tension_func(post, tension_factor): 
+		if delta < tension_key_func(post) * tension_func(post, tension_factor): 
 			# within cluster threshold
 			if not in_cluster:
 				if len(cluster) > 0:
@@ -331,6 +331,7 @@ class PeriodSensor:
 
 			instant_period_offset,
 			instant_period,
+			instant_period_stddev,
 			avg_instant_period_offset,
 			avg_instant_period,
 
@@ -346,6 +347,7 @@ class PeriodSensor:
 
 				self.instant_period_offset,
 				self.instant_period,
+				self.instant_period_stddev,
 				self.avg_instant_period_offset,
 				self.avg_instant_period,
 
@@ -360,6 +362,7 @@ class PeriodSensor:
 
 				instant_period_offset,
 				instant_period,
+				instant_period_stddev,
 				avg_instant_period_offset,
 				avg_instant_period,
 
@@ -405,8 +408,11 @@ class PeriodSensor:
 		self.phase_factor = phase_factor
 		self.sensor = TimeSmoothing(period, phase, period_factor, initial_value)
 
-		self.phase_delta = PhaseDelta()
+		self.phase_delta        = PhaseDelta()
 		self.avg_instant_period = ExponentialSmoother(period)
+
+		self.instant_period_delta  = Delta()
+		self.instant_period_stddev = ExponentialSmoother(period)
 
 	def update_period(self, period):
 		self.period = period
@@ -440,6 +446,11 @@ class PeriodSensor:
 		instant_period        = 1.0 / (1.0 / period - phi_t)
 		instant_period_offset = instant_period - period
 
+		instant_period_delta  = self.instant_period_delta.sample(instant_period)
+		if instant_period_delta is None:
+			instant_period_delta = instant_period
+		instant_period_stddev = self.instant_period_stddev.sample(abs(instant_period_delta), instant_period * self.phase_factor)
+
 		avg_instant_period = self.avg_instant_period.sample(instant_period, instant_period * self.phase_factor)
 		avg_instant_period_offset = avg_instant_period - period
 
@@ -451,6 +462,7 @@ class PeriodSensor:
 
 			instant_period_offset,
 			instant_period,
+			instant_period_stddev,
 			avg_instant_period_offset,
 			avg_instant_period,
 
@@ -462,6 +474,11 @@ class PeriodSensor:
 		)
 
 
+safe_div         = lambda n, d: float('inf') if d == 0 else n / d
+key_func         = lambda sensation: sensation.avg_instant_period
+tension_key_func = lambda sensation: safe_div(sensation.avg_instant_period, sensation.instant_period_stddev)
+tension_func     = lambda sensation, tension_factor: 1.0 / sensation.period_factor * tension_factor
+
 class PeriodArray:
 	def sample(self, time, value):
 		return [
@@ -470,9 +487,7 @@ class PeriodArray:
 		]
 
 	def by_cluster(self, sensations, tension_factor = 1.0):
-		key_func     = lambda sensation: sensation.avg_instant_period
-		tension_func = lambda sensation, tension_factor: 1.0 / sensation.period_factor * tension_factor
-		return gather_clusters(sensations, key_func, tension_func, tension_factor)
+		return gather_clusters(sensations, key_func, tension_key_func, tension_func, tension_factor)
 
 class LogPeriodArray(PeriodArray):
 	def __init__(self, period, scale = 12, octaves = 1, period_factor = 1.0, phase_factor = 1.0):
@@ -584,12 +599,12 @@ def note(sample_rate, period, A4 = 440.0):
 	log(f / 440) / log(2)  = n/12
 	12 * (log(f / 440 ) / log(2)) = n
 	"""
-	from math import log
+	from math import log, floor
 
 	notes = ["A /A ", "A#/Bb", "B /Cb",  "B#/C ", "C#/Db", "D /D ", "D#/Eb", "E /Fb", "E#/F ", "F#/Gb", "G /G ", "G#/Ab"]
 	Hz = float(sample_rate) / float(period)
 	n = 12.0 * (log(Hz / A4) / log(2))
-	note = int(n + 0.5)
+	note = int(floor(n + 0.5))
 	octave = 5 + note / 12
 	octave_note = note % 12
 	cents = 100.0 * ((((n) + 0.5) % 1) - 0.5)
@@ -606,24 +621,24 @@ def periodic_test():
 	wave_period = 60
 	wave_power  = 100
 	sweep       = False
-	sweep_value = 0.9999995
+	sweep_value = 0.99999
 	first_period_factor  = 1.0
 	first_phase_factor   = 10.0
-	second_period_factor = 100.0
-	second_phase_factor  = 10.0
+	second_period_factor = 10.0
+	second_phase_factor  = 100.0
 	tension_factor       = 1.0
 
 	log_base_period = (float(sample_rate) / 110)
 	log_octave_steps = 12
 	log_octave_count = 5
 
-	linear_freq_start = 200
-	linear_freq_stop  = 6200
-	linear_freq_step  = 100
+	linear_freq_start = 50
+	linear_freq_stop  = 3050
+	linear_freq_step  = 50
 
 	wave_change_rate = 0.1
 
-	generate = False
+	generate = True
 
 	fs = FileSampler(stdin, int(sample_rate / frame_rate), sample_rate)
 
@@ -675,6 +690,7 @@ def periodic_test():
 		sensations1 = pa1.sample(sample, n)
 		for sensor, sensation in zip(pa2.period_sensors, sensations1):
 			sensor.update_period_from_sensation(sensation)
+
 		sensations2 = pa2.sample(sample, n)
 
 		if sample < draw_sample:
@@ -687,17 +703,23 @@ def periodic_test():
 		report1 = "".join(str(sensation) for sensation in sensations1)
 		#print pa2.by_cluster(sensations2, 0.0)
 		report2 = ""
+		max_strength = 0.0
 		for (in_cluster, tonal_group) in reversed(pa2.by_cluster(sensations2, tension_factor)):#second_level)):
 			report = ("%s                              " % ("+" if in_cluster else "-")).join(str(sensation) for sensation in reversed(tonal_group))
-			strongest           = sorted(tonal_group, key=lambda s: -s.r / s.period_factor)[0]
-			strongest_weight    = strongest.r / strongest.period_factor
-			strongest_period    = strongest.avg_instant_period
+			strongest                = sorted(tonal_group, key=tension_key_func)[0]
+			strongest_weight         = strongest.r
+			strongest_period         = strongest.period
+			strongest_instant_period = strongest.avg_instant_period
+
+			#if in_cluster and strongest_weight / strongest_period > max_strength:
+			#	max_strength = strongest_weight / strongest_period
+			#	report2 = note(sample_rate, strongest_period)
 
 			#sum_weighted_period = sum((sensation.r * sensation.period_factor * sensation.avg_instant_period) for sensation in tonal_group)
 			#sum_weights         = sum( sensation.r * sensation.period_factor                                 for sensation in tonal_group)
 			#weighted_period = sum_weighted_period / sum_weights
 
-			report2 += ("%s %s %s %08.3f: %s") % ("+" if in_cluster else "-", note(sample_rate, strongest_period), "%08.3f" % strongest_period if in_cluster else "%08.3f" % strongest_period, strongest_weight, report)
+			report2 += ("%s %s %s %08.3f: %s") % ("+" if in_cluster else "-", note(sample_rate, strongest_instant_period) if in_cluster else "         ", "%08.3f" % strongest_instant_period if in_cluster else "        ", strongest_weight, report)
 
 		out = "%sevent at time %.3f frame %i sample %i: %06.2f\n\n%s\n%s" % (escape_reset, t, frame, sample, n, report1, report2)
 
