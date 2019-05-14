@@ -386,11 +386,12 @@ class PeriodSensor:
 			return ratio > (1.0 + 1.0 / self.period_factor) * consonance_factor
 	
 		def __str__(self):
-			return "%08.3f/%08.3f -> %08.3f: { r: [%s] %08.3f, avg(phi/t): [%s][%s] %08.3f }\n" % (
+			return "%08.3f/%08.3f -> %08.3f %08.3f: { r: [%s] %08.3f, avg(phi/t): [%s][%s] %08.3f }\n" % (
 				self.period,
 				self.period_factor,
 
 				self.avg_instant_period,
+				self.instant_period_stddev,
 
 				bar_log(self.r,           self.period, 48),
 				self.r,
@@ -706,7 +707,7 @@ def periodic_test():
 		max_strength = 0.0
 		for (in_cluster, tonal_group) in reversed(pa2.by_cluster(sensations2, tension_factor)):#second_level)):
 			report = ("%s                              " % ("+" if in_cluster else "-")).join(str(sensation) for sensation in reversed(tonal_group))
-			strongest                = sorted(tonal_group, key=tension_key_func)[0]
+			strongest                = sorted(tonal_group, key=tension_key_func)[-1]
 			strongest_weight         = strongest.r
 			strongest_period         = strongest.period
 			strongest_instant_period = strongest.avg_instant_period
