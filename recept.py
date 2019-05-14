@@ -612,7 +612,7 @@ def note(sample_rate, period, A4 = 440.0):
 
 	return "%i%s%3.0f" % (octave, notes[octave_note], cents)
 
-def periodic_test():
+def periodic_test(generate = False):
 	from sys import stdin, stdout
 	from time import time, sleep
 
@@ -638,8 +638,6 @@ def periodic_test():
 	linear_freq_step  = 50
 
 	wave_change_rate = 0.1
-
-	generate = True
 
 	fs = FileSampler(stdin, int(sample_rate / frame_rate), sample_rate)
 
@@ -731,7 +729,9 @@ def main():
 	from sys import argv, exit
 
 	if   argv[0].endswith("recept_period.py"):
-		periodic_test()
+		periodic_test(True)
+	if   argv[0].endswith("recept_mic.py"):
+		periodic_test(False)
 	elif argv[0].endswith("recept_event.py"):
 		event_test()
 	else:
