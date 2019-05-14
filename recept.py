@@ -609,9 +609,9 @@ def periodic_test():
 	sweep_value = 0.9999995
 	first_period_factor  = 1.0
 	first_phase_factor   = 10.0
-	second_period_factor = 1000.0
+	second_period_factor = 100.0
 	second_phase_factor  = 10.0
-	tension_factor = 30.0
+	tension_factor       = 1.0
 
 	log_base_period = (float(sample_rate) / 110)
 	log_octave_steps = 12
@@ -689,12 +689,14 @@ def periodic_test():
 		report2 = ""
 		for (in_cluster, tonal_group) in reversed(pa2.by_cluster(sensations2, tension_factor)):#second_level)):
 			report = ("%s                              " % ("+" if in_cluster else "-")).join(str(sensation) for sensation in reversed(tonal_group))
-			sum_weighted_period = sum((sensation.r * sensation.period_factor * sensation.avg_instant_period) for sensation in tonal_group)
-			sum_weights         = sum( sensation.r * sensation.period_factor                                 for sensation in tonal_group)
 			strongest           = sorted(tonal_group, key=lambda s: -s.r / s.period_factor)[0]
 			strongest_weight    = strongest.r / strongest.period_factor
 			strongest_period    = strongest.avg_instant_period
-			weighted_period = sum_weighted_period / sum_weights
+
+			#sum_weighted_period = sum((sensation.r * sensation.period_factor * sensation.avg_instant_period) for sensation in tonal_group)
+			#sum_weights         = sum( sensation.r * sensation.period_factor                                 for sensation in tonal_group)
+			#weighted_period = sum_weighted_period / sum_weights
+
 			report2 += ("%s %s %s %08.3f: %s") % ("+" if in_cluster else "-", note(sample_rate, strongest_period), "%08.3f" % strongest_period if in_cluster else "%08.3f" % strongest_period, strongest_weight, report)
 
 		out = "%sevent at time %.3f frame %i sample %i: %06.2f\n\n%s\n%s" % (escape_reset, t, frame, sample, n, report1, report2)
