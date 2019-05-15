@@ -70,7 +70,7 @@ def gather_clusters(sequence, key_func, tension_key_func, tension_func, tension_
 	in_cluster = False
 	for delta, (pre, post) in keyed_derive(keyed_sorted(enkey(sequence, key_func))):
 		#print delta, -key_func(post) / post.period_factor * tension_factor
-		if delta < tension_key_func(post) * tension_func(post, tension_factor): 
+		if tension_key_func(post) / delta > tension_func(post, tension_factor): 
 			# within cluster threshold
 			if not in_cluster:
 				if len(cluster) > 0:
@@ -322,7 +322,12 @@ class EventSmoothing:
 		self.period = period
 		self.phase = phase
 		self.v = ExponentialSmoother(initial_value)
-	
+
+safe_div         = lambda n, d: float('inf') if d == 0 else n / d
+key_func         = lambda sensation: sensation.avg_instant_period
+tension_key_func = lambda sensation: sensation.r / sensation.period * safe_div(sensation.avg_instant_period, sensation.instant_period_stddev)
+tension_func     = lambda sensation, tension_factor: 1.0 / sensation.period_factor * tension_factor
+
 class PeriodSensor:
 	class Sensation:
 		def __init__(self,
@@ -386,7 +391,7 @@ class PeriodSensor:
 			return ratio > (1.0 + 1.0 / self.period_factor) * consonance_factor
 	
 		def __str__(self):
-			return "%08.3f/%08.3f -> %08.3f %08.3f: { r: [%s] %08.3f, avg(phi/t): [%s][%s] %08.3f }\n" % (
+			return "%08.3f/%08.3f -> %08.3f %08.3f: { r: [%s] %08.3f, avg(phi/t): [%s][%s] %08.3f %08.3f }\n" % (
 				self.period,
 				self.period_factor,
 
@@ -400,6 +405,7 @@ class PeriodSensor:
 				bar(self.avg_phi_t + 0.5, 1.0,         16),
 
 				self.avg_phi_t,
+				tension_key_func(self),
 			)
 
 	def __init__(self, period, phase, period_factor = 1.0, phase_factor = 1.0, initial_value = 0.0+0.0j):
@@ -474,11 +480,6 @@ class PeriodSensor:
 			avg_phi_t
 		)
 
-
-safe_div         = lambda n, d: float('inf') if d == 0 else n / d
-key_func         = lambda sensation: sensation.avg_instant_period
-tension_key_func = lambda sensation: safe_div(sensation.avg_instant_period, sensation.instant_period_stddev)
-tension_func     = lambda sensation, tension_factor: 1.0 / sensation.period_factor * tension_factor
 
 class PeriodArray:
 	def sample(self, time, value):
@@ -627,7 +628,7 @@ def periodic_test(generate = False):
 	first_phase_factor   = 10.0
 	second_period_factor = 10.0
 	second_phase_factor  = 100.0
-	tension_factor       = 1.0
+	tension_factor       = 1000.0
 
 	log_base_period = (float(sample_rate) / 110)
 	log_octave_steps = 12
@@ -700,7 +701,6 @@ def periodic_test(generate = False):
 		frame += 1
 
 		report1 = "".join(str(sensation) for sensation in sensations1)
-		#print pa2.by_cluster(sensations2, 0.0)
 		report2 = ""
 		max_strength = 0.0
 		for (in_cluster, tonal_group) in reversed(pa2.by_cluster(sensations2, tension_factor)):#second_level)):
@@ -721,6 +721,8 @@ def periodic_test(generate = False):
 			report2 += ("%s %s %s %08.3f: %s") % ("+" if in_cluster else "-", note(sample_rate, strongest_instant_period) if in_cluster else "         ", "%08.3f" % strongest_instant_period if in_cluster else "        ", strongest_weight, report)
 
 		out = "%sevent at time %.3f frame %i sample %i: %06.2f\n\n%s\n%s" % (escape_reset, t, frame, sample, n, report1, report2)
+		#if report2:
+		#	out = "%s%s%s" % (escape_clear, escape_reset, report2)
 
 		stdout.write(out)
 		stdout.flush()
