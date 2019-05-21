@@ -363,7 +363,7 @@ class TimeSmoothing:
 		self.wf = window_factor
 
 	def sample(self, time, value):
-		return self.v.sample(value * complex_period(float(time + self.phase) / self.period), self.period * self.wf)
+		return (1.0 , self.v.sample(value * complex_period(float(time + self.phase) / self.period), self.period * self.wf))
 
 	def update_period(self, period):
 		self.phase = float(self.phase) / self.period * period
@@ -378,11 +378,14 @@ class ApexTimeSmoothing(TimeSmoothing):
 		self.time_apex = TimeApex(prior_value, prior_sequence)
 
 	def sample(self, time, value):
-		apex, time_delta = self.time_apex(time, value)
+		apex, time_delta = self.time_apex.sample(time, value)
 		if apex is not None:
-			return TimeSmoothing.sample(self, time, value)
+			if time_delta is None:
+				time_delta = 1.0
+			cval = self.v.sample(value * complex_period(float(time + self.phase) / self.period), self.period * self.wf)
+			return (time_delta, cval)
 		else:
-			return None
+			return (None, None)
 
 class EventSmoothing:
 	def __init__(self, period, phase, initial_value = 0.0+0.0j):
@@ -506,16 +509,23 @@ class PeriodSensor:
 		from cmath import phase, pi, rect
 		tau = lambda v: ((phase(v) / (2.0 * pi)) +0.5) % 1 - 0.5
 
-		value = self.sensor.sample(time, time_value)
+		time_delta, value = self.sensor.sample(time, time_value)
 		if value is None:
 			return None
 
 		period = self.period
 
 		arg_delta = self.arg_delta.sample(abs(value))
+		if arg_delta is None:
+			arg_delta = 0.0
+		else:
+			arg_delta /= time_delta
+
 		delta  = self.phase_delta.sample(value)
 		if delta is None:
 			delta = 0j
+		else:
+			delta /= time_delta
 
 		freq = 1.0 / period
 
@@ -556,9 +566,9 @@ class PeriodSensor:
 			avg_phi_t
 		)
 
-def ApexPeriodicSensor(PeriodicSensor):
+class ApexPeriodSensor(PeriodSensor):
 	def __init__(self, period, phase, period_factor = 1.0, phase_factor = 1.0, initial_value = 0.0+0.0j):
-		PeriodicSensor.__init__(self, period, phase, period_factor, phase_factor, initial_value)
+		PeriodSensor.__init__(self, period, phase, period_factor, phase_factor, initial_value)
 		self.sensor = ApexTimeSmoothing(period, phase, period_factor, initial_value)
 
 class PeriodArray:
@@ -760,15 +770,15 @@ def periodic_test(generate = False):
 
 		if generate:
 			j = int(float(sample) * wave_change_rate / sample_rate) % 3
-			j = 0
+			#j = 0
 
 			from math import pi, cos
 			if j  == 0:
 				diff = 5
 				n =  cos(2.0 * pi * x)         * wave_power / 4
-				n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
+				#n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
 				n += cos(2.0 * pi * x * 2)         * wave_power / 4
-				n += cos(2.0 * pi * x * 2 * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
+				#n += cos(2.0 * pi * x * 2 * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
 			elif j == 1:
 				n = float(wave_power) - (2.0 * wave_power * (x % 1))
 			else:
@@ -786,10 +796,14 @@ def periodic_test(generate = False):
 		t = float(sample) / sample_rate
 
 		sensations1 = pa1.sample(sample, n)
+		if sensations1[0] is None:
+			continue
 		for sensor, sensation in zip(pa2.period_sensors, sensations1):
 			sensor.update_period_from_sensation(sensation)
 
 		sensations2 = pa2.sample(sample, n)
+		if sensations2[0] is None:
+			continue
 
 		if sample < draw_sample:
 			continue
