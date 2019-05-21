@@ -518,21 +518,17 @@ class PeriodSensor:
 		arg_delta = self.arg_delta.sample(abs(value))
 		if arg_delta is None:
 			arg_delta = 0.0
-		else:
-			arg_delta /= time_delta
 
 		delta  = self.phase_delta.sample(value)
 		if delta is None:
 			delta = 0j
-		else:
-			delta /= time_delta
 
 		freq = 1.0 / period
 
 		phi       = tau(value)
 		r         = abs(value)
-		phi_t     = tau(delta)
-		r_t       = arg_delta
+		phi_t     = tau(delta) / time_delta
+		r_t       = arg_delta  / time_delta
 
 		instant_period        = 1.0 / (1.0 / period - phi_t)
 		instant_period_offset = instant_period - period
@@ -586,7 +582,7 @@ class LogPeriodArray(PeriodArray):
 		self.period_factor = period_factor
 		self.phase_factor  = phase_factor
 		self.period_sensors = [
-			PeriodSensor(period * 2 ** (float(n)/scale), 0.0, period_factor / ((2.0 ** (1.0/scale)) - 1), phase_factor)
+			ApexPeriodSensor(period * 2 ** (float(n)/scale), 0.0, period_factor / ((2.0 ** (1.0/scale)) - 1), phase_factor)
 			for n in range(- scale * octaves, 1)
 		]
 		"""
@@ -721,7 +717,7 @@ def periodic_test(generate = False):
 	sample_rate = 44100.0 / oversample
 	wave_period = 60
 	wave_power  = 100
-	sweep       = False
+	sweep       = True
 	sweep_value = 0.99999
 	from math import exp
 	cycle_area = 1.0 / (1.0 - exp(-1))
@@ -770,14 +766,14 @@ def periodic_test(generate = False):
 
 		if generate:
 			j = int(float(sample) * wave_change_rate / sample_rate) % 3
-			#j = 0
+			#j = 1
 
 			from math import pi, cos
 			if j  == 0:
 				diff = 5
 				n =  cos(2.0 * pi * x)         * wave_power / 4
 				#n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
-				n += cos(2.0 * pi * x * 2)         * wave_power / 4
+				#n += cos(2.0 * pi * x * 2)         * wave_power / 4
 				#n += cos(2.0 * pi * x * 2 * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
 			elif j == 1:
 				n = float(wave_power) - (2.0 * wave_power * (x % 1))
