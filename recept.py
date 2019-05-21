@@ -582,7 +582,7 @@ class LogPeriodArray(PeriodArray):
 		self.period_factor = period_factor
 		self.phase_factor  = phase_factor
 		self.period_sensors = [
-			ApexPeriodSensor(period * 2 ** (float(n)/scale), 0.0, period_factor / ((2.0 ** (1.0/scale)) - 1), phase_factor)
+			PeriodSensor(period * 2 ** (float(n)/scale), 0.0, period_factor / ((2.0 ** (1.0/scale)) - 1), phase_factor)
 			for n in range(- scale * octaves, 1)
 		]
 		"""
@@ -808,7 +808,7 @@ def periodic_test(generate = False):
 	
 		frame += 1
 
-		report1 = "".join(str(sensation) for sensation in sensations1)
+		report1 = "".join(str(sensation) for sensation in reversed(sensations1))
 		report2 = ""
 		max_strength = 0.0
 		avg_strength = sum(sensation.r for sensation in sensations1) / len(sensations1)
