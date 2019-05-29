@@ -32,6 +32,7 @@ def bar(n, d, s, left = False):
 		if left:
 			s1 = " " * si
 			s3 = "#" * (s - si - 1)
+			sr = (1.0 - sr) % 1
 		else:
 			s1 = "#" * si
 			s3 = " " * (s - si - 1)
@@ -773,9 +774,9 @@ def periodic_test(generate = False):
 	second_phase_factor  = second_period_factor * 1
 	tension_factor       = 1.0
 
-	log_base_period = (float(sample_rate) / (440.0 * 2 ** -3))
-	log_octave_steps = 12
-	log_octave_count = 5
+	log_base_period = (float(sample_rate) / (440.0 * 2 ** -8))
+	log_octave_steps = 6
+	log_octave_count = 10
 
 	linear_freq_start = 50
 	linear_freq_stop  = 1550
