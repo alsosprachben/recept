@@ -21,10 +21,10 @@ def listangstr(l):
 
 def bar(n, d, s, left = False):
 	try:
-		if left:
-			n = d - n
-
 		mn = max(0, min(n, d))
+		if left:
+			mn = d - mn
+
 		sn = float(mn) * s / d
 		si = int(sn // 1)
 		sr = sn % 1
@@ -64,7 +64,7 @@ def signed_bar(n, d, s):
 		return bar(-n, d, s, True) + "|" + (" " * s)
 
 def signed_bar_log(n, d, s, base = e, start = e * 2):
-	if n >= 0.0:
+	if n > 0.0:
 		return (" " * s) + "|" + bar_log(n, d, s, base, start)
 	elif n < 0.0:
 		return bar_log(-n, d, s, base, start, True) + "|" + (" " * s)
