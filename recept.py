@@ -244,6 +244,10 @@ polar_period = lambda cval:                rad2tau(*polar(cval))
 delta_period = lambda cval, prior_cval:    cval / prior_cval if prior_cval != 0.0 else 0.0
 
 class ExponentialSmoother:
+	"""
+	Exponential Smoothing
+	"""
+
 	def __init__(self, initial_value = 0.0):
 		self.v = initial_value
 
@@ -423,7 +427,7 @@ class DynamicWindow:
 
 class SmoothDuration:
 	"""i
-	An ExponentialSmoother windowed by DynamicWindow (sensitive to a specified duration)
+	An `ExponentialSmoother` windowed by `DynamicWindow` (sensitive to a specified duration)
 	"""
 
 	def __init__(self, target_duration, window_size, prior_value = None, initial_duration = 0.0, initial_value = 0.0):
@@ -436,7 +440,7 @@ class SmoothDuration:
 
 class SmoothDurationDistribution:
 	"""
-	A Distribution windowed by DynamicWindow (sensitive to a specified duration)
+	A `Distribution` windowed by `DynamicWindow` (sensitive to a specified duration)
 	"""
 
 	def __init__(self, target_duration, window_size, prior_value = None, initial_duration = 0.0, initial_value = 0.0, prior_sequence = 0.0):
