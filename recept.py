@@ -422,6 +422,10 @@ class DynamicWindow:
 			return self.td / expected_duration
 
 class SmoothDuration:
+	"""i
+	An ExponentialSmoother windowed by DynamicWindow (sensitive to a specified duration)
+	"""
+
 	def __init__(self, target_duration, window_size, prior_value = None, initial_duration = 0.0, initial_value = 0.0):
 		self.dw = DynamicWindow(target_duration, window_size, prior_value, initial_duration)
 		self.v = ExponentialSmoother(initial_value)
@@ -431,6 +435,10 @@ class SmoothDuration:
 		return self.v.sample(value, w)
 
 class SmoothDurationDistribution:
+	"""
+	A Distribution windowed by DynamicWindow (sensitive to a specified duration)
+	"""
+
 	def __init__(self, target_duration, window_size, prior_value = None, initial_duration = 0.0, initial_value = 0.0, prior_sequence = 0.0):
 		self.dw = DynamicWindow(target_duration, window_size, prior_value, initial_duration)
 		self.v = Distribution(initial_value, prior_sequence)
@@ -446,6 +454,10 @@ Periodic Windows
 """
 
 class TimeSmoothing:
+	"""
+	Infinite Impulse Response cosine transform
+	"""
+
 	def __init__(self, period, phase, window_factor = 1, initial_value = 0.0+0.0j):
 		self.period = period
 		self.phase = phase
@@ -463,6 +475,10 @@ class TimeSmoothing:
 		self.phase = phase
 
 class ApexTimeSmoothing(TimeSmoothing):
+	"""
+	Infinite Impulse Response cosine transform, but only sampling at apexes
+	"""
+
 	def __init__(self, period, phase, window_factor = 1, initial_value = 0.0+0.0j, prior_value = None, prior_sequence = None):
 		TimeSmoothing.__init__(self, period, phase, window_factor, initial_value)
 		self.time_apex = TimeApex(prior_value, prior_sequence)
