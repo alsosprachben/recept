@@ -11,6 +11,9 @@ Formatting
 def liststr(l):
 	return ", ".join("%06.2f" % e for e in l)
 
+def listdiststr(l):
+	return ", ".join("%06.2f/%06.2f" % e for e in l)
+
 def listcompstr(l):
 	return ", ".join("%06.2f+%06.2fj" % (c.real, c.imag) for c in l)
 
@@ -298,6 +301,39 @@ class PhaseDelta:
 		self.prior_angle = angle_value
 		return delta_value
 
+class Distribution:
+	"""
+	Infinite Impulse Response distribution, represented by exponentially smoothed average and deviation.
+	"""
+
+	def __init__(self, initial_value = 0.0, prior_sequence = None):
+		self.d = Delta(prior_sequence) # derivative (for deviation)
+
+		self.ave = ExponentialSmoother(initial_value) # mean average
+		self.dev = ExponentialSmoother(0.0)           # standard deviation
+
+	def sample(self, value, factor):
+		deviation = abs(self.d.sample(value))
+
+		mean   = self.ave.sample(value, factor)
+		stddev = self.dev.sample(deviation, factor)
+
+		return mean, stddev
+
+
+class WeightedDistribution(Distribution):
+	"""
+	Infinite Impulse Response distribution, represented by exponentially smoothed average and deviation, with pre-defined window wize.
+	"""
+
+	def __init__(self, window_size = 1.0, initial_value = 0.0, prior_sequence = None):
+		self.w = window_size
+		Distribution.__init__(self, initial_value, prior_sequence)
+
+	def sample(value):
+		Distribution.sample(self, value, self.w)
+	
+
 class Apex(Delta):
 	"""
 	Returns the given sample if it is changing direction. That is, return on the derivative changing sign.
@@ -385,13 +421,6 @@ class DynamicWindow:
 			expected_duration = self.ed.sample(duration_since)
 			return self.td / expected_duration
 
-class EventSmoothing:
-	def __init__(self, period, phase, initial_value = 0.0+0.0j):
-		self.period = period
-		self.phase = phase
-		self.v = ExponentialSmoother(initial_value)
-
-
 class SmoothDuration:
 	def __init__(self, target_duration, window_size, prior_value = None, initial_duration = 0.0, initial_value = 0.0):
 		self.dw = DynamicWindow(target_duration, window_size, prior_value, initial_duration)
@@ -400,6 +429,21 @@ class SmoothDuration:
 	def sample(self, value, sequence_value):
 		w = self.dw.sample(sequence_value)
 		return self.v.sample(value, w)
+
+class SmoothDurationDistribution:
+	def __init__(self, target_duration, window_size, prior_value = None, initial_duration = 0.0, initial_value = 0.0, prior_sequence = 0.0):
+		self.dw = DynamicWindow(target_duration, window_size, prior_value, initial_duration)
+		self.v = Distribution(initial_value, prior_sequence)
+		
+	def sample(self, value, sequence_value):
+		w = self.dw.sample(sequence_value)
+		return self.v.sample(value, w)
+
+
+
+"""
+Periodic Windows
+"""
 
 class TimeSmoothing:
 	def __init__(self, period, phase, window_factor = 1, initial_value = 0.0+0.0j):
@@ -656,26 +700,9 @@ def event_test():
 	from time import time, sleep
 
 	sd_list = [
-		SmoothDuration(duration, 3)
+		SmoothDurationDistribution(duration, 3)
 		for duration in range(1, 10)
 	]
-
-	dev_sd_list = [
-		SmoothDuration(duration, 3)
-		for duration in range(1, 10)
-	]
-
-	sd_list_d1 = [
-		Delta(0.0)
-		for duration in range(1, 10)
-	]
-
-	dev_sd_list_d1 = [
-		Delta(0.0)
-		for duration in range(1, 10)
-	]
-
-	dev = Delta(0.0)
 
 	stdout.write(escape_clear)
 	stdout.flush()
@@ -694,15 +721,9 @@ def event_test():
 
 		sample += 1
 
-		nd = dev.sample(n)
+		results = [sd.sample(n,  t) for sd in sd_list]
 
-		results        = [sd.sample(n,  t) for sd in sd_list]
-		results_dev    = [sd.sample(abs(nd), t) for sd in dev_sd_list]
-		results_ratio  = [num/den for num, den in zip(results_dev, results)]
-		results_d1     = [sd_list_d1[i].sample(v) for i, v in enumerate(results)]
-		results_dev_d1 = [dev_sd_list_d1[i].sample(v) for i, v in enumerate(results_dev)]
-
-		stdout.write("%sevent at time %.3f sample %i: %06.2f, %06.2f\n%r\n%r\n%r\n%r\n%r\n" % (escape_reset, t, sample, n, nd, liststr(results), liststr(results_dev), liststr(results_ratio), liststr(results_d1), liststr(results_dev_d1)))
+		stdout.write("%sevent at time %.3f sample %i: %06.2f\n%s" % (escape_reset, t, sample, n, listdiststr(results)))
 		stdout.flush()
 
 class FileSampler:
@@ -762,7 +783,7 @@ def periodic_test(generate = False):
 	frame_rate  = 60
 	oversample  = 10
 	sample_rate = 44100.0 / oversample
-	wave_period = 200
+	wave_period = 240
 	wave_power  = 100
 	sweep       = False
 	sweep_value = 0.99999
@@ -774,9 +795,9 @@ def periodic_test(generate = False):
 	second_phase_factor  = second_period_factor * 1
 	tension_factor       = 1.0
 
-	log_base_period = (float(sample_rate) / (440.0 * 2 ** -8))
-	log_octave_steps = 6
-	log_octave_count = 10
+	log_base_period = (float(sample_rate) / (440.0 * 2 ** -3))
+	log_octave_steps = 12
+	log_octave_count = 5
 
 	linear_freq_start = 50
 	linear_freq_stop  = 1550
@@ -822,7 +843,7 @@ def periodic_test(generate = False):
 				diff = 5
 				n =  cos(2.0 * pi * x)         * wave_power / 4
 				#n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
-				#n += cos(2.0 * pi * x * 2)         * wave_power / 4
+				n += cos(2.0 * pi * x * 2)         * wave_power / 4
 				#n += cos(2.0 * pi * x * 2 * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
 			elif j == 1:
 				n = float(wave_power) - (2.0 * wave_power * (x % 1))
