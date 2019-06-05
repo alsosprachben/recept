@@ -235,20 +235,7 @@ class FrequencySmoothing:
 Real-Time, Infinite, Dynamic Windows
 """
 
-class Tau:
-	"""
-	Mini tau module: tau instead of radians, to make working in periods easier
-	"""
-
-	from cmath import rect as rad_rect, polar as rad_polar, pi
-	radian_cycle = pi * 2
-
-	rad2tau = staticmethod(lambda mag, rad: (mag, ((rad / Tau.radian_cycle) +0.5) % 1 - 0.5))
-	tau2rad = staticmethod(lambda mag, tau: (mag,   tau * Tau.radian_cycle))
-
-	rect  = staticmethod(lambda period, mag=1: Tau.rad_rect(*Tau.tau2rad(mag, period)))
-	polar = staticmethod(lambda cval:                        Tau.rad2tau(*Tau.rad_polar(cval)))
-	delta = staticmethod(lambda cval, prior_cval: cval / prior_cval if prior_cval != 0.0 else 0.0)
+import tau
 
 class ExponentialSmoother:
 	"""
@@ -307,7 +294,7 @@ class PhaseDelta:
 		if self.prior_angle is None:
 			delta_value = None
 		else:
-			delta_value = Tau.delta(angle_value, prior_angle)
+			delta_value = tau.delta(angle_value, prior_angle)
 
 		self.prior_angle = angle_value
 		return delta_value
@@ -476,7 +463,7 @@ class TimeSmoothing:
 		self.wf = window_factor
 
 	def sample(self, time, value):
-		return (1.0 , self.v.sample(value * Tau.rect(float(time + self.phase) / self.period), self.period * self.wf))
+		return (1.0 , self.v.sample(value * tau.rect(float(time + self.phase) / self.period), self.period * self.wf))
 
 	def update_period(self, period):
 		self.phase = float(self.phase) / self.period * period
@@ -499,7 +486,7 @@ class ApexTimeSmoothing(TimeSmoothing):
 		if apex is not None:
 			if time_delta is None:
 				time_delta = 1.0
-			cval = self.v.sample(value * Tau.rect(float(time + self.phase) / self.period), self.period * self.wf)
+			cval = self.v.sample(value * tau.rect(float(time + self.phase) / self.period), self.period * self.wf)
 			return (time_delta, cval)
 		else:
 			return (None, None)
@@ -516,7 +503,7 @@ class PeriodPercept:
 		self._init()
 
 	def _init(self):
-		self.r, self.phi = Tau.polar(self.value)
+		self.r, self.phi = tau.polar(self.value)
 
 	def __str__(self):
 		return "%010.3f / %010.3f: r=%08.3f[%s] phi=%08.3f[%s]" % (self.period, self.period_factor, self.r, bar(self.r, self.period, 16), self.phi, bar_log(self.phi + 0.5, 1.0, 16))
@@ -538,10 +525,10 @@ class PeriodRecept:
 
 		self.frequency = 1.0 / self.period
 
-		self.value     = Tau.delta(self.phase.value, self.prior_phase.value)
+		self.value     = tau.delta(self.phase.value, self.prior_phase.value)
 		self.duration  = self.phase.time - self.prior_phase.time
 
-		self.r, self.phi = Tau.polar(self.value)
+		self.r, self.phi = tau.polar(self.value)
 		if self.duration > 0.0:
 			self.phi_t = self.phi / self.duration
 		else:
