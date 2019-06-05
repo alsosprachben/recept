@@ -360,10 +360,10 @@ class DynamicWindow:
 			return self.td / expected_duration
 
 	def __str__(self):
-		return "{duration=%s, target=%r}" % (self.ed, self.td)
+		return "{window=%08.3f, duration=%s, target=%r}" % ((self.td / self.ed.v.v) if self.ed.v.v > 0.0 else 0.0, self.ed, self.td)
 
 class SmoothDuration:
-	"""i
+	"""
 	An `ExponentialSmoother` windowed by `DynamicWindow` (sensitive to a specified duration)
 	"""
 
