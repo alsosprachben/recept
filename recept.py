@@ -4,79 +4,7 @@
 Infinite Impulse Response (IIR) filters for periodic analysis
 """
 
-"""
-Formatting
-"""
-
-def liststr(l):
-	return ", ".join("%06.2f" % e for e in l)
-
-def listdiststr(l):
-	return ", ".join("%06.2f/%06.2f" % e for e in l)
-
-def listcompstr(l):
-	return ", ".join("%06.2f+%06.2fj" % (c.real, c.imag) for c in l)
-
-def listangstr(l):
-	from math import pi
-	from cmath import phase
-	return "".join("%06.2f = %06.2f (@ %03.2f)\n" % (f, abs(c), (phase(c) / (2.0 * pi)) % 1.0) for f, c in l)
-
-def bar(n, d, s, left = False):
-	try:
-		mn = max(0, min(n, d))
-		if left:
-			mn = d - mn
-
-		sn = float(mn) * s / d
-		si = int(sn // 1)
-		sr = sn % 1
-
-		if left:
-			s1 = " " * si
-			s3 = "#" * (s - si - 1)
-			sr = (1.0 - sr) % 1
-		else:
-			s1 = "#" * si
-			s3 = " " * (s - si - 1)
-
-		if si < s:
-			s2 = [" ", "-", "+", "="][int(sr * 4)]
-		else:
-			s2 = ""
-
-		return "%s%s%s" % (s1, s2, s3)
-	except ValueError:
-		return " " * int(s)
-
-from math import e
-def bar_log(n, d, s, base = e, start = e * 2, left = False):
-	try:
-		from math import log
-		log_base = log(base)
-		#print n, d
-		#print start + log(n) , log_base, start + log(d) , log_base, s
-		return bar(start + log(n) / log_base, start + log(d) / log_base, s, left)
-	except ValueError:
-		return " " * int(s)
-
-def signed_bar(n, d, s):
-	if n >= 0.0:
-		return (" " * s) + "|" + bar(n, d, s)
-	else:
-		return bar(-n, d, s, True) + "|" + (" " * s)
-
-def signed_bar_log(n, d, s, base = e, start = e * 2):
-	if n > 0.0:
-		return (" " * s) + "|" + bar_log(n, d, s, base, start)
-	elif n < 0.0:
-		return bar_log(-n, d, s, base, start, True) + "|" + (" " * s)
-	else:
-		return (" " * s) + "|" + (" " * s)
-
-"""
-
-"""
+import bar
 
 dist               = lambda x, y: (x * x + y * y) ** 0.5
 mult               = lambda x, y: x * y
@@ -249,6 +177,9 @@ class ExponentialSmoother:
 		self.v += (value - self.v) / factor
 		return self.v
 
+	def __str__(self):
+		return "%08.3f" % self.v
+
 class ExponentialSmoothing:
 	"""
 	`ExponentialSmoother` of a fixed window size.
@@ -260,6 +191,9 @@ class ExponentialSmoothing:
 
 	def sample(self, value):
 		return self.v.sample(value, self.w)
+
+	def __str__(self):
+		return "{ave=%s, window=%08.3f}" % (self.v, self.w)
 
 class Delta:
 	"""
@@ -313,10 +247,16 @@ class Distribution:
 	def sample(self, value, factor):
 		deviation = abs(self.d.sample(value))
 
-		mean   = self.ave.sample(value, factor)
-		stddev = self.dev.sample(deviation, factor)
+		self.ave.sample(value, factor)
+		self.dev.sample(deviation, factor)
 
-		return mean, stddev
+		return self.dist()
+
+	def dist(self):
+		return self.ave.v, self.dev.v
+
+	def __str__(self):
+		return "{mean=%08.3f dev=%08.3f}" % self.dist()
 
 
 class WeightedDistribution(Distribution):
@@ -419,6 +359,9 @@ class DynamicWindow:
 			expected_duration = self.ed.sample(duration_since)
 			return self.td / expected_duration
 
+	def __str__(self):
+		return "{duration=%s, target=%r}" % (self.ed, self.td)
+
 class SmoothDuration:
 	"""i
 	An `ExponentialSmoother` windowed by `DynamicWindow` (sensitive to a specified duration)
@@ -432,6 +375,9 @@ class SmoothDuration:
 		w = self.dw.sample(sequence_value)
 		return self.v.sample(value, w)
 
+	def __str__(self):
+		return "{ave=%s. window=%s}" % (self.v, self.dw)
+
 class SmoothDurationDistribution:
 	"""
 	A `Distribution` windowed by `DynamicWindow` (sensitive to a specified duration)
@@ -444,6 +390,9 @@ class SmoothDurationDistribution:
 	def sample(self, value, sequence_value):
 		w = self.dw.sample(sequence_value)
 		return self.v.sample(value, w)
+
+	def __str__(self):
+		return "{dist=%s, window=%s}" % (self.v, self.dw)
 
 
 
@@ -508,7 +457,7 @@ class PeriodPercept:
 		self.r, self.phi = tau.polar(self.value)
 
 	def __str__(self):
-		return "%010.3f / %010.3f: r=%08.3f[%s] phi=%08.3f[%s]" % (self.period, self.period_factor, self.r, bar(self.r, self.period, 16), self.phi, bar_log(self.phi + 0.5, 1.0, 16))
+		return "%010.3f / %010.3f: r=%08.3f[%s] phi=%08.3f[%s]" % (self.period, self.period_factor, self.r, bar.bar(self.r, self.period, 16), self.phi, bar.bar_log(self.phi + 0.5, 1.0, 16))
 
 class PeriodRecept:
 	"""Physiological Recept: Detection of Periodic Value"""
@@ -543,7 +492,7 @@ class PeriodRecept:
 		self.instant_period    = 1.0 / self.instant_frequency
 
 	def __str__(self):
-		return "%010.3f @ %010.3f / %08.3f: r=%08.3f[%s] r_d=%08.3f[%s] phi_t=%08.3f[%s]" % (self.instant_period, self.period, self.period_factor, self.phase.r, bar_log(self.phase.r, self.period, 16), self.r_d, signed_bar_log(self.r_d, 1.0 / self.period * 8, 8), self.phi_t, signed_bar(self.phi_t, 0.5, 8))
+		return "%010.3f @ %010.3f / %08.3f: r=%08.3f[%s] r_d=%08.3f[%s] phi_t=%08.3f[%s]" % (self.instant_period, self.period, self.period_factor, self.phase.r, bar.bar_log(self.phase.r, self.period, 16), self.r_d, bar.signed_bar_log(self.r_d, 1.0 / self.period * 8, 8), self.phi_t, bar.signed_bar(self.phi_t, 0.5, 8))
 		
 
 class PeriodConcept:
@@ -592,7 +541,7 @@ class PeriodConcept:
 
 	def __str__(self):
 		from math import log
-		return "%010.3f / %010.5f <- %s %s" % (self.avg_instant_period, self.instant_period_stddev, self.recept, "" if self.sensor.reference_concept is None else "f_d=%010.5f[%s]" % (self.sensor.reference_concept.percept.r - self.percept.r, signed_bar_log((self.sensor.reference_concept.percept.r - self.percept.r) / self.percept.period, 8, 8)))
+		return "%010.3f / %010.5f <- %s %s" % (self.avg_instant_period, self.instant_period_stddev, self.recept, "" if self.sensor.reference_concept is None else "f_d=%010.5f[%s]" % (self.sensor.reference_concept.percept.r - self.percept.r, bar.signed_bar_log((self.sensor.reference_concept.percept.r - self.percept.r) / self.percept.period, 8, 8)))
 
 	def consonant(self, other, consonance_factor = 1.0, harmonic = 1):
 		self_period  = self.avg_instant_period * harmonic
@@ -739,7 +688,7 @@ def event_test():
 
 		results = [sd.sample(n,  t) for sd in sd_list]
 
-		stdout.write("%sevent at time %.3f sample %i: %06.2f\n%s" % (escape_reset, t, sample, n, listdiststr(results)))
+		stdout.write("%sevent at time %.3f sample %i: %06.2f\n%s" % (escape_reset, t, sample, n, "\n".join(str(e) for e in sd_list)))
 		stdout.flush()
 
 class FileSampler:
