@@ -10,6 +10,5 @@ tau2rad = lambda mag, tau: (mag,   tau * radian_cycle)
 
 rect  = lambda period, mag=1: rad_rect(*tau2rad(mag, period))
 polar = lambda cval:                    rad2tau(*rad_polar(cval))
-delta = lambda cval, prior_cval: cval / prior_cval if prior_cval != 0.0 else 0.0
 
 

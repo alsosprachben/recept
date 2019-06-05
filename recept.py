@@ -235,7 +235,7 @@ class FrequencySmoothing:
 Real-Time, Infinite, Dynamic Windows
 """
 
-import tau
+complex_delta = lambda cval, prior_cval: cval / prior_cval if prior_cval != 0.0 else 0.0
 
 class ExponentialSmoother:
 	"""
@@ -294,7 +294,7 @@ class PhaseDelta:
 		if self.prior_angle is None:
 			delta_value = None
 		else:
-			delta_value = tau.delta(angle_value, prior_angle)
+			delta_value = complex_delta(angle_value, prior_angle)
 
 		self.prior_angle = angle_value
 		return delta_value
@@ -451,6 +451,8 @@ class SmoothDurationDistribution:
 Periodic Windows
 """
 
+import tau
+
 class TimeSmoothing:
 	"""
 	Infinite Impulse Response cosine transform
@@ -525,7 +527,7 @@ class PeriodRecept:
 
 		self.frequency = 1.0 / self.period
 
-		self.value     = tau.delta(self.phase.value, self.prior_phase.value)
+		self.value     = complex_delta(self.phase.value, self.prior_phase.value)
 		self.duration  = self.phase.time - self.prior_phase.time
 
 		self.r, self.phi = tau.polar(self.value)
