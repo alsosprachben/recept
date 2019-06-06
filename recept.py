@@ -657,20 +657,18 @@ class EntropicPeriodArray(PeriodArray):
 		return sensations
 
 
-escape_clear = "\033[2J"
-escape_reset = "\033[;H"
-
 def event_test():
 	from sys import stdin, stdout
 	from time import time, sleep
+
+	import io
 
 	sd_list = [
 		SmoothDurationDistribution(duration, 3)
 		for duration in range(1, 10)
 	]
 
-	stdout.write(escape_clear)
-	stdout.flush()
+	io.screen.clear()
 	sample = 0
 	n = None
 	while True:
@@ -688,35 +686,8 @@ def event_test():
 
 		results = [sd.sample(n,  t) for sd in sd_list]
 
-		stdout.write("%sevent at time %.3f sample %i: %06.2f\n%s" % (escape_reset, t, sample, n, "\n".join(str(e) for e in sd_list)))
-		stdout.flush()
-
-class FileSampler:
-	def __init__(self, f, chunk_size = 16, sample_rate = 48000, channels = 2, encoding = "i"):
-		self.f = f
-		self.sample_rate = sample_rate
-		self.channels    = channels
-		self.encoding    = encoding
-		self.chunk_size  = chunk_size
-		self._init_buf()
-
-	def _init_buf(self):
-		import array
-		self.hit_eof = False
-		self.buf     = array.array(self.encoding)
-
-	def next(self):
-		if len(self.buf) == 0:
-			if not self.hit_eof:
-				try:
-					self.buf.fromfile(self.f, self.chunk_size)
-				except EOFError:
-					self.hit_eof = True
-
-			if self.hit_eof:
-				raise StopIteration
-
-		return self.buf.pop()
+		io.screen.printf("event at time %.3f sample %i: %06.2f\n%s", t, sample, n, "\n".join(str(e) for e in sd_list))
+		io.screen.flush()
 
 def note(sample_rate, period, A4 = 440.0):
 	"""
@@ -741,16 +712,23 @@ def note(sample_rate, period, A4 = 440.0):
 	return "%i%s%3.0f" % (octave, notes[octave_note], cents)
 
 def periodic_test(generate = False):
-	from sys import stdin, stdout
+	from sys import stdin, stdout, argv
 	from time import time, sleep
 
+	import io
+
+	args = dict(enumerate(argv))
+
+	sample_rate = int(args.get(1))
+	frame_size  = int(args.get(2))
+	oversample  = int(args.get(3))
+
 	use_log     = True
-	frame_rate  = 60
-	oversample  = 10
-	sample_rate = 44100.0 / oversample
-	wave_period = 240
+	frame_rate  = sample_rate / frame_size
+	sample_rate /= oversample
+	wave_period = 1000.0 / oversample
 	wave_power  = 100
-	sweep       = False
+	sweep       = True
 	sweep_value = 0.99999
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
@@ -760,7 +738,7 @@ def periodic_test(generate = False):
 	second_phase_factor  = second_period_factor * 1
 	tension_factor       = 1.0
 
-	log_base_period = (float(sample_rate) / (440.0 * 2 ** -3))
+	log_base_period = (float(sample_rate) / (440.0 * 2 ** -4))
 	log_octave_steps = 12
 	log_octave_count = 5
 
@@ -768,9 +746,9 @@ def periodic_test(generate = False):
 	linear_freq_stop  = 1550
 	linear_freq_step  = 25
 
-	wave_change_rate = 0.1
+	wave_change_rate = 0.01
 
-	fs = FileSampler(stdin, int(sample_rate / frame_rate), sample_rate)
+	fs = io.FileSampler(stdin, frame_size, sample_rate)
 
 	if use_log:
 		pa1 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, first_period_factor, first_phase_factor)
@@ -784,24 +762,24 @@ def periodic_test(generate = False):
 	sample = 0
 	frame  = 0
 	current_wave_period = wave_period
+	wave_power /= oversample
 
 	draw_sample = sample + float(sample_rate) / frame_rate
 	x = 0.0
-	stdout.write(escape_clear)
-	stdout.flush()
+	io.screen.clear()
 	while True:
 		sample += 1
 
 		if sweep:
 			current_wave_period *= sweep_value
-			if current_wave_period < wave_period / 2:
+			if current_wave_period < wave_period / 50:
 				current_wave_period = wave_period
 
 		x += 1.0 / current_wave_period
 
 		if generate:
 			j = int(float(sample) * wave_change_rate / sample_rate) % 3
-			#j = 1
+			j = 1
 
 			from math import pi, cos
 			if j  == 0:
@@ -816,12 +794,12 @@ def periodic_test(generate = False):
 				n = wave_power if x % 1 < 0.5 else -wave_power
 		else:
 			# read from file
-			get_sample = lambda fs: float(fs.next()) / (2**32) * 10000
-			#n = sum([get_sample(fs), get_sample(fs), get_sample(fs), get_sample(fs)]) / 4.0
+			get_sample = lambda fs: float(fs.next()) / (oversample * (2**32)) * 10000 
 			n = 0.0
-			for i in range(oversample):
+			supersample = oversample
+			while supersample > 0:
 				n += get_sample(fs)
-			n /= oversample
+				supersample -= 1
 			
 
 		t = float(sample) / sample_rate
@@ -845,10 +823,10 @@ def periodic_test(generate = False):
 	
 		frame += 1
 
-		report1 = "\n".join(str(sensation) for sensation in reversed(sensations1))
-		report1 += "\n"
-		#report1 += "\n%f\n" % current_wave_period
-		report2 = "\n".join(str(sensation) for sensation in reversed(sensations2))
+		io.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
+
+		io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations1)))
+		io.screen.printf("%s    ", "\n".join(str(sensation) for sensation in reversed(sensations2)))
 		"""
 		report2 = ""
 		max_strength = 0.0
@@ -878,13 +856,7 @@ def periodic_test(generate = False):
 			report2 += ("%s %s %s %08.3f: %s") % ("+" if in_cluster else "-", note(sample_rate, strongest_instant_period) if in_cluster else "         ", "%08.3f" % strongest_instant_period if in_cluster else "        ", strongest_weight, report)
 		"""
 
-		out = "%sevent at time %.3f frame %i sample %i: %06.2f\n\n%s\n%s" % (escape_reset, t, frame, sample, n, report1, report2)
-		#if report2:
-		#	out = "%s%s%s" % (escape_clear, escape_reset, report2)
-		#out += " " * 1000
-
-		stdout.write(out)
-		stdout.flush()
+		io.screen.flush()
 
 def main():
 	from sys import argv, exit
