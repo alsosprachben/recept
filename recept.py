@@ -759,6 +759,8 @@ def periodic_test(generate = False):
 	first_phase_factor   = first_period_factor * 1
 	second_period_factor = first_period_factor * 2
 	second_phase_factor  = second_period_factor * 1
+	third_period_factor  = second_period_factor * 2
+	third_phase_factor   = third_period_factor * 1
 	tension_factor       = 1.0
 
 	log_base_period = (float(sample_rate) / (440.0 * 2 ** -3))
@@ -776,6 +778,7 @@ def periodic_test(generate = False):
 	if use_log:
 		pa1 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, first_period_factor, first_phase_factor)
 		pa2 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, second_period_factor, second_phase_factor)
+		pa3 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, third_period_factor, third_phase_factor)
 	else:
 		pa1 = LinearPeriodArray(sample_rate, linear_freq_start, linear_freq_stop, linear_freq_step, first_period_factor, first_phase_factor)
 		pa2 = LinearPeriodArray(sample_rate, linear_freq_start, linear_freq_stop, linear_freq_step, second_period_factor, second_phase_factor)
@@ -835,8 +838,15 @@ def periodic_test(generate = False):
 			sensor.reference_concept = concept
 			#sensor.update_period_from_sensation(concept)
 
+		for sensor, concept in zip(pa3.period_sensors, sensations1):
+			sensor.update_period_from_sensation(concept)
+
 		sensations2 = pa2.sample(sample, n)
 		if sensations2[0] is None:
+			continue
+
+		sensations3 = pa3.sample(sample, n)
+		if sensations3[0] is None:
 			continue
 
 		if sample < draw_sample:
@@ -848,8 +858,9 @@ def periodic_test(generate = False):
 
 		io.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-		io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations1)))
-		io.screen.printf("%s    ", "\n".join(str(sensation) for sensation in reversed(sensations2)))
+		#io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations1)))
+		io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations2)))
+		io.screen.printf("%s",     "\n".join(str(sensation) for sensation in reversed(sensations3)))
 		"""
 		report2 = ""
 		max_strength = 0.0
