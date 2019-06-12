@@ -416,20 +416,39 @@ class TimeSmoothing:
 	def sample(self, time, value):
 		return (1.0 , self.v.sample(value * tau.rect(float(time + self.phase) / self.period), self.period * self.wf))
 
+
+class DynamicTimeSmoothing(TimeSmoothing):
+	"""
+	`TimeSmoothing`, but with mutable period component, tracking period delta, or the "glissando receptor factor".
+	"""
+
+	def __init__(self, period, phase, window_factor = 1, initial_value = 0.0+0.0j, initial_delta = 0.0):
+		TimeSmoothing.__init__(self, period, phase, window_factor, initial_value)
+
+		# pitch slope; frequency delta, rise-fall rate; the "glissando" receptor factor
+		self.glissando = ExponentialSmoother(initial_delta)
+		
 	def update_period(self, period):
+		# delta from previous period
+		self.glissando.sample(period - self.period, period * self.wf)
+
 		self.phase = float(self.phase) / self.period * period
 		self.period = period
 
 	def update_phase(self, phase):
 		self.phase = phase
 
-class ApexTimeSmoothing(TimeSmoothing):
+	def sample(self, time, value):
+		delta, time_value = TimeSmoothing.sample(self, time, value)
+		return delta, time_value, self.glissando.v
+
+class ApexTimeSmoothing(DynamicTimeSmoothing):
 	"""
 	Infinite Impulse Response cosine transform, but only sampling at apexes
 	"""
 
-	def __init__(self, period, phase, window_factor = 1, initial_value = 0.0+0.0j, prior_value = None, prior_sequence = None):
-		TimeSmoothing.__init__(self, period, phase, window_factor, initial_value)
+	def __init__(self, period, phase, window_factor = 1, initial_value = 0.0+0.0j, initial_delta = 0.0, prior_value = None, prior_sequence = None):
+		DynamicTimeSmoothing.__init__(self, period, phase, window_factor, initial_value, initial_delta)
 		self.time_apex = TimeApex(prior_value, prior_sequence)
 
 	def sample(self, time, value):
@@ -438,18 +457,19 @@ class ApexTimeSmoothing(TimeSmoothing):
 			if time_delta is None:
 				time_delta = 1.0
 			cval = self.v.sample(value * tau.rect(float(time + self.phase) / self.period), self.period * self.wf)
-			return (time_delta, cval)
+			gval = self.glissando.v
+			return (time_delta, cval, gval)
 		else:
-			return (None, None)
+			return (None, None, None)
 
 class PeriodPercept:
 	"""Physical Percept: Representation of Periodic Value"""
 
-	def __init__(self, period,      period_factor,      time,      value):
+	def __init__(self, period,      period_factor,      glissando_factor,      time,      value):
 		(
-		      self.period, self.period_factor, self.time, self.value
+		      self.period, self.period_factor, self.glissando_factor, self.time, self.value
 		) = (
-			   period,      period_factor,      time,      value
+			   period,      period_factor,      glissando_factor,      time,      value
 		)
 		self._init()
 
@@ -457,10 +477,10 @@ class PeriodPercept:
 		self.r, self.phi = tau.polar(self.value)
 
 	def __str__(self):
-		return "%010.3f / %010.3f: r=%08.3f[%s] phi=%08.3f[%s]" % (self.period, self.period_factor, self.r, bar.bar(self.r, self.period, 16), self.phi, bar.bar_log(self.phi + 0.5, 1.0, 16))
+		return "%010.3f + %010.3f / %010.3f: r=%08.3f[%s] phi=%08.3f[%s]" % (self.period, self.glissando_factor, self.period_factor, self.r, bar.bar(self.r, self.period, 16), self.phi, bar.bar_log(self.phi + 0.5, 1.0, 16))
 
 class PeriodRecept:
-	"""Physiological Recept: Detection of Periodic Value"""
+	"""Physiological Recept: Deduction of Periodic Value"""
 
 	def __init__(self,   phase,      prior_phase):
 		(
@@ -471,8 +491,9 @@ class PeriodRecept:
 		self._init()
 		
 	def _init(self):
-		self.period        = (self.phase.period        + self.prior_phase.period       ) / 2.0
-		self.period_factor = (self.phase.period_factor + self.prior_phase.period_factor) / 2.0
+		self.period           = (self.phase.period           + self.prior_phase.period          ) / 2.0
+		self.period_factor    = (self.phase.period_factor    + self.prior_phase.period_factor   ) / 2.0
+		self.glissando_factor = (self.phase.glissando_factor + self.prior_phase.glissando_factor) / 2.0
 
 		self.frequency = 1.0 / self.period
 
@@ -492,7 +513,7 @@ class PeriodRecept:
 		self.instant_period    = 1.0 / self.instant_frequency
 
 	def __str__(self):
-		return "%010.3f @ %010.3f / %08.3f: r=%08.3f[%s] r_d=%08.3f[%s] phi_t=%08.3f[%s]" % (self.instant_period, self.period, self.period_factor, self.phase.r, bar.bar_log(self.phase.r, self.period, 16), self.r_d, bar.signed_bar_log(self.r_d, 1.0 / self.period * 8, 8), self.phi_t, bar.signed_bar(self.phi_t, 0.5, 8))
+		return "%010.3f @ %010.3f + %010.3f / %08.3f: r=%08.3f[%s] r_d=%08.3f[%s] phi_t=%08.3f[%s]" % (self.instant_period, self.period, self.glissando_factor, self.period_factor, self.phase.r, bar.bar_log(self.phase.r, self.period, 16), self.r_d, bar.signed_bar_log(self.r_d, 1.0 / self.period * 8, 8), self.phi_t, bar.signed_bar(self.phi_t, 0.5, 8))
 		
 
 class PeriodConcept:
@@ -535,8 +556,8 @@ class PeriodConcept:
 		
 		self.prior_percept = self.percept
 
-	def sample_percept(self, period, period_factor, time, value):
-		self.percept = PeriodPercept(period, period_factor, time, value)
+	def sample_percept(self, period, period_factor, glissando_factor, time, value):
+		self.percept = PeriodPercept(period, period_factor, glissando_factor, time, value)
 		self.perceive()
 
 	def __str__(self):
@@ -566,15 +587,15 @@ class PeriodSensor:
 		self.phase  = phase
 		self.phase_factor = phase_factor
 
-		self.sensor  = TimeSmoothing(period, phase, period_factor, initial_value)
+		self.sensor  = DynamicTimeSmoothing(period, phase, period_factor, initial_value)
 		self.concept = PeriodConcept(self, phase_factor)
 
 	def sample(self, time, time_value):
-		time_delta, value = self.sensor.sample(time, time_value)
+		time_delta, value, glissando_factor = self.sensor.sample(time, time_value)
 		if value is None:
 			return None
 
-		self.concept.sample_percept(self.period, self.period_factor, time, value)
+		self.concept.sample_percept(self.period, self.period_factor, glissando_factor, time, value)
 
 		return self.concept
 
@@ -592,7 +613,7 @@ class PeriodSensor:
 			self.update_period(sensation.avg_instant_period)
 
 class ApexPeriodSensor(PeriodSensor):
-	def __init__(self, period, phase, period_factor = 1.0, phase_factor = 1.0, initial_value = 0.0+0.0j):
+	def __init__(self, period, phase, period_factor = 1.0, glissando_factor = 0.0, phase_factor = 1.0, initial_value = 0.0+0.0j):
 		PeriodSensor.__init__(self, period, phase, period_factor, phase_factor, initial_value)
 		self.sensor = ApexTimeSmoothing(period, phase, period_factor, initial_value)
 
@@ -738,7 +759,7 @@ def periodic_test(generate = False):
 	second_phase_factor  = second_period_factor * 1
 	tension_factor       = 1.0
 
-	log_base_period = (float(sample_rate) / (440.0 * 2 ** -4))
+	log_base_period = (float(sample_rate) / (440.0 * 2 ** -3))
 	log_octave_steps = 12
 	log_octave_count = 5
 
