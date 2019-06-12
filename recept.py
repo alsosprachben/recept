@@ -515,7 +515,7 @@ class PeriodRecept:
 		self.instant_distance = self.phi_t * self.period * self.period_factor
 
 	def __str__(self):
-		return "%010.3f @ %010.3f + %010.3f / %08.3f: r=%08.3f[%s] r_d=%08.3f[%s] phi_t=%08.3f[%s] tone=[%s]" % (self.instant_period, self.period, self.glissando_factor, self.period_factor, self.phase.r, bar.bar_log(self.phase.r, self.period, 16), self.r_d, bar.signed_bar_log(self.r_d, 1.0 / self.period * 8, 8), self.phi_t, bar.signed_bar(self.phi_t, 0.5, 8), bar.bar(1.0 / abs(self.instant_distance) if self.instant_distance != 0 else 1.0, 1.0, 16))
+		return "%010.3f @ %010.3f + %010.3f / %08.3f: r=%08.3f[%s] r_d=%08.3f[%s] phi_t=%08.3f[%s] tone=%08.3f[%s]" % (self.instant_period, self.period, self.glissando_factor, self.period_factor, self.phase.r, bar.bar_log(self.phase.r, self.period, 16), self.r_d, bar.signed_bar_log(self.r_d, 1.0 / self.period * 8, 8), self.phi_t, bar.signed_bar(self.phi_t, 0.5, 8), 1.0 / abs(self.instant_distance), bar.bar(1.0 / abs(self.instant_distance) if self.instant_distance != 0 else 1.0, 1.0, 16))
 		
 
 class PeriodConcept:
