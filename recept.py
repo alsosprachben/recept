@@ -570,7 +570,7 @@ class PeriodConcept:
 
 			if other1.sensor.reference_concept is not None:
 				other2 = other1.sensor.reference_concept
-				self.sr_dd = self.sr_d - other2.sr_d
+				self.sr_dd = other2.sr_d - self.sr_d
 			else:
 				self.sr_dd = 0.0
 		else:
@@ -804,7 +804,7 @@ def periodic_test(generate = False):
 	from math import exp, e
 	cycle_area = 10.0 #/ (1.0 - exp(-1))
 
-	factors = [(2.0 ** factor, 2.0 ** factor) for factor in range(4)]
+	factors = [(2.0 ** (factor - 4), 2.0 ** (factor - 4)) for factor in range(4)]
 
 	tension_factor       = 1.0
 
@@ -849,7 +849,7 @@ def periodic_test(generate = False):
 				diff = 5
 				n =  cos(2.0 * pi * x)         * wave_power / 4
 				#n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
-				#n += cos(2.0 * pi * x * 2)         * wave_power / 4
+				n += cos(2.0 * pi * x * 2)         * wave_power / 4
 				#n += cos(2.0 * pi * x * 2 * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
 			elif j == 1:
 				n = float(wave_power) - (2.0 * wave_power * (x % 1))
