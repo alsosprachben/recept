@@ -430,17 +430,26 @@ class DynamicTimeSmoothing(TimeSmoothing):
 		
 	def update_period(self, period):
 		# delta from previous period
-		self.glissando.sample(period - self.period, period * self.wf)
+		glissando_value = self.glissando.sample(period - self.period, period * self.wf)
+		#print period - self.period, glissando_value
 
 		self.phase = float(self.phase) / self.period * period
 		self.period = period
 
+		return glissando_value
+
 	def update_phase(self, phase):
 		self.phase = phase
 
-	def sample(self, time, value):
+	def sample(self, time, value, period = None):
+		if period is not None:
+			glissando_value = self.update_period(period)
+		else:
+			glissando_value = self.glissando.v
+
 		delta, time_value = TimeSmoothing.sample(self, time, value)
-		return delta, time_value, self.glissando.v
+		return delta, time_value, glissando_value
+		
 
 class ApexTimeSmoothing(DynamicTimeSmoothing):
 	"""
@@ -451,14 +460,18 @@ class ApexTimeSmoothing(DynamicTimeSmoothing):
 		DynamicTimeSmoothing.__init__(self, period, phase, window_factor, initial_value, initial_delta)
 		self.time_apex = TimeApex(prior_value, prior_sequence)
 
-	def sample(self, time, value):
+	def sample(self, time, value, period = None):
+		if period is not None:
+			glissando_value = self.update_period(period)
+		else:
+			glissando_value = self.glissando.v
+
 		apex, time_delta = self.time_apex.sample(time, value)
 		if apex is not None:
 			if time_delta is None:
 				time_delta = 1.0
 			cval = self.v.sample(value * tau.rect(float(time + self.phase) / self.period), self.period * self.wf)
-			gval = self.glissando.v
-			return (time_delta, cval, gval)
+			return (time_delta, cval, glissando_value)
 		else:
 			return (None, None, None)
 
@@ -477,7 +490,7 @@ class PeriodPercept:
 		self.r, self.phi = tau.polar(self.value)
 
 	def __str__(self):
-		return "%010.3f + %010.3f / %010.3f: r=%08.3f[%s] phi=%08.3f[%s]" % (self.period, self.glissando_factor, self.period_factor, self.r, bar.bar(self.r, self.period, 16), self.phi, bar.bar_log(self.phi + 0.5, 1.0, 16))
+		return "%010.3f + %010.3f / %010.3f: r=%08.3f[%s] phi=%08.3f[%s]" % (self.period, self.glissando_factor, self.period_factor, self.r, bar.bar(self.r, self.period), self.phi, bar.bar_log(self.phi + 0.5, 1.0))
 
 class PeriodRecept:
 	"""Physiological Recept: Deduction of Periodic Value"""
@@ -515,7 +528,7 @@ class PeriodRecept:
 		self.instant_distance = self.phi_t * self.period * self.period_factor
 
 	def __str__(self):
-		return "%010.3f @ %010.3f + %010.3f / %08.3f: r=%08.3f[%s] r_d=%08.3f[%s] phi_t=%08.3f[%s] tone=%08.3f[%s]" % (self.instant_period, self.period, self.glissando_factor, self.period_factor, self.phase.r, bar.bar_log(self.phase.r, self.period, 16), self.r_d, bar.signed_bar_log(self.r_d, 1.0 / self.period * 8, 8), self.phi_t, bar.signed_bar(self.phi_t, 0.5, 8), 1.0 / abs(self.instant_distance), bar.bar(1.0 / abs(self.instant_distance) if self.instant_distance != 0 else 1.0, 1.0, 16))
+		return "%010.3f @ %010.3f + %010.3f / %08.3f: r=%08.3f[%s] r_d=%08.3f[%s] phi_t=%08.3f[%s] tone=%08.3f[%s]" % (self.instant_period, self.period, self.glissando_factor, self.period_factor, self.phase.r, bar.bar_log(self.phase.r, self.period), self.r_d, bar.signed_bar_log(self.r_d, 1.0 / self.period * 8), self.phi_t, bar.signed_bar(self.phi_t, 0.5), 1.0 / abs(self.instant_distance) if self.instant_distance != 0 else 1.0, bar.bar(1.0 / abs(self.instant_distance) if self.instant_distance != 0 else 1.0, 1.0))
 		
 
 class PeriodConcept:
@@ -564,7 +577,7 @@ class PeriodConcept:
 
 	def __str__(self):
 		from math import log
-		return "%010.3f / %010.5f <- %s %s" % (self.avg_instant_period, self.instant_period_stddev, self.recept, "" if self.sensor.reference_concept is None else "f_d=%010.5f[%s]" % (self.sensor.reference_concept.percept.r - self.percept.r, bar.signed_bar_log((self.sensor.reference_concept.percept.r - self.percept.r) / self.percept.period, 8, 8)))
+		return "%010.3f / %010.5f <- %s %s" % (self.avg_instant_period, self.instant_period_stddev, self.recept, "" if self.sensor.reference_concept is None else "f_d=%010.5f[%s]" % (self.sensor.reference_concept.percept.r - self.percept.r, bar.signed_bar_log((self.sensor.reference_concept.percept.r - self.percept.r) / self.percept.period, 8)))
 
 	def consonant(self, other, consonance_factor = 1.0, harmonic = 1):
 		self_period  = self.avg_instant_period * harmonic
@@ -610,7 +623,7 @@ class PeriodSensor:
 		self.sensor.update_phase(phase)
 
 	def update_period_from_sensation(self, sensation):
-		self.reference_concept = sensation
+		#self.reference_concept = sensation
 		if sensation.avg_instant_period > 2.0:
 			self.update_period(sensation.avg_instant_period)
 
@@ -625,6 +638,16 @@ class PeriodArray:
 			period_sensor.sample(time, value)
 			for period_sensor in self.period_sensors
 		]
+
+	def accept_feedback(self, sensations, reference_concept = True, adjust_period = True):
+		for sensor, concept in zip(self.period_sensors, sensations):
+			if reference_concept:
+				sensor.reference_concept = concept
+
+			if adjust_period:
+				sensor.update_period_from_sensation(concept)
+			
+		
 
 	def by_cluster(self, sensations, tension_factor = 1.0):
 		return gather_clusters(sensations, key_func, tension_key_func, tension_filter_func, tension_func, tension_factor)
@@ -749,18 +772,22 @@ def periodic_test(generate = False):
 	use_log     = True
 	frame_rate  = sample_rate / frame_size
 	sample_rate /= oversample
-	wave_period = 1000.0 / oversample
+	wave_period = 500.0 / oversample
 	wave_power  = 100
 	sweep       = True
 	sweep_value = 0.99999
 	from math import exp, e
-	cycle_area = 1.0 / (1.0 - exp(-1))
+	cycle_area = 10.0 #/ (1.0 - exp(-1))
 	first_period_factor  = cycle_area
 	first_phase_factor   = first_period_factor * 1
 	second_period_factor = first_period_factor * 2
 	second_phase_factor  = second_period_factor * 1
-	third_period_factor  = second_period_factor * 2
+
+	third_period_factor  = first_period_factor * 1
 	third_phase_factor   = third_period_factor * 1
+	forth_period_factor  = third_period_factor * 2
+	forth_phase_factor   = forth_period_factor * 1
+
 	tension_factor       = 1.0
 
 	log_base_period = (float(sample_rate) / (440.0 * 2 ** -3))
@@ -779,6 +806,7 @@ def periodic_test(generate = False):
 		pa1 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, first_period_factor, first_phase_factor)
 		pa2 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, second_period_factor, second_phase_factor)
 		pa3 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, third_period_factor, third_phase_factor)
+		pa4 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, forth_period_factor, forth_phase_factor)
 	else:
 		pa1 = LinearPeriodArray(sample_rate, linear_freq_start, linear_freq_stop, linear_freq_step, first_period_factor, first_phase_factor)
 		pa2 = LinearPeriodArray(sample_rate, linear_freq_start, linear_freq_stop, linear_freq_step, second_period_factor, second_phase_factor)
@@ -805,14 +833,14 @@ def periodic_test(generate = False):
 
 		if generate:
 			j = int(float(sample) * wave_change_rate / sample_rate) % 3
-			j = 1
+			j = 0
 
 			from math import pi, cos
 			if j  == 0:
 				diff = 5
 				n =  cos(2.0 * pi * x)         * wave_power / 4
 				#n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
-				n += cos(2.0 * pi * x * 2)         * wave_power / 4
+				#n += cos(2.0 * pi * x * 2)         * wave_power / 4
 				#n += cos(2.0 * pi * x * 2 * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
 			elif j == 1:
 				n = float(wave_power) - (2.0 * wave_power * (x % 1))
@@ -833,20 +861,24 @@ def periodic_test(generate = False):
 		sensations1 = pa1.sample(sample, n)
 		if sensations1[0] is None:
 			continue
-		#for sensor, sensation in zip(pa1.period_sensors, sensations1):
-		for sensor, concept in zip(pa2.period_sensors, sensations1):
-			sensor.reference_concept = concept
-			#sensor.update_period_from_sensation(concept)
 
-		for sensor, concept in zip(pa3.period_sensors, sensations1):
-			sensor.update_period_from_sensation(concept)
 
+		"""
+		pa2.accept_feedback(sensations1, True, False)
 		sensations2 = pa2.sample(sample, n)
 		if sensations2[0] is None:
 			continue
+		"""
 
+		pa3.accept_feedback(sensations1, False, True)
 		sensations3 = pa3.sample(sample, n)
 		if sensations3[0] is None:
+			continue
+
+		pa4.accept_feedback(sensations1, False, True)
+		pa4.accept_feedback(sensations3, True, False)
+		sensations4 = pa4.sample(sample, n)
+		if sensations4[0] is None:
 			continue
 
 		if sample < draw_sample:
@@ -859,8 +891,9 @@ def periodic_test(generate = False):
 		io.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
 		#io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations1)))
-		io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations2)))
-		io.screen.printf("%s",     "\n".join(str(sensation) for sensation in reversed(sensations3)))
+		#io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations2)))
+		io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations3)))
+		io.screen.printf("%s",     "\n".join(str(sensation) for sensation in reversed(sensations4)))
 		"""
 		report2 = ""
 		max_strength = 0.0
