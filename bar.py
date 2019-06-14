@@ -1,4 +1,6 @@
-def bar(n, d, s, left = False):
+default_bar_size = 16
+
+def bar(n, d, s = default_bar_size, left = False):
 	try:
 		mn = max(0, min(n, d))
 		if left:
@@ -26,7 +28,7 @@ def bar(n, d, s, left = False):
 		return " " * int(s)
 
 from math import e
-def bar_log(n, d, s, base = e, start = e * 2, left = False):
+def bar_log(n, d, s = default_bar_size, base = e, start = e * 2, left = False):
 	try:
 		from math import log
 		log_base = log(base)
@@ -36,13 +38,13 @@ def bar_log(n, d, s, base = e, start = e * 2, left = False):
 	except ValueError:
 		return " " * int(s)
 
-def signed_bar(n, d, s):
+def signed_bar(n, d, s = default_bar_size / 2):
 	if n >= 0.0:
 		return (" " * s) + "|" + bar(n, d, s)
 	else:
 		return bar(-n, d, s, True) + "|" + (" " * s)
 
-def signed_bar_log(n, d, s, base = e, start = e * 2):
+def signed_bar_log(n, d, s = default_bar_size / 2, base = e, start = e * 2):
 	if n > 0.0:
 		return (" " * s) + "|" + bar_log(n, d, s, base, start)
 	elif n < 0.0:
