@@ -1,4 +1,4 @@
-default_bar_size = 16
+default_bar_size = 11
 
 def bar(n, d, s = default_bar_size, left = False):
 	try:

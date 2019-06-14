@@ -528,7 +528,8 @@ class PeriodRecept:
 		self.instant_distance = self.phi_t * self.period * self.period_factor
 
 	def __str__(self):
-		return "%010.3f @ %010.3f + %010.3f / %08.3f: r=%08.3f[%s] r_d=%08.3f[%s] phi_t=%08.3f[%s] tone=%08.3f[%s]" % (self.instant_period, self.period, self.glissando_factor, self.period_factor, self.phase.r, bar.bar_log(self.phase.r, self.period), self.r_d, bar.signed_bar_log(self.r_d, 1.0 / self.period * 8), self.phi_t, bar.signed_bar(self.phi_t, 0.5), 1.0 / abs(self.instant_distance) if self.instant_distance != 0 else 1.0, bar.bar(1.0 / abs(self.instant_distance) if self.instant_distance != 0 else 1.0, 1.0))
+		return "%010.3f @ %010.3f + %010.3f / %08.3f: r=%08.3f[%s] r_d=%08.3f[%s] phi_t=%08.3f[%s]" % (self.instant_period, self.period, self.glissando_factor, self.period_factor, self.phase.r, bar.bar_log(self.phase.r, self.period), self.r_d, bar.signed_bar_log(self.r_d, 1.0 / self.period * 8), self.phi_t, bar.signed_bar(self.phi_t, 0.5))
+
 		
 
 class PeriodConcept:
@@ -547,6 +548,8 @@ class PeriodConcept:
 		self.instant_period_delta_state  = Delta()
 		self.instant_period_stddev_state = ExponentialSmoother(percept.period)
 
+		self.avg_instant_distance_state = ExponentialSmoother(0.0)
+
 	def receive(self):
 		# average instantaneous period
 		self.avg_instant_period = self.avg_instant_period_state.sample(self.recept.instant_period, self.recept.period * self.weight_factor)
@@ -558,6 +561,21 @@ class PeriodConcept:
 			self.instant_period_delta = self.avg_instant_period
 		# standard deviation of average (dis-convergence on an average instant period)
 		self.instant_period_stddev = self.instant_period_stddev_state.sample(abs(self.instant_period_delta), abs(self.recept.instant_period * self.weight_factor))
+
+		self.avg_instant_distance = self.avg_instant_distance_state.sample(self.recept.instant_distance, self.recept.period * self.weight_factor)
+
+		if self.sensor.reference_concept is not None:
+			other1 = self.sensor.reference_concept
+			self.sr_d = other1.percept.r - self.percept.r
+
+			if other1.sensor.reference_concept is not None:
+				other2 = other1.sensor.reference_concept
+				self.sr_dd = self.sr_d - other2.sr_d
+			else:
+				self.sr_dd = 0.0
+		else:
+			self.sr_d  = 0.0
+			self.sr_dd = 0.0
 
 	def sample_recept(self):
 		self.recept = PeriodRecept(self.percept, self.prior_percept)
@@ -577,7 +595,15 @@ class PeriodConcept:
 
 	def __str__(self):
 		from math import log
-		return "%010.3f / %010.5f <- %s %s" % (self.avg_instant_period, self.instant_period_stddev, self.recept, "" if self.sensor.reference_concept is None else "f_d=%010.5f[%s]" % (self.sensor.reference_concept.percept.r - self.percept.r, bar.signed_bar_log((self.sensor.reference_concept.percept.r - self.percept.r) / self.percept.period, 8)))
+		return "%010.3f / %010.5f <- %s id=%08.3f[%s] sr_d=%08.3f[%s] sr_dd=%08.3f[%s]" % (
+			self.avg_instant_period,
+			self.instant_period_stddev,
+			self.recept,
+			1.0 / abs(self.avg_instant_distance) if self.avg_instant_distance != 0 else 1.0, bar.bar(1.0 / abs(self.avg_instant_distance) if self.avg_instant_distance != 0 else 1.0, 1.0),
+			self.sr_d,  bar.signed_bar_log(self.sr_d,  self.percept.period),
+			self.sr_dd, bar.signed_bar_log(self.sr_dd, self.percept.period),
+			
+		)
 
 	def consonant(self, other, consonance_factor = 1.0, harmonic = 1):
 		self_period  = self.avg_instant_period * harmonic
@@ -769,7 +795,6 @@ def periodic_test(generate = False):
 	frame_size  = int(args.get(2))
 	oversample  = int(args.get(3))
 
-	use_log     = True
 	frame_rate  = sample_rate / frame_size
 	sample_rate /= oversample
 	wave_period = 500.0 / oversample
@@ -778,15 +803,8 @@ def periodic_test(generate = False):
 	sweep_value = 0.99999
 	from math import exp, e
 	cycle_area = 10.0 #/ (1.0 - exp(-1))
-	first_period_factor  = cycle_area
-	first_phase_factor   = first_period_factor * 1
-	second_period_factor = first_period_factor * 2
-	second_phase_factor  = second_period_factor * 1
 
-	third_period_factor  = first_period_factor * 1
-	third_phase_factor   = third_period_factor * 1
-	forth_period_factor  = third_period_factor * 2
-	forth_phase_factor   = forth_period_factor * 1
+	factors = [(2.0 ** factor, 2.0 ** factor) for factor in range(4)]
 
 	tension_factor       = 1.0
 
@@ -794,24 +812,15 @@ def periodic_test(generate = False):
 	log_octave_steps = 12
 	log_octave_count = 5
 
-	linear_freq_start = 50
-	linear_freq_stop  = 1550
-	linear_freq_step  = 25
-
 	wave_change_rate = 0.01
 
 	fs = io.FileSampler(stdin, frame_size, sample_rate)
 
-	if use_log:
-		pa1 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, first_period_factor, first_phase_factor)
-		pa2 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, second_period_factor, second_phase_factor)
-		pa3 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, third_period_factor, third_phase_factor)
-		pa4 = LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, forth_period_factor, forth_phase_factor)
-	else:
-		pa1 = LinearPeriodArray(sample_rate, linear_freq_start, linear_freq_stop, linear_freq_step, first_period_factor, first_phase_factor)
-		pa2 = LinearPeriodArray(sample_rate, linear_freq_start, linear_freq_stop, linear_freq_step, second_period_factor, second_phase_factor)
-
-	#pa1 = EntropicPeriodArray(log_octave_steps * log_octave_count, first_period_factor, first_phase_factor)
+	pas = [
+		LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, period_factor, phase_factor)
+		for period_factor, phase_factor in factors
+		
+	]
 
 	sample = 0
 	frame  = 0
@@ -858,17 +867,37 @@ def periodic_test(generate = False):
 
 		t = float(sample) / sample_rate
 
-		sensations1 = pa1.sample(sample, n)
-		if sensations1[0] is None:
-			continue
+		draw = False
+		if sample >= draw_sample:
+			draw = True
+			draw_sample += float(sample_rate) / frame_rate
+			frame += 1
 
+		if draw:
+			io.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
+
+		prior_sensations = None
+		for pa in pas:
+			sensations = pa.sample(sample, n)
+			if sensations[0] is None:
+				continue
+
+			if prior_sensations:
+				pa.accept_feedback(prior_sensations, True, False)
+
+			#if draw:
+			#	io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations)))
+
+			prior_sensations = sensations
+
+		if draw:
+			io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(prior_sensations)))
 
 		"""
 		pa2.accept_feedback(sensations1, True, False)
 		sensations2 = pa2.sample(sample, n)
 		if sensations2[0] is None:
 			continue
-		"""
 
 		pa3.accept_feedback(sensations1, False, True)
 		sensations3 = pa3.sample(sample, n)
@@ -880,20 +909,16 @@ def periodic_test(generate = False):
 		sensations4 = pa4.sample(sample, n)
 		if sensations4[0] is None:
 			continue
+		"""
 
-		if sample < draw_sample:
-			continue
-
-		draw_sample += float(sample_rate) / frame_rate
-	
-		frame += 1
-
+		"""
 		io.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-		#io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations1)))
+		io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations1)))
 		#io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations2)))
-		io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations3)))
-		io.screen.printf("%s",     "\n".join(str(sensation) for sensation in reversed(sensations4)))
+		#io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations3)))
+		#io.screen.printf("%s",     "\n".join(str(sensation) for sensation in reversed(sensations4)))
+		"""
 		"""
 		report2 = ""
 		max_strength = 0.0
