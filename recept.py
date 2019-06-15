@@ -525,7 +525,7 @@ class PeriodRecept:
 		self.instant_frequency = self.frequency - self.phi_t
 		self.instant_period    = 1.0 / self.instant_frequency
 
-		self.instant_distance = self.phi_t * self.period * self.period_factor
+		#self.instant_distance = self.phi_t * self.period * self.period_factor
 
 	def __str__(self):
 		return "%010.3f @ %010.3f + %010.3f / %08.3f: r=%08.3f[%s] r_d=%08.3f[%s] phi_t=%08.3f[%s]" % (self.instant_period, self.period, self.glissando_factor, self.period_factor, self.phase.r, bar.bar_log(self.phase.r, self.period), self.r_d, bar.signed_bar_log(self.r_d, 1.0 / self.period * 8), self.phi_t, bar.signed_bar(self.phi_t, 0.5))
@@ -548,7 +548,7 @@ class PeriodConcept:
 		self.instant_period_delta_state  = Delta()
 		self.instant_period_stddev_state = ExponentialSmoother(percept.period)
 
-		self.avg_instant_distance_state = ExponentialSmoother(0.0)
+		#self.avg_instant_distance_state = ExponentialSmoother(0.0)
 
 	def receive(self):
 		# average instantaneous period
@@ -562,7 +562,7 @@ class PeriodConcept:
 		# standard deviation of average (dis-convergence on an average instant period)
 		self.instant_period_stddev = self.instant_period_stddev_state.sample(abs(self.instant_period_delta), abs(self.recept.instant_period * self.weight_factor))
 
-		self.avg_instant_distance = self.avg_instant_distance_state.sample(self.recept.instant_distance, self.recept.period * self.weight_factor)
+		#self.avg_instant_distance = self.avg_instant_distance_state.sample(self.recept.instant_distance, self.recept.period * self.weight_factor)
 
 		if self.sensor.reference_concept is not None:
 			other1 = self.sensor.reference_concept
@@ -595,11 +595,11 @@ class PeriodConcept:
 
 	def __str__(self):
 		from math import log
-		return "%010.3f / %010.5f <- %s id=%08.3f[%s] sr_d=%08.3f[%s] sr_dd=%08.3f[%s]" % (
+		return "%010.3f / %010.5f <- %s sr_d=%08.3f[%s] sr_dd=%08.3f[%s]" % (
 			self.avg_instant_period,
 			self.instant_period_stddev,
 			self.recept,
-			1.0 / abs(self.avg_instant_distance) if self.avg_instant_distance != 0 else 1.0, bar.bar(1.0 / abs(self.avg_instant_distance) if self.avg_instant_distance != 0 else 1.0, 1.0),
+			#1.0 / abs(self.avg_instant_distance) if self.avg_instant_distance != 0 else 1.0, bar.bar(1.0 / abs(self.avg_instant_distance) if self.avg_instant_distance != 0 else 1.0, 1.0),
 			self.sr_d,  bar.signed_bar_log(self.sr_d,  self.percept.period),
 			self.sr_dd, bar.signed_bar_log(self.sr_dd, self.percept.period),
 			
@@ -800,12 +800,12 @@ def periodic_test(generate = False):
 	wave_period = 500.0 / oversample
 	wave_power  = 100
 	sweep       = True
-	sweep_value = 0.99999
+	sweep_value = 0.9999
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
 	time_sensitivity_count = 4
-	time_sensitivity_offset = 2
+	time_sensitivity_offset = 4
 	time_sensitivity_exponent = cycle_area
 	factors = [(time_sensitivity_exponent ** (factor - time_sensitivity_offset), time_sensitivity_exponent ** (factor - time_sensitivity_offset)) for factor in range(time_sensitivity_count)]
 
