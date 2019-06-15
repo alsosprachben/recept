@@ -802,9 +802,12 @@ def periodic_test(generate = False):
 	sweep       = True
 	sweep_value = 0.99999
 	from math import exp, e
-	cycle_area = 10.0 #/ (1.0 - exp(-1))
+	cycle_area = 1.0 / (1.0 - exp(-1))
 
-	factors = [(2.0 ** (factor - 4), 2.0 ** (factor - 4)) for factor in range(4)]
+	time_sensitivity_count = 4
+	time_sensitivity_offset = 2
+	time_sensitivity_exponent = cycle_area
+	factors = [(time_sensitivity_exponent ** (factor - time_sensitivity_offset), time_sensitivity_exponent ** (factor - time_sensitivity_offset)) for factor in range(time_sensitivity_count)]
 
 	tension_factor       = 1.0
 
