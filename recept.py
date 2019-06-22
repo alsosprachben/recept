@@ -514,6 +514,7 @@ class PeriodRecept:
 		self.duration  = self.phase.time - self.prior_phase.time
 
 		self.r, self.phi = tau.polar(self.value)
+			
 		if self.duration > 0.0:
 			self.phi_t = self.phi / self.duration
 		else:
@@ -550,6 +551,9 @@ class PeriodConcept:
 
 		#self.avg_instant_distance_state = ExponentialSmoother(0.0)
 
+		self.avg_sr_d_state  = ExponentialSmoother(0.0)
+		self.avg_sr_dd_state = ExponentialSmoother(0.0)
+
 	def receive(self):
 		# average instantaneous period
 		self.avg_instant_period = self.avg_instant_period_state.sample(self.recept.instant_period, self.recept.period * self.weight_factor)
@@ -577,6 +581,9 @@ class PeriodConcept:
 			self.sr_d  = 0.0
 			self.sr_dd = 0.0
 
+		self.avg_sr_d  = self.avg_sr_d_state.sample(self.sr_d, self.recept.period * self.weight_factor)
+		self.avg_sr_dd = self.avg_sr_dd_state.sample(self.sr_dd, self.recept.period * self.weight_factor)
+
 	def sample_recept(self):
 		self.recept = PeriodRecept(self.percept, self.prior_percept)
 		self.receive()
@@ -600,8 +607,8 @@ class PeriodConcept:
 			self.instant_period_stddev,
 			self.recept,
 			#1.0 / abs(self.avg_instant_distance) if self.avg_instant_distance != 0 else 1.0, bar.bar(1.0 / abs(self.avg_instant_distance) if self.avg_instant_distance != 0 else 1.0, 1.0),
-			self.sr_d,  bar.signed_bar_log(self.sr_d,  self.percept.period),
-			self.sr_dd, bar.signed_bar_log(self.sr_dd, self.percept.period),
+			self.avg_sr_d,  bar.signed_bar_log(self.avg_sr_d,  self.percept.period),
+			self.avg_sr_dd, bar.signed_bar_log(self.avg_sr_dd, self.percept.period),
 			
 		)
 
@@ -737,7 +744,7 @@ def event_test():
 
 	sd_list = [
 		SmoothDurationDistribution(duration, 3)
-		for duration in range(1, 10)
+		for duration in range(1, 4)
 	]
 
 	io.screen.clear()
@@ -800,7 +807,7 @@ def periodic_test(generate = False):
 	wave_period = 500.0 / oversample
 	wave_power  = 100
 	sweep       = True
-	sweep_value = 0.9999
+	sweep_value = 0.99999
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
@@ -815,7 +822,7 @@ def periodic_test(generate = False):
 	log_octave_steps = 12
 	log_octave_count = 5
 
-	wave_change_rate = 0.01
+	wave_change_rate = 0.1
 
 	fs = io.FileSampler(stdin, frame_size, sample_rate)
 
@@ -832,32 +839,39 @@ def periodic_test(generate = False):
 
 	draw_sample = sample + float(sample_rate) / frame_rate
 	x = 0.0
+	fade = 0.0
 	io.screen.clear()
 	while True:
 		sample += 1
 
-		if sweep:
-			current_wave_period *= sweep_value
-			if current_wave_period < wave_period / 50:
-				current_wave_period = wave_period
-
-		x += 1.0 / current_wave_period
-
 		if generate:
+			if sweep:
+				current_wave_period *= sweep_value
+				if current_wave_period < wave_period / 8:
+					current_wave_period = wave_period
+
+			x += 1.0 / current_wave_period
+
 			j = int(float(sample) * wave_change_rate / sample_rate) % 3
-			j = 0
+			#j = 0
 
 			from math import pi, cos
 			if j  == 0:
 				diff = 5
 				n =  cos(2.0 * pi * x)         * wave_power / 4
 				#n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
-				n += cos(2.0 * pi * x * 2)         * wave_power / 4
+				#n += cos(2.0 * pi * x * 2)         * wave_power / 4
 				#n += cos(2.0 * pi * x * 2 * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
 			elif j == 1:
 				n = float(wave_power) - (2.0 * wave_power * (x % 1))
 			else:
 				n = wave_power if x % 1 < 0.5 else -wave_power
+
+			if int(sample / sample_rate) % 2 == 1:
+				fade *= 0.9998
+				n *= fade
+			else:
+				fade = 1.0
 		else:
 			# read from file
 			get_sample = lambda fs: float(fs.next()) / (oversample * (2**32)) * 10000 
@@ -889,12 +903,24 @@ def periodic_test(generate = False):
 				pa.accept_feedback(prior_sensations, True, False)
 
 			#if draw:
-			#	io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations)))
+			#	io.screen.printf("%s\n\n", "\n".join("%s %s" % (note(sample_rate, sensation.avg_instant_period, 440.0),  sensation) for sensation in reversed(sensations)))
 
 			prior_sensations = sensations
 
 		if draw:
-			io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(prior_sensations)))
+			io.screen.printf("%s\n\n", "\n".join("%s %s %s %s" % (
+				note(sample_rate, sensation.avg_instant_period, 440.0) if sensation.avg_sr_dd < 0 else " " * 9,
+				bar.signed_bar_log(sensation.percept.r, sensation.percept.period),
+				bar.signed_bar_log(sensation.avg_sr_d,  sensation.percept.period),
+				bar.signed_bar_log(sensation.avg_sr_dd, sensation.percept.period),
+			) for sensation in reversed(prior_sensations)))
+
+			sensation = sorted(prior_sensations, key = lambda sensation: sensation.avg_sr_dd / sensation.percept.period)[0]
+			io.screen.printf(
+				"%s : %s\n",
+				note(sample_rate, sensation.avg_instant_period, 440.0) if sensation.avg_sr_dd < 0 else " " * 9,
+				note(sample_rate, current_wave_period, 440.0),
+			)
 
 		"""
 		pa2.accept_feedback(sensations1, True, False)
