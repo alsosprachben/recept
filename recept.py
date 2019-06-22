@@ -802,6 +802,7 @@ def periodic_test(generate = False):
 	frame_size  = int(args.get(2))
 	oversample  = int(args.get(3))
 
+	A = 415.0
 	frame_rate  = sample_rate / frame_size
 	sample_rate /= oversample
 	wave_period = 500.0 / oversample
@@ -818,7 +819,7 @@ def periodic_test(generate = False):
 
 	tension_factor       = 1.0
 
-	log_base_period = (float(sample_rate) / (440.0 * 2 ** -3))
+	log_base_period = (float(sample_rate) / (A * 2 ** -3))
 	log_octave_steps = 12
 	log_octave_count = 5
 
@@ -903,13 +904,13 @@ def periodic_test(generate = False):
 				pa.accept_feedback(prior_sensations, True, False)
 
 			#if draw:
-			#	io.screen.printf("%s\n\n", "\n".join("%s %s" % (note(sample_rate, sensation.avg_instant_period, 440.0),  sensation) for sensation in reversed(sensations)))
+			#	io.screen.printf("%s\n\n", "\n".join("%s %s" % (note(sample_rate, sensation.avg_instant_period, A),  sensation) for sensation in reversed(sensations)))
 
 			prior_sensations = sensations
 
 		if draw:
 			io.screen.printf("%s\n\n", "\n".join("%s %s %s %s" % (
-				note(sample_rate, sensation.avg_instant_period, 440.0) if sensation.avg_sr_dd < 0 else " " * 9,
+				note(sample_rate, sensation.avg_instant_period, A) if sensation.avg_sr_dd < 0 else " " * 9,
 				bar.signed_bar_log(sensation.percept.r, sensation.percept.period),
 				bar.signed_bar_log(sensation.avg_sr_d,  sensation.percept.period),
 				bar.signed_bar_log(sensation.avg_sr_dd, sensation.percept.period),
@@ -918,8 +919,8 @@ def periodic_test(generate = False):
 			sensation = sorted(prior_sensations, key = lambda sensation: sensation.avg_sr_dd / sensation.percept.period)[0]
 			io.screen.printf(
 				"%s : %s\n",
-				note(sample_rate, sensation.avg_instant_period, 440.0) if sensation.avg_sr_dd < 0 else " " * 9,
-				note(sample_rate, current_wave_period, 440.0),
+				note(sample_rate, sensation.avg_instant_period, A) if sensation.avg_sr_dd < 0 else " " * 9,
+				note(sample_rate, current_wave_period, A),
 			)
 
 		"""
