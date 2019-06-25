@@ -556,7 +556,7 @@ class PeriodConcept:
 
 	def receive(self):
 		# average instantaneous period
-		self.avg_instant_period = self.avg_instant_period_state.sample(self.recept.instant_period, self.recept.period * self.weight_factor)
+		self.avg_instant_period = self.avg_instant_period_state.sample(self.recept.instant_period, self.recept.period * self.weight_factor * 1000)
 		self.avg_instant_period_offset = self.avg_instant_period - self.recept.period
 
 		# deviation of average
@@ -744,7 +744,7 @@ def event_test():
 
 	sd_list = [
 		SmoothDurationDistribution(duration, 3)
-		for duration in range(1, 4)
+		for duration in range(1, 10)
 	]
 
 	io.screen.clear()
@@ -925,7 +925,17 @@ def periodic_test(generate = False):
 				bar.signed_bar_log(sensation.avg_sr_dd, sensation.percept.period),
 			) for sensation in reversed(prior_sensations)))
 
-			sensation = sorted(prior_sensations, key = lambda sensation: sensation.avg_sr_dd / sensation.percept.period)[0]
+			lowest_sensation = None
+			for sensation in reversed(prior_sensations):
+				if lowest_sensation is None and sensation.avg_sr_dd < 0:
+					lowest_sensation = sensation
+			#sensation = sorted(prior_sensations, key = lambda sensation: sensation.avg_sr_dd / sensation.percept.period)[0]
+			if lowest_sensation:
+				io.screen.printf(
+					"%s : %s\n",
+					note(sample_rate, lowest_sensation.avg_instant_period, A) if lowest_sensation.avg_sr_dd < 0 else " " * 9,
+					note(sample_rate, current_wave_period, A),
+				)
 
 			if sensation.avg_sr_dd < 0:
 				if main_freq is None:
@@ -935,11 +945,6 @@ def periodic_test(generate = False):
 			else:
 				main_freq = None
 
-			io.screen.printf(
-				"%s : %s\n",
-				note(sample_rate, sensation.avg_instant_period, A) if sensation.avg_sr_dd < 0 else " " * 9,
-				note(sample_rate, current_wave_period, A),
-			)
 			if main_freq is not None:
 				io.screen.printf(
 					"%s\n",
