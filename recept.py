@@ -937,11 +937,11 @@ def periodic_test(generate = False):
 					note(sample_rate, current_wave_period, A),
 				)
 
-			if sensation.avg_sr_dd < 0:
+			if lowest_sensation and lowest_sensation.avg_sr_dd < 0:
 				if main_freq is None:
-					main_freq = ExponentialSmoother(sensation.avg_instant_period)
+					main_freq = ExponentialSmoother(lowest_sensation.avg_instant_period)
 				else:
-					main_freq.sample(sensation.avg_instant_period, frame_rate)
+					main_freq.sample(lowest_sensation.avg_instant_period, frame_rate)
 			else:
 				main_freq = None
 
