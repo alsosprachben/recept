@@ -556,7 +556,7 @@ class PeriodConcept:
 
 	def receive(self):
 		# average instantaneous period
-		self.avg_instant_period = self.avg_instant_period_state.sample(self.recept.instant_period, self.recept.period * self.weight_factor * 1000)
+		self.avg_instant_period = self.avg_instant_period_state.sample(self.recept.instant_period, self.recept.period * self.weight_factor)
 		self.avg_instant_period_offset = self.avg_instant_period - self.recept.period
 
 		# deviation of average
@@ -780,19 +780,19 @@ def midi_note(sample_rate, period, A4 = 440.0):
 
 	Hz = float(sample_rate) / float(period)
 	try:
-		n = 12.0 * (log(Hz / A4) / log(2))
+		n = 12.0 * (log(Hz / A4) / log(2)) + 80 - 24
 	except ValueError:
 		n = 0
 	return n
 
 def note(sample_rate, period, A4 = 440.0):
-	notes = ["A /A ", "A#/Bb", "B /Cb",  "B#/C ", "C#/Db", "D /D ", "D#/Eb", "E /Fb", "E#/F ", "F#/Gb", "G /G ", "G#/Ab"]
+	notes = ["B#/C ", "C#/Db", "D /D ", "D#/Eb", "E /Fb", "E#/F ", "F#/Gb", "G /G ", "G#/Ab", "A /A ", "A#/Bb", "B /Cb"]
 	from math import floor
 	n = midi_note(sample_rate, period, A4)
 
 	note = int(floor(n + 0.5))
 
-	octave = 5 + note / 12
+	octave = note / 12
 	octave_note = note % 12
 	cents = 100.0 * ((((n) + 0.5) % 1) - 0.5)
 
@@ -828,7 +828,7 @@ def periodic_test(generate = False):
 	tension_factor       = 1.0
 
 	log_base_period = (float(sample_rate) / (A * 2 ** -2))
-	log_octave_steps = 4
+	log_octave_steps = 30
 	log_octave_count = 1
 
 	wave_change_rate = 0.1
@@ -941,7 +941,7 @@ def periodic_test(generate = False):
 				if main_freq is None:
 					main_freq = ExponentialSmoother(lowest_sensation.avg_instant_period)
 				else:
-					main_freq.sample(lowest_sensation.avg_instant_period, frame_rate)
+					main_freq.sample(lowest_sensation.avg_instant_period, frame_rate / 2)
 			else:
 				main_freq = None
 
@@ -950,10 +950,10 @@ def periodic_test(generate = False):
 					"%s\n",
 					note(sample_rate, main_freq.v, A),
 				)
-				midi = 60 + midi_note(sample_rate, main_freq.v, A)
-				io.screen.printf("%s*%s\n", " " * min(80, int(midi)), " " * max(0, (79 - int(midi))))
+				midi = midi_note(sample_rate, lowest_sensation.avg_instant_period, A)
+				io.screen.printf("%s\n", bar.bar(midi - 24, 80, 80))
 			else:
-				io.screen.printf("%s\n%s\n", " " * 80, " " * 80)
+				io.screen.printf("%s\n%s\n%s\n", " " * 80, " " * 80, " " * 80)
 
 		"""
 		pa2.accept_feedback(sensations1, True, False)
