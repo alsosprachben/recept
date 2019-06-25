@@ -768,22 +768,30 @@ def event_test():
 		io.screen.printf("event at time %.3f sample %i: %06.2f\n%s", t, sample, n, "\n".join(str(e) for e in sd_list))
 		io.screen.flush()
 
-def note(sample_rate, period, A4 = 440.0):
+def midi_note(sample_rate, period, A4 = 440.0):
 	"""
 	f = 440 * (2 ^ (n/12)
 	f / 440 = (2 ^ (n/12)
 	log(f / 440) / log(2)  = n/12
 	12 * (log(f / 440 ) / log(2)) = n
 	"""
-	from math import log, floor
 
-	notes = ["A /A ", "A#/Bb", "B /Cb",  "B#/C ", "C#/Db", "D /D ", "D#/Eb", "E /Fb", "E#/F ", "F#/Gb", "G /G ", "G#/Ab"]
+	from math import log
+
 	Hz = float(sample_rate) / float(period)
 	try:
 		n = 12.0 * (log(Hz / A4) / log(2))
 	except ValueError:
 		n = 0
+	return n
+
+def note(sample_rate, period, A4 = 440.0):
+	notes = ["A /A ", "A#/Bb", "B /Cb",  "B#/C ", "C#/Db", "D /D ", "D#/Eb", "E /Fb", "E#/F ", "F#/Gb", "G /G ", "G#/Ab"]
+	from math import floor
+	n = midi_note(sample_rate, period, A4)
+
 	note = int(floor(n + 0.5))
+
 	octave = 5 + note / 12
 	octave_note = note % 12
 	cents = 100.0 * ((((n) + 0.5) % 1) - 0.5)
@@ -803,7 +811,7 @@ def periodic_test(generate = False):
 	oversample  = int(args.get(3))
 
 	A = 415.0
-	frame_rate  = sample_rate / frame_size
+	frame_rate  = float(sample_rate) / frame_size
 	sample_rate /= oversample
 	wave_period = 500.0 / oversample
 	wave_power  = 100
@@ -819,9 +827,9 @@ def periodic_test(generate = False):
 
 	tension_factor       = 1.0
 
-	log_base_period = (float(sample_rate) / (A * 2 ** -3))
-	log_octave_steps = 12
-	log_octave_count = 5
+	log_base_period = (float(sample_rate) / (A * 2 ** -2))
+	log_octave_steps = 4
+	log_octave_count = 1
 
 	wave_change_rate = 0.1
 
@@ -842,6 +850,7 @@ def periodic_test(generate = False):
 	x = 0.0
 	fade = 0.0
 	io.screen.clear()
+	main_freq = None
 	while True:
 		sample += 1
 
@@ -917,11 +926,29 @@ def periodic_test(generate = False):
 			) for sensation in reversed(prior_sensations)))
 
 			sensation = sorted(prior_sensations, key = lambda sensation: sensation.avg_sr_dd / sensation.percept.period)[0]
+
+			if sensation.avg_sr_dd < 0:
+				if main_freq is None:
+					main_freq = ExponentialSmoother(sensation.avg_instant_period)
+				else:
+					main_freq.sample(sensation.avg_instant_period, frame_rate)
+			else:
+				main_freq = None
+
 			io.screen.printf(
 				"%s : %s\n",
 				note(sample_rate, sensation.avg_instant_period, A) if sensation.avg_sr_dd < 0 else " " * 9,
 				note(sample_rate, current_wave_period, A),
 			)
+			if main_freq is not None:
+				io.screen.printf(
+					"%s\n",
+					note(sample_rate, main_freq.v, A),
+				)
+				midi = 60 + midi_note(sample_rate, main_freq.v, A)
+				io.screen.printf("%s*%s\n", " " * min(80, int(midi)), " " * max(0, (79 - int(midi))))
+			else:
+				io.screen.printf("%s\n%s\n", " " * 80, " " * 80)
 
 		"""
 		pa2.accept_feedback(sensations1, True, False)
