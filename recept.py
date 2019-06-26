@@ -828,7 +828,7 @@ def periodic_test(generate = False):
 	tension_factor       = 1.0
 
 	log_base_period = (float(sample_rate) / (A * 2 ** -2))
-	log_octave_steps = 30
+	log_octave_steps = 4
 	log_octave_count = 1
 
 	wave_change_rate = 0.1
@@ -850,6 +850,7 @@ def periodic_test(generate = False):
 	x = 0.0
 	fade = 0.0
 	io.screen.clear()
+	main_freq_state = SmoothDuration(0.25, 10)
 	main_freq = None
 	while True:
 		sample += 1
@@ -892,6 +893,26 @@ def periodic_test(generate = False):
 				supersample -= 1
 			
 
+		prior_sensations = None
+		for pa in pas:
+			sensations = pa.sample(sample, n)
+			if sensations[0] is None:
+				continue
+
+			if prior_sensations:
+				pa.accept_feedback(prior_sensations, True, False)
+
+			prior_sensations = sensations
+
+		lowest_sensation = None
+		for sensation in reversed(prior_sensations):
+			if lowest_sensation is None and sensation.avg_sr_dd < 0:
+				lowest_sensation = sensation
+		#sensation = sorted(prior_sensations, key = lambda sensation: sensation.avg_sr_dd / sensation.percept.period)[0]
+		if lowest_sensation and lowest_sensation.avg_sr_dd < 0:
+			main_freq = main_freq_state.sample(lowest_sensation.avg_instant_period, float(sample) / sample_rate)
+
+		# drawing
 		t = float(sample) / sample_rate
 
 		draw = False
@@ -903,21 +924,6 @@ def periodic_test(generate = False):
 		if draw:
 			io.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-		prior_sensations = None
-		for pa in pas:
-			sensations = pa.sample(sample, n)
-			if sensations[0] is None:
-				continue
-
-			if prior_sensations:
-				pa.accept_feedback(prior_sensations, True, False)
-
-			#if draw:
-			#	io.screen.printf("%s\n\n", "\n".join("%s %s" % (note(sample_rate, sensation.avg_instant_period, A),  sensation) for sensation in reversed(sensations)))
-
-			prior_sensations = sensations
-
-		if draw:
 			io.screen.printf("%s\n\n", "\n".join("%s %s %s %s" % (
 				note(sample_rate, sensation.avg_instant_period, A) if sensation.avg_sr_dd < 0 else " " * 9,
 				bar.signed_bar_log(sensation.percept.r, sensation.percept.period),
@@ -925,35 +931,26 @@ def periodic_test(generate = False):
 				bar.signed_bar_log(sensation.avg_sr_dd, sensation.percept.period),
 			) for sensation in reversed(prior_sensations)))
 
-			lowest_sensation = None
-			for sensation in reversed(prior_sensations):
-				if lowest_sensation is None and sensation.avg_sr_dd < 0:
-					lowest_sensation = sensation
-			#sensation = sorted(prior_sensations, key = lambda sensation: sensation.avg_sr_dd / sensation.percept.period)[0]
 			if lowest_sensation:
 				io.screen.printf(
 					"%s : %s\n",
 					note(sample_rate, lowest_sensation.avg_instant_period, A) if lowest_sensation.avg_sr_dd < 0 else " " * 9,
 					note(sample_rate, current_wave_period, A),
 				)
-
-			if lowest_sensation and lowest_sensation.avg_sr_dd < 0:
-				if main_freq is None:
-					main_freq = ExponentialSmoother(lowest_sensation.avg_instant_period)
-				else:
-					main_freq.sample(lowest_sensation.avg_instant_period, frame_rate / 2)
 			else:
-				main_freq = None
+				io.screen.printf("\n")
 
 			if main_freq is not None:
 				io.screen.printf(
 					"%s\n",
-					note(sample_rate, main_freq.v, A),
+					note(sample_rate, main_freq, A),
 				)
-				midi = midi_note(sample_rate, lowest_sensation.avg_instant_period, A)
+				midi = midi_note(sample_rate, main_freq, A)
+				bend = ((midi + 0.5) % 1.0) - 0.5
 				io.screen.printf("%s\n", bar.bar(midi - 24, 80, 80))
+				io.screen.printf("[%s]\n", bar.signed_bar(bend, 0.5, 20))
 			else:
-				io.screen.printf("%s\n%s\n%s\n", " " * 80, " " * 80, " " * 80)
+				io.screen.printf("%s\n%s\n%s\n%s\n", " " * 80, " " * 80, " " * 80, " " * 80)
 
 		"""
 		pa2.accept_feedback(sensations1, True, False)
