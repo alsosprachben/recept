@@ -23,7 +23,7 @@ class FileSampler:
 			if self.hit_eof:
 				raise StopIteration
 
-		return self.buf.pop()
+		return self.buf.pop(0)
 
 
 escape_clear = "\033[2J"

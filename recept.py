@@ -807,14 +807,15 @@ def periodic_test(generate = False):
 	args = dict(enumerate(argv))
 
 	sample_rate = int(args.get(1))
-	frame_size  = int(args.get(2))
-	oversample  = int(args.get(3))
+	chunk_size  = int(args.get(2))
+	frame_size  = int(args.get(3))
+	oversample  = int(args.get(4))
 
 	A = 415.0
 	frame_rate  = float(sample_rate) / frame_size
 	sample_rate /= oversample
 	wave_period = 500.0 / oversample
-	wave_power  = 100
+	wave_power  = 100   / oversample
 	sweep       = True
 	sweep_value = 0.99999
 	from math import exp, e
@@ -827,13 +828,13 @@ def periodic_test(generate = False):
 
 	tension_factor       = 1.0
 
-	log_base_period = (float(sample_rate) / (A * 2 ** -2))
-	log_octave_steps = 4
-	log_octave_count = 1
+	log_base_period = (float(sample_rate) / (A * 2 ** -3))
+	log_octave_steps = 12
+	log_octave_count = 5
 
 	wave_change_rate = 0.1
 
-	fs = io.FileSampler(stdin, frame_size, sample_rate)
+	fs = io.FileSampler(stdin, chunk_size, sample_rate, 1)
 
 	pas = [
 		LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, period_factor, phase_factor)
@@ -844,13 +845,12 @@ def periodic_test(generate = False):
 	sample = 0
 	frame  = 0
 	current_wave_period = wave_period
-	wave_power /= oversample
 
 	draw_sample = sample + float(sample_rate) / frame_rate
 	x = 0.0
 	fade = 0.0
 	io.screen.clear()
-	main_freq_state = SmoothDuration(0.25, 10)
+	main_freq_state = SmoothDuration(0.1, 100, None, 0.0, current_wave_period)
 	main_freq = None
 	while True:
 		sample += 1
@@ -864,7 +864,7 @@ def periodic_test(generate = False):
 			x += 1.0 / current_wave_period
 
 			j = int(float(sample) * wave_change_rate / sample_rate) % 3
-			#j = 0
+			j = 1
 
 			from math import pi, cos
 			if j  == 0:
