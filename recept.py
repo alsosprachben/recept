@@ -551,8 +551,9 @@ class PeriodConcept:
 
 		#self.avg_instant_distance_state = ExponentialSmoother(0.0)
 
-		self.avg_sr_d_state  = ExponentialSmoother(0.0)
-		self.avg_sr_dd_state = ExponentialSmoother(0.0)
+		self.avg_sr_d_state   = ExponentialSmoother(0.0)
+		self.avg_sr_dd_state  = ExponentialSmoother(0.0)
+		self.avg_sr_c_state   = ExponentialSmoother(0.0)
 
 	def receive(self):
 		# average instantaneous period
@@ -568,6 +569,7 @@ class PeriodConcept:
 
 		#self.avg_instant_distance = self.avg_instant_distance_state.sample(self.recept.instant_distance, self.recept.period * self.weight_factor)
 
+		# scale space derivatives
 		if self.sensor.reference_concept is not None:
 			other1 = self.sensor.reference_concept
 			self.sr_d = other1.percept.r - self.percept.r
@@ -581,8 +583,27 @@ class PeriodConcept:
 			self.sr_d  = 0.0
 			self.sr_dd = 0.0
 
-		self.avg_sr_d  = self.avg_sr_d_state.sample(self.sr_d, self.recept.period * self.weight_factor)
-		self.avg_sr_dd = self.avg_sr_dd_state.sample(self.sr_dd, self.recept.period * self.weight_factor)
+		sr_c = complex(
+			self.sr_d  if self.sr_d  < 0 else 0.0,
+			self.sr_dd if self.sr_dd < 0 else 0.0,
+		)
+
+		self.avg_sr_d   = self.avg_sr_d_state.sample( self.sr_d,   self.recept.period * self.weight_factor)
+		self.avg_sr_dd  = self.avg_sr_dd_state.sample(self.sr_dd,  self.recept.period * self.weight_factor)
+		self.avg_sr_c   = self.avg_sr_c_state.sample(      sr_c,   self.recept.period * self.weight_factor)
+
+		# scale space complex lifecycle
+		"""
+		avg_sr_c = complex(
+			self.avg_sr_d  if self.avg_sr_d  < 0 else 0.0,
+			self.avg_sr_dd if self.avg_sr_dd < 0 else 0.0,
+		)
+		"""
+
+		self.avg_sr_r, self.avg_sr_phi = tau.polar(self.avg_sr_c)
+		self.avg_sr_phi = ((self.avg_sr_phi + 0.5) * 4) - 0.5
+
+
 
 	def sample_recept(self):
 		self.recept = PeriodRecept(self.percept, self.prior_percept)
@@ -830,7 +851,7 @@ def periodic_test(generate = False):
 
 	log_base_period = (float(sample_rate) / (A * 2 ** -3))
 	log_octave_steps = 12
-	log_octave_count = 5
+	log_octave_count = 4
 
 	wave_change_rate = 0.1
 
@@ -909,7 +930,7 @@ def periodic_test(generate = False):
 			if lowest_sensation is None and sensation.avg_sr_dd < 0:
 				lowest_sensation = sensation
 		#sensation = sorted(prior_sensations, key = lambda sensation: sensation.avg_sr_dd / sensation.percept.period)[0]
-		if lowest_sensation and lowest_sensation.avg_sr_dd < 0:
+		if lowest_sensation and (lowest_sensation.avg_sr_dd < 0 or lowest_sensation.avg_sr_d < 0):
 			main_freq = main_freq_state.sample(lowest_sensation.avg_instant_period, float(sample) / sample_rate)
 
 		# drawing
@@ -924,17 +945,19 @@ def periodic_test(generate = False):
 		if draw:
 			io.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-			io.screen.printf("%s\n\n", "\n".join("%s %s %s %s" % (
-				note(sample_rate, sensation.avg_instant_period, A) if sensation.avg_sr_dd < 0 else " " * 9,
-				bar.signed_bar_log(sensation.percept.r, sensation.percept.period),
-				bar.signed_bar_log(sensation.avg_sr_d,  sensation.percept.period),
-				bar.signed_bar_log(sensation.avg_sr_dd, sensation.percept.period),
+			io.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s  " % (
+				note(sample_rate, sensation.avg_instant_period, A) if sensation.avg_sr_dd < 0 or sensation.avg_sr_d < 0 else " " * 9,
+				bar.signed_bar_log(sensation.percept.r,  sensation.percept.period),
+				bar.signed_bar_log(sensation.avg_sr_d,   sensation.percept.period),
+				bar.signed_bar_log(sensation.avg_sr_dd,  sensation.percept.period),
+				bar.bar_log(       sensation.avg_sr_r,   sensation.percept.period),
+				bar.signed_bar_log(sensation.avg_sr_phi, 0.5),
 			) for sensation in reversed(prior_sensations)))
 
 			if lowest_sensation:
 				io.screen.printf(
 					"%s : %s\n",
-					note(sample_rate, lowest_sensation.avg_instant_period, A) if lowest_sensation.avg_sr_dd < 0 else " " * 9,
+					note(sample_rate, lowest_sensation.avg_instant_period, A) if lowest_sensation.avg_sr_dd < 0 or lowest_sensation.avg_sr_d < 0 else " " * 9,
 					note(sample_rate, current_wave_period, A),
 				)
 			else:
