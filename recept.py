@@ -228,7 +228,7 @@ class PhaseDelta:
 		if self.prior_angle is None:
 			delta_value = None
 		else:
-			delta_value = complex_delta(angle_value, prior_angle)
+			delta_value = complex_delta(angle_value, self.prior_angle)
 
 		self.prior_angle = angle_value
 		return delta_value
@@ -554,6 +554,11 @@ class PeriodConcept:
 		self.avg_sr_d_state   = ExponentialSmoother(0.0)
 		self.avg_sr_dd_state  = ExponentialSmoother(0.0)
 		self.avg_sr_c_state   = ExponentialSmoother(0.0)
+		"""
+		self.avg_sr_cd_state  = ExponentialSmoother(0.0)
+		self.sr_cd_state      = PhaseDelta(0.0)
+		self.avg_sr_phi_t_state = Delta(0.0)
+		"""
 
 	def receive(self):
 		# average instantaneous period
@@ -583,26 +588,46 @@ class PeriodConcept:
 			self.sr_d  = 0.0
 			self.sr_dd = 0.0
 
+		# scale space complex lifecycle
+		"""
 		sr_c = complex(
-			self.sr_d  if self.sr_d  < 0 else 0.0,
-			self.sr_dd if self.sr_dd < 0 else 0.0,
+			-self.sr_d  if self.sr_d  < 0 else 0.0,
+			-self.sr_dd if self.sr_dd < 0 else 0.0,
 		)
+		"""
+		"""
+		sr_c = complex(
+			-min(0.0, self.sr_d),
+			-min(0.0, self.sr_dd),
+		)
+		"""
+		"""
+		sr_cd = self.sr_cd_state.sample(sr_c)
+		"""
 
 		self.avg_sr_d   = self.avg_sr_d_state.sample( self.sr_d,   self.recept.period * self.weight_factor)
 		self.avg_sr_dd  = self.avg_sr_dd_state.sample(self.sr_dd,  self.recept.period * self.weight_factor)
-		self.avg_sr_c   = self.avg_sr_c_state.sample(      sr_c,   self.recept.period * self.weight_factor)
-
-		# scale space complex lifecycle
-		"""
-		avg_sr_c = complex(
-			self.avg_sr_d  if self.avg_sr_d  < 0 else 0.0,
-			self.avg_sr_dd if self.avg_sr_dd < 0 else 0.0,
+		#self.avg_sr_c   = self.avg_sr_c_state.sample(      sr_c,   self.recept.period * self.weight_factor)
+		self.avg_sr_c = complex(
+			-min(0.0, self.avg_sr_d),
+			-min(0.0, self.avg_sr_dd),
 		)
+		"""
+		self.avg_sr_cd  = self.avg_sr_cd_state.sample(     sr_cd,  self.recept.period * self.weight_factor)
 		"""
 
 		self.avg_sr_r, self.avg_sr_phi = tau.polar(self.avg_sr_c)
-		self.avg_sr_phi = ((self.avg_sr_phi + 0.5) * 4) - 0.5
+		#self.avg_sr_phi = ((self.avg_sr_phi + 0.5) * 4) - 0.5
 
+		#print self.avg_sr_phi
+
+		"""
+		self.avg_sr_phi_t = self.avg_sr_phi_t_state.sample(self.avg_sr_phi)
+		"""
+		
+		"""
+		self.avg_sr_r_t, self.avg_sr_phi_t = tau.polar(self.avg_sr_cd)
+		"""
 
 
 	def sample_recept(self):
@@ -714,14 +739,6 @@ class LogPeriodArray(PeriodArray):
 			PeriodSensor(period * 2 ** (float(n)/scale), 0.0, period_factor / ((2.0 ** (1.0/scale)) - 1), phase_factor)
 			for n in range(- scale * octaves, 1)
 		]
-		"""
-		self.period_sensors = []
-		for n in range(scale):
-			for o in range(octaves):
-				self.period_sensors.append(
-					PeriodSensor(period * 2 ** ((float(n + o * scale))/scale), 0.0, period_factor / ((2.0 ** (1.0/scale)) - 1), phase_factor)
-				)
-		"""
 
 class LinearPeriodArray(PeriodArray):
 	def __init__(self, sampling_rate, start_frequency, stop_frequency, step_frequency, period_factor = 1, phase_factor = 1):
@@ -951,7 +968,8 @@ def periodic_test(generate = False):
 				bar.signed_bar_log(sensation.avg_sr_d,   sensation.percept.period),
 				bar.signed_bar_log(sensation.avg_sr_dd,  sensation.percept.period),
 				bar.bar_log(       sensation.avg_sr_r,   sensation.percept.period),
-				bar.signed_bar_log(sensation.avg_sr_phi, 0.5),
+				bar.signed_bar(sensation.avg_sr_phi, 0.5),
+				#bar.signed_bar(sensation.avg_sr_phi_t, 0.5),
 			) for sensation in reversed(prior_sensations)))
 
 			if lowest_sensation:
