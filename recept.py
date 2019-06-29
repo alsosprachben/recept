@@ -608,15 +608,30 @@ class PeriodConcept:
 		self.avg_sr_d   = self.avg_sr_d_state.sample( self.sr_d,   self.recept.period * self.weight_factor)
 		self.avg_sr_dd  = self.avg_sr_dd_state.sample(self.sr_dd,  self.recept.period * self.weight_factor)
 		#self.avg_sr_c   = self.avg_sr_c_state.sample(      sr_c,   self.recept.period * self.weight_factor)
+		rise = max(0.0, -self.avg_sr_dd)
+		fall = max(0.0, -self.avg_sr_d)
+		self.avg_sr_r = max(rise, fall)
+		if self.avg_sr_r > 0:
+			if fall < self.avg_sr_r:
+				self.avg_sr_phi = -0.5 * fall / self.avg_sr_r
+			else:
+				self.avg_sr_phi =  0.5 * rise / self.avg_sr_r
+		else:
+			self.avg_sr_phi = -0.5
+	
+		"""	
 		self.avg_sr_c = complex(
 			-min(0.0, self.avg_sr_d),
 			-min(0.0, self.avg_sr_dd),
 		)
 		"""
+		"""
 		self.avg_sr_cd  = self.avg_sr_cd_state.sample(     sr_cd,  self.recept.period * self.weight_factor)
 		"""
 
+		"""
 		self.avg_sr_r, self.avg_sr_phi = tau.polar(self.avg_sr_c)
+		"""
 		#self.avg_sr_phi = ((self.avg_sr_phi + 0.5) * 4) - 0.5
 
 		#print self.avg_sr_phi
@@ -868,7 +883,7 @@ def periodic_test(generate = False):
 
 	log_base_period = (float(sample_rate) / (A * 2 ** -3))
 	log_octave_steps = 12
-	log_octave_count = 4
+	log_octave_count = 5
 
 	wave_change_rate = 0.1
 
@@ -942,6 +957,7 @@ def periodic_test(generate = False):
 
 			prior_sensations = sensations
 
+		"""
 		lowest_sensation = None
 		for sensation in reversed(prior_sensations):
 			if lowest_sensation is None and sensation.avg_sr_dd < 0:
@@ -949,6 +965,7 @@ def periodic_test(generate = False):
 		#sensation = sorted(prior_sensations, key = lambda sensation: sensation.avg_sr_dd / sensation.percept.period)[0]
 		if lowest_sensation and (lowest_sensation.avg_sr_dd < 0 or lowest_sensation.avg_sr_d < 0):
 			main_freq = main_freq_state.sample(lowest_sensation.avg_instant_period, float(sample) / sample_rate)
+		"""
 
 		# drawing
 		t = float(sample) / sample_rate
@@ -972,6 +989,7 @@ def periodic_test(generate = False):
 				#bar.signed_bar(sensation.avg_sr_phi_t, 0.5),
 			) for sensation in reversed(prior_sensations)))
 
+			"""
 			if lowest_sensation:
 				io.screen.printf(
 					"%s : %s\n",
@@ -992,6 +1010,7 @@ def periodic_test(generate = False):
 				io.screen.printf("[%s]\n", bar.signed_bar(bend, 0.5, 20))
 			else:
 				io.screen.printf("%s\n%s\n%s\n%s\n", " " * 80, " " * 80, " " * 80, " " * 80)
+			"""
 
 		"""
 		pa2.accept_feedback(sensations1, True, False)
