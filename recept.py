@@ -553,12 +553,6 @@ class PeriodConcept:
 
 		self.avg_sr_d_state   = ExponentialSmoother(0.0)
 		self.avg_sr_dd_state  = ExponentialSmoother(0.0)
-		self.avg_sr_c_state   = ExponentialSmoother(0.0)
-		"""
-		self.avg_sr_cd_state  = ExponentialSmoother(0.0)
-		self.sr_cd_state      = PhaseDelta(0.0)
-		self.avg_sr_phi_t_state = Delta(0.0)
-		"""
 
 	def receive(self):
 		# average instantaneous period
@@ -589,60 +583,10 @@ class PeriodConcept:
 			self.sr_dd = 0.0
 
 		# scale space complex lifecycle
-		"""
-		sr_c = complex(
-			-self.sr_d  if self.sr_d  < 0 else 0.0,
-			-self.sr_dd if self.sr_dd < 0 else 0.0,
-		)
-		"""
-		"""
-		sr_c = complex(
-			-min(0.0, self.sr_d),
-			-min(0.0, self.sr_dd),
-		)
-		"""
-		"""
-		sr_cd = self.sr_cd_state.sample(sr_c)
-		"""
-
 		self.avg_sr_d   = self.avg_sr_d_state.sample( self.sr_d,   self.recept.period * self.weight_factor)
 		self.avg_sr_dd  = self.avg_sr_dd_state.sample(self.sr_dd,  self.recept.period * self.weight_factor)
-		#self.avg_sr_c   = self.avg_sr_c_state.sample(      sr_c,   self.recept.period * self.weight_factor)
-		rise = max(0.0, -self.avg_sr_dd)
-		fall = max(0.0, -self.avg_sr_d)
-		self.avg_sr_r = max(rise, fall)
-		if self.avg_sr_r > 0:
-			if fall < self.avg_sr_r:
-				self.avg_sr_phi = -0.5 * fall / self.avg_sr_r
-			else:
-				self.avg_sr_phi =  0.5 * rise / self.avg_sr_r
-		else:
-			self.avg_sr_phi = -0.5
-	
-		"""	
-		self.avg_sr_c = complex(
-			-min(0.0, self.avg_sr_d),
-			-min(0.0, self.avg_sr_dd),
-		)
-		"""
-		"""
-		self.avg_sr_cd  = self.avg_sr_cd_state.sample(     sr_cd,  self.recept.period * self.weight_factor)
-		"""
 
-		"""
-		self.avg_sr_r, self.avg_sr_phi = tau.polar(self.avg_sr_c)
-		"""
-		#self.avg_sr_phi = ((self.avg_sr_phi + 0.5) * 4) - 0.5
-
-		#print self.avg_sr_phi
-
-		"""
-		self.avg_sr_phi_t = self.avg_sr_phi_t_state.sample(self.avg_sr_phi)
-		"""
-		
-		"""
-		self.avg_sr_r_t, self.avg_sr_phi_t = tau.polar(self.avg_sr_cd)
-		"""
+		self.avg_sr_sum = (self.avg_sr_d + self.avg_sr_dd) if self.avg_sr_d > 0 and self.avg_sr_dd < 0 else 0.0
 
 
 	def sample_recept(self):
@@ -793,14 +737,14 @@ def event_test():
 	from sys import stdin, stdout
 	from time import time, sleep
 
-	import io
+	import sampler
 
 	sd_list = [
 		SmoothDurationDistribution(duration, 3)
 		for duration in range(1, 10)
 	]
 
-	io.screen.clear()
+	sampler.screen.clear()
 	sample = 0
 	n = None
 	while True:
@@ -818,8 +762,8 @@ def event_test():
 
 		results = [sd.sample(n,  t) for sd in sd_list]
 
-		io.screen.printf("event at time %.3f sample %i: %06.2f\n%s", t, sample, n, "\n".join(str(e) for e in sd_list))
-		io.screen.flush()
+		sampler.screen.printf("event at time %.3f sample %i: %06.2f\n%s", t, sample, n, "\n".join(str(e) for e in sd_list))
+		sampler.screen.flush()
 
 def midi_note(sample_rate, period, A4 = 440.0):
 	"""
@@ -855,7 +799,7 @@ def periodic_test(generate = False):
 	from sys import stdin, stdout, argv
 	from time import time, sleep
 
-	import io
+	import sampler
 
 	args = dict(enumerate(argv))
 
@@ -867,9 +811,10 @@ def periodic_test(generate = False):
 	A = 415.0
 	frame_rate  = float(sample_rate) / frame_size
 	sample_rate /= oversample
-	wave_period = 500.0 / oversample
+	wave_period = A / oversample
 	wave_power  = 100   / oversample
-	sweep       = True
+	plot        = False
+	sweep       = False
 	sweep_value = 0.99999
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
@@ -887,7 +832,7 @@ def periodic_test(generate = False):
 
 	wave_change_rate = 0.1
 
-	fs = io.FileSampler(stdin, chunk_size, sample_rate, 1)
+	fs = sampler.FileSampler(stdin, chunk_size, sample_rate, 1)
 
 	pas = [
 		LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, period_factor, phase_factor)
@@ -902,9 +847,14 @@ def periodic_test(generate = False):
 	draw_sample = sample + float(sample_rate) / frame_rate
 	x = 0.0
 	fade = 0.0
-	io.screen.clear()
+	sampler.screen.clear()
 	main_freq_state = SmoothDuration(0.1, 100, None, 0.0, current_wave_period)
 	main_freq = None
+	if plot:
+		f1 = open("sr_d.dat", "w")
+		f2 = open("sr_dd.dat", "w")
+		f3 = open("sr_ddd.dat", "w")
+
 	while True:
 		sample += 1
 
@@ -917,13 +867,13 @@ def periodic_test(generate = False):
 			x += 1.0 / current_wave_period
 
 			j = int(float(sample) * wave_change_rate / sample_rate) % 3
-			j = 1
+			j = 0
 
 			from math import pi, cos
 			if j  == 0:
-				diff = 5
+				diff = 10
 				n =  cos(2.0 * pi * x)         * wave_power / 4
-				#n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
+				n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
 				#n += cos(2.0 * pi * x * 2)         * wave_power / 4
 				#n += cos(2.0 * pi * x * 2 * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
 			elif j == 1:
@@ -932,8 +882,11 @@ def periodic_test(generate = False):
 				n = wave_power if x % 1 < 0.5 else -wave_power
 
 			if int(sample / sample_rate) % 2 == 1:
-				fade *= 0.9998
-				n *= fade
+				supersample = oversample
+				while supersample > 0:
+					fade *= 0.9998
+					n *= fade
+					supersample -= 1
 			else:
 				fade = 1.0
 		else:
@@ -977,39 +930,46 @@ def periodic_test(generate = False):
 			frame += 1
 
 		if draw:
-			io.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
+			sampler.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-			io.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s  " % (
+			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s  " % (
 				note(sample_rate, sensation.avg_instant_period, A) if sensation.avg_sr_dd < 0 or sensation.avg_sr_d < 0 else " " * 9,
 				bar.signed_bar_log(sensation.percept.r,  sensation.percept.period),
 				bar.signed_bar_log(sensation.avg_sr_d,   sensation.percept.period),
 				bar.signed_bar_log(sensation.avg_sr_dd,  sensation.percept.period),
-				bar.bar_log(       sensation.avg_sr_r,   sensation.percept.period),
-				bar.signed_bar(sensation.avg_sr_phi, 0.5),
+				bar.bar_log(       sensation.avg_sr_sum, sensation.percept.period),
+				#bar.bar_log(       sensation.avg_sr_r,   sensation.percept.period),
+				#bar.signed_bar(sensation.avg_sr_phi, 0.5),
 				#bar.signed_bar(sensation.avg_sr_phi_t, 0.5),
 			) for sensation in reversed(prior_sensations)))
 
+			if plot:
+				f1.write("%r\n" % prior_sensations[-1].avg_sr_d)
+				f2.write("%r\n" % prior_sensations[-1].avg_sr_dd)
+				from math import log
+				f3.write("%r\n" % (prior_sensations[-1].avg_sr_dd + prior_sensations[-1].avg_sr_d) ** 2)
+
 			"""
 			if lowest_sensation:
-				io.screen.printf(
+				sampler.screen.printf(
 					"%s : %s\n",
 					note(sample_rate, lowest_sensation.avg_instant_period, A) if lowest_sensation.avg_sr_dd < 0 or lowest_sensation.avg_sr_d < 0 else " " * 9,
 					note(sample_rate, current_wave_period, A),
 				)
 			else:
-				io.screen.printf("\n")
+				sampler.screen.printf("\n")
 
 			if main_freq is not None:
-				io.screen.printf(
+				sampler.screen.printf(
 					"%s\n",
 					note(sample_rate, main_freq, A),
 				)
 				midi = midi_note(sample_rate, main_freq, A)
 				bend = ((midi + 0.5) % 1.0) - 0.5
-				io.screen.printf("%s\n", bar.bar(midi - 24, 80, 80))
-				io.screen.printf("[%s]\n", bar.signed_bar(bend, 0.5, 20))
+				sampler.screen.printf("%s\n", bar.bar(midi - 24, 80, 80))
+				sampler.screen.printf("[%s]\n", bar.signed_bar(bend, 0.5, 20))
 			else:
-				io.screen.printf("%s\n%s\n%s\n%s\n", " " * 80, " " * 80, " " * 80, " " * 80)
+				sampler.screen.printf("%s\n%s\n%s\n%s\n", " " * 80, " " * 80, " " * 80, " " * 80)
 			"""
 
 		"""
@@ -1031,12 +991,12 @@ def periodic_test(generate = False):
 		"""
 
 		"""
-		io.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
+		sampler.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-		io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations1)))
-		#io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations2)))
-		#io.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations3)))
-		#io.screen.printf("%s",     "\n".join(str(sensation) for sensation in reversed(sensations4)))
+		sampler.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations1)))
+		#sampler.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations2)))
+		#sampler.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations3)))
+		#sampler.screen.printf("%s",     "\n".join(str(sensation) for sensation in reversed(sensations4)))
 		"""
 		"""
 		report2 = ""
@@ -1067,7 +1027,7 @@ def periodic_test(generate = False):
 			report2 += ("%s %s %s %08.3f: %s") % ("+" if in_cluster else "-", note(sample_rate, strongest_instant_period) if in_cluster else "         ", "%08.3f" % strongest_instant_period if in_cluster else "        ", strongest_weight, report)
 		"""
 
-		io.screen.flush()
+		sampler.screen.flush()
 
 def main():
 	from sys import argv, exit

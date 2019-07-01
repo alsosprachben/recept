@@ -1,0 +1,26 @@
+stage, on-edge, on-node, on-phase, off-edge, off-node, off-phase, stage name
+0,      0,       0,       0,        0,        0,        0,        no signal
+1,     +1,      +1,       1,       +1,       +1,        1,        starting
+2,     +1,      -1,       2,       +1,       +1,        1,        started
+
+slow decay
+3b     -1,      -1,       2,       +1,       +1,        1,        reverb        (no spectral bleed)
+4b,    +1,      -1,       1,       +1,       +1,        1,        reverb bounce (no spectral bleed)
+
+tuned decay
+3c,    -1,      -1,       3,       +1,       +1,        1,        stopped       (no spectral bleed)
+4c,    -1,      +1,       4,       +1,       +1,        1,        fade out      (no spectral bleed)
+
+clean stop
+3a,    -1,      -1,       3,       +1,       -1,        2,        stopping         (spectral bleed)
+4a,    -1,      +1,       4,       -1,       -1,        3,        stopped          (spectral bleed)
+5,     -1,      +1,       4,       -1,       +1,        4,        fade out      (no spectral bleed)
+
+
+phases, edge, node
+1, +1, +1
+2, +1, -1
+3, -1, -1
+4, -1, +1
+
+Negative derivative quadrant. 
