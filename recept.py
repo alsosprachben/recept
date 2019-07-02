@@ -585,8 +585,8 @@ class PeriodConcept:
 		# scale space complex lifecycle
 		self.avg_sr_d   = self.avg_sr_d_state.sample( self.sr_d,   self.recept.period * self.weight_factor)
 		self.avg_sr_dd  = self.avg_sr_dd_state.sample(self.sr_dd,  self.recept.period * self.weight_factor)
-
-		self.avg_sr_sum = (self.avg_sr_d + self.avg_sr_dd) if self.avg_sr_d > 0 and self.avg_sr_dd < 0 else 0.0
+		self.avg_sr_c = self.avg_sr_d + self.avg_sr_dd * 1j
+		self.avg_sr_r, self.avg_sr_phi = tau.polar(self.avg_sr_c)
 
 
 	def sample_recept(self):
@@ -813,7 +813,7 @@ def periodic_test(generate = False):
 	sample_rate /= oversample
 	wave_period = A / oversample
 	wave_power  = 100   / oversample
-	plot        = False
+	plot        = True
 	sweep       = False
 	sweep_value = 0.99999
 	from math import exp, e
@@ -826,9 +826,9 @@ def periodic_test(generate = False):
 
 	tension_factor       = 1.0
 
-	log_base_period = (float(sample_rate) / (A * 2 ** -3))
+	log_base_period = (float(sample_rate) / (A * 2 ** -2))
 	log_octave_steps = 12
-	log_octave_count = 5
+	log_octave_count = 4
 
 	wave_change_rate = 0.1
 
@@ -854,6 +854,7 @@ def periodic_test(generate = False):
 		f1 = open("sr_d.dat", "w")
 		f2 = open("sr_dd.dat", "w")
 		f3 = open("sr_ddd.dat", "w")
+		f4 = open("sr_dddd.dat", "w")
 
 	while True:
 		sample += 1
@@ -932,22 +933,21 @@ def periodic_test(generate = False):
 		if draw:
 			sampler.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s  " % (
+			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s " % (
 				note(sample_rate, sensation.avg_instant_period, A) if sensation.avg_sr_dd < 0 or sensation.avg_sr_d < 0 else " " * 9,
 				bar.signed_bar_log(sensation.percept.r,  sensation.percept.period),
 				bar.signed_bar_log(sensation.avg_sr_d,   sensation.percept.period),
 				bar.signed_bar_log(sensation.avg_sr_dd,  sensation.percept.period),
-				bar.bar_log(       sensation.avg_sr_sum, sensation.percept.period),
-				#bar.bar_log(       sensation.avg_sr_r,   sensation.percept.period),
-				#bar.signed_bar(sensation.avg_sr_phi, 0.5),
-				#bar.signed_bar(sensation.avg_sr_phi_t, 0.5),
+				bar.bar_log(       sensation.avg_sr_r,   sensation.percept.period),
+				bar.signed_bar(    sensation.avg_sr_phi, 0.5),
 			) for sensation in reversed(prior_sensations)))
 
 			if plot:
 				f1.write("%r\n" % prior_sensations[-1].avg_sr_d)
 				f2.write("%r\n" % prior_sensations[-1].avg_sr_dd)
 				from math import log
-				f3.write("%r\n" % (prior_sensations[-1].avg_sr_dd + prior_sensations[-1].avg_sr_d) ** 2)
+				f3.write("%r\n" % prior_sensations[-1].avg_sr_r)
+				f4.write("%r\n" % prior_sensations[-1].avg_sr_phi)
 
 			"""
 			if lowest_sensation:
