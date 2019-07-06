@@ -933,13 +933,14 @@ def periodic_test(generate = False):
 		if draw:
 			sampler.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s " % (
+			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s %s " % (
 				note(sample_rate, sensation.avg_instant_period, A) if sensation.avg_sr_dd < 0 or sensation.avg_sr_d < 0 else " " * 9,
 				bar.signed_bar_log(sensation.percept.r,  sensation.percept.period),
 				bar.signed_bar_log(sensation.avg_sr_d,   sensation.percept.period),
 				bar.signed_bar_log(sensation.avg_sr_dd,  sensation.percept.period),
 				bar.bar_log(       sensation.avg_sr_r,   sensation.percept.period),
 				bar.signed_bar(    sensation.avg_sr_phi, 0.5),
+				bar.bar_log(       sensation.avg_sr_r if sensation.avg_sr_phi < 0 else 0.0,   sensation.percept.period),
 			) for sensation in reversed(prior_sensations)))
 
 			if plot:
