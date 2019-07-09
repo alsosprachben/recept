@@ -553,8 +553,16 @@ class PeriodConcept:
 
 		self.avg_sr_d_state   = ExponentialSmoother(0.0)
 		self.avg_sr_dd_state  = ExponentialSmoother(0.0)
+		self.avg_sr_cycle = 0
+		self.avg_sr_phi = 0.0
+		self.sample = 0
+		self.avg_sr_cycle = 0
+		self.prior_beat_cycle = 0
+		self.prior_beat_sample = 0
+		self.beat_period = 0
 
 	def receive(self):
+		self.sample += 1
 		# average instantaneous period
 		self.avg_instant_period = self.avg_instant_period_state.sample(self.recept.instant_period, self.recept.period * self.weight_factor)
 		self.avg_instant_period_offset = self.avg_instant_period - self.recept.period
@@ -583,10 +591,27 @@ class PeriodConcept:
 			self.sr_dd = 0.0
 
 		# scale space complex lifecycle
-		self.avg_sr_d   = self.avg_sr_d_state.sample( self.sr_d,   self.recept.period * self.weight_factor)
-		self.avg_sr_dd  = self.avg_sr_dd_state.sample(self.sr_dd,  self.recept.period * self.weight_factor)
-		self.avg_sr_c = self.avg_sr_d + self.avg_sr_dd * 1j
-		self.avg_sr_r, self.avg_sr_phi = tau.polar(self.avg_sr_c)
+		if self.sr_dd != 0:
+			prev_avg_sr_phi = self.avg_sr_phi
+			self.avg_sr_d   = self.avg_sr_d_state.sample( self.sr_d,   self.recept.period * self.weight_factor)
+			self.avg_sr_dd  = self.avg_sr_dd_state.sample(self.sr_dd,  self.recept.period * self.weight_factor)
+			self.avg_sr_c   = self.avg_sr_d + self.avg_sr_dd * 1j
+			self.avg_sr_r, self.avg_sr_phi = tau.polar(self.avg_sr_c)
+			if self.avg_sr_phi - prev_avg_sr_phi > 0.5:
+				self.avg_sr_cycle -= 1
+				if self.avg_sr_cycle < self.prior_beat_cycle:
+					self.beat_period = self.sample - self.prior_beat_sample
+					self.prior_beat_sample = self.sample
+					self.prior_beat_cycle = self.avg_sr_cycle
+			elif self.avg_sr_phi - prev_avg_sr_phi < -0.5:
+				self.avg_sr_cycle += 1
+		else:
+			self.avg_sr_d  = 0.0
+			self.avg_sr_dd = 0.0
+			self.avg_sr_c  = 0.0
+			self.avg_sr_r  = 0.0
+			self.avg_sr_phi = 0.0
+			self.avg_sr_cycle = 0
 
 
 	def sample_recept(self):
@@ -826,9 +851,9 @@ def periodic_test(generate = False):
 
 	tension_factor       = 1.0
 
-	log_base_period = (float(sample_rate) / (A * 2 ** -2))
+	log_base_period = (float(sample_rate) / (A * 2 ** -1))
 	log_octave_steps = 12
-	log_octave_count = 4
+	log_octave_count = 1
 
 	wave_change_rate = 0.1
 
@@ -930,10 +955,18 @@ def periodic_test(generate = False):
 			draw_sample += float(sample_rate) / frame_rate
 			frame += 1
 
+		if plot:
+			f1.write("%r\n" % prior_sensations[-1].avg_sr_d)
+			f2.write("%r\n" % prior_sensations[-1].avg_sr_dd)
+			from math import log
+			f3.write("%r\n" % prior_sensations[-1].avg_sr_r)
+			f4.write("%r\n" % prior_sensations[-1].avg_sr_phi)
+
+
 		if draw:
 			sampler.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s %s " % (
+			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s %s %s %010.5f %08i %08i " % (
 				note(sample_rate, sensation.avg_instant_period, A) if sensation.avg_sr_dd < 0 or sensation.avg_sr_d < 0 else " " * 9,
 				bar.signed_bar_log(sensation.percept.r,  sensation.percept.period),
 				bar.signed_bar_log(sensation.avg_sr_d,   sensation.percept.period),
@@ -941,14 +974,11 @@ def periodic_test(generate = False):
 				bar.bar_log(       sensation.avg_sr_r,   sensation.percept.period),
 				bar.signed_bar(    sensation.avg_sr_phi, 0.5),
 				bar.bar_log(       sensation.avg_sr_r if sensation.avg_sr_phi < 0 else 0.0,   sensation.percept.period),
+				bar.bar(           float(sample_rate) / sensation.beat_period if sensation.beat_period > 0 else 0.0, 20, 20),
+				float(sample_rate) / sensation.beat_period if sensation.beat_period > 0 else 0.0,
+				sensation.beat_period,
+				- sensation.avg_sr_cycle,
 			) for sensation in reversed(prior_sensations)))
-
-			if plot:
-				f1.write("%r\n" % prior_sensations[-1].avg_sr_d)
-				f2.write("%r\n" % prior_sensations[-1].avg_sr_dd)
-				from math import log
-				f3.write("%r\n" % prior_sensations[-1].avg_sr_r)
-				f4.write("%r\n" % prior_sensations[-1].avg_sr_phi)
 
 			"""
 			if lowest_sensation:
