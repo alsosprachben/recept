@@ -617,7 +617,7 @@ class PeriodScaleSpaceSensor:
 		self.phase = phase
 		self.response_period = response_period
 		self.period_sensors = [
-			PeriodSensor(period, phase, 0.5 * period_factor * scale_factor ** (-scale), phase_factor, initial_value)
+			PeriodSensor(period, phase, period_factor * scale_factor ** (-1-scale), phase_factor, initial_value)
 			for scale in range(3)
 		]
 		self.period_lifecycle = DeriveLifecycle(self.response_period)
@@ -625,7 +625,7 @@ class PeriodScaleSpaceSensor:
 	def sample(self, time, time_value):
 		for period_sensor in self.period_sensors:
 			period_sensor.sample(time, time_value)
-		self.period_lifecycle.sample(self.period_sensors[2].concept.percept.r, self.period_sensors[1].concept.percept.r, self.period_sensors[0].concept.percept.r)
+		self.period_lifecycle.sample(self.period_sensors[0].concept.percept.r, self.period_sensors[1].concept.percept.r, self.period_sensors[2].concept.percept.r)
 		return self.period_sensors[0].concept, self.period_lifecycle
 
 
