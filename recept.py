@@ -76,7 +76,19 @@ class FrequencySmoothing:
 		+ 1j *	self.imag_v.sample(value * self.imag_w.next(), self.imag_w.n * self.wf)
 		)
 
+class MovingAverage:
+	def __init__(self, period):
+		from collections  import deque
+		self.period = period
+		self.window = deque([0.0] * self.period, self.period)
+		self.avg = 0.0
 
+	def sample(self, value):
+		self.avg += value - self.window.popleft()
+
+		self.window.append(value)
+		return self.avg / self.period
+	
 """
 Real-Time, Infinite, Dynamic Windows
 """
@@ -487,17 +499,45 @@ class DeriveLifecycle(Lifecycle):
 		self.dd_avg_state = ExponentialSmoother(0.0)
 		Lifecycle._init(self)
 
-	def sample(self, v1, v2, v3):
+	def derive(self, v1, v2, v3):
 		d1, d2 = v2 - v1, v3 - v2
 		dd     = d2 - d1
 		self.d = d1
 		self.dd = dd
+
+	def sample_direct(self, v1, v2, v3):
+		self.derive(v1, v2, v3)
+		self.c = self.d + self.dd * 1j
+		return Lifecycle.sample(self, self.c)
+		
+	def sample_avg(self, v1, v2, v3):
+		self.derive(v1, v2, v3)
 		
 		self.d_avg = self.d_avg_state.sample(self.d, self.response_factor)
 		self.dd_avg = self.dd_avg_state.sample(self.dd, self.response_factor)
 		self.c_avg = self.d_avg + self.dd_avg * 1j
 		return Lifecycle.sample(self, self.c_avg)
-		
+
+	sample = sample_avg
+
+
+class IterLifecycle(Lifecycle):
+	def __init__(self):
+		self.d_state = Delta()
+		self.dd_state = Delta()
+		Lifecycle._init(self)
+
+	def sample(self, value):
+		self.d  = self.d_state.sample(value)
+		if self.d is None:
+			self.d = 0.0
+		self.dd = self.dd_state.sample(self.d)
+		if self.dd is None:
+			self.dd = 0.0
+		self.c = self.d + self.dd * 1j
+		return Lifecycle.sample(self, self.c)
+
+	
 
 class PeriodConcept:
 	"""Psychological Concept: Persistence of Periodic Value"""
@@ -621,12 +661,14 @@ class PeriodScaleSpaceSensor:
 			for scale in range(3)
 		]
 		self.period_lifecycle = DeriveLifecycle(self.response_period)
+		self.beat_lifecycle = IterLifecycle()
 
 	def sample(self, time, time_value):
 		for period_sensor in self.period_sensors:
 			period_sensor.sample(time, time_value)
 		self.period_lifecycle.sample(self.period_sensors[0].concept.percept.r, self.period_sensors[1].concept.percept.r, self.period_sensors[2].concept.percept.r)
-		return self.period_sensors[0].concept, self.period_lifecycle
+		self.beat_lifecycle.sample(self.period_lifecycle.lifecycle)
+		return self.period_sensors[0].concept, self.period_lifecycle, self.beat_lifecycle
 
 
 class PeriodArray:
@@ -750,7 +792,7 @@ def periodic_test(generate = False):
 
 	fs = sampler.FileSampler(stdin, chunk_size, sample_rate, 1)
 
-	pa = LogPeriodArray(log_base_period, float(sample_rate) / 60, cycle_area, log_octave_steps, log_octave_count)
+	pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, cycle_area, log_octave_steps, log_octave_count)
 
 	sample = 0
 	frame  = 0
@@ -821,18 +863,18 @@ def periodic_test(generate = False):
 			draw_sample += float(sample_rate) / frame_rate
 			frame += 1
 
-		concept, lc = sensations[0]
+		concept, lc, blc = sensations[0]
 		if plot:
 			f1.write("%r\n" % lc.d_avg)
 			f2.write("%r\n" % lc.dd_avg)
-			f3.write("%r\n" % lc.r)
-			f4.write("%r\n" % lc.phi)
+			f3.write("%r\n" % lc.phi)
+			f4.write("%r\n" % blc.phi)
 
 
 		if draw:
 			sampler.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s %s %010.3f " % (
+			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s %s %010.3f %010.3f " % (
 				note(sample_rate, concept.avg_instant_period, A) if lc.dd_avg < 0 or lc.d_avg < 0 else " " * 9,
 				bar.signed_bar_log(concept.percept.r,  concept.percept.period),
 				bar.signed_bar_log(lc.d_avg,   concept.percept.period),
@@ -841,7 +883,8 @@ def periodic_test(generate = False):
 				bar.signed_bar(    lc.phi, 0.5),
 				bar.bar_log(       lc.r if lc.phi < 0 else 0.0, concept.percept.period),
 				- lc.lifecycle,
-			) for concept, lc in reversed(sensations)))
+				- blc.lifecycle,
+			) for concept, lc, blc in reversed(sensations)))
 
 		sampler.screen.flush()
 
