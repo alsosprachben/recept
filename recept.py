@@ -647,40 +647,14 @@ class LogPeriodArray(PeriodArray):
 			for n in range(- scale * octaves, 1)
 		]
 
-"""
 class LinearPeriodArray(PeriodArray):
-	def __init__(self, sampling_rate, start_frequency, stop_frequency, step_frequency, period_factor = 1, phase_factor = 1):
+	def __init__(self, sampling_rate, response_period, scale_factor = 1.75, start_frequency = 50, stop_frequency = 2000, step_frequency = 50, period_factor = 1, phase_factor = 1):
 		self.period_factor = period_factor
 		self.phase_factor  = phase_factor
 		self.period_sensors = [
-			PeriodSensor(1.0 / (float(frequency) / sampling_rate), 0.0, period_factor / (float(step_frequency) / sampling_rate) * (float(frequency) / sampling_rate), phase_factor)
+			PeriodScaleSpaceSensor(1.0 / (float(frequency) / sampling_rate), 0.0, response_period, scale_factor, period_factor / (float(step_frequency) / sampling_rate) * (float(frequency) / sampling_rate), phase_factor)
 			for frequency in reversed(range(start_frequency, stop_frequency, step_frequency))
 		]
-
-class EntropicPeriodArray(PeriodArray):
-	def __init__(self, n = 32, period_factor = 1.0, phase_factor = 1.0):
-		self.n = n
-		self.period_factor = period_factor
-		self.phase_factor  = phase_factor
-		self.period_sensors = [PeriodSensor(8 * 2 ** (float(i) * 10 / n), 0.0, period_factor * n, phase_factor) for i in range(self.n)]
-
-	def sample(self, time, value):
-		sensations = []
-		prev_sensation = None
-		#for sensor in sorted(self.period_sensors, key = lambda sensor: -abs(sensor.sensor.v.v)):
-		for sensor in self.period_sensors:
-			sensation = sensor.sample(time, value)
-			if prev_sensation is not None:
-				sensation.cancel(prev_sensation)
-
-			sensations.append(sensation)
-
-			sensor.update_period_from_sensation(sensation)
-
-			prev_sensation = sensation
-
-		return sensations
-"""
 
 def event_test():
 	from sys import stdin, stdout
@@ -768,15 +742,6 @@ def periodic_test(generate = False):
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
-	"""
-	time_sensitivity_count = 4
-	time_sensitivity_offset = 4
-	time_sensitivity_exponent = cycle_area
-	factors = [(time_sensitivity_exponent ** (factor - time_sensitivity_offset), time_sensitivity_exponent ** (factor - time_sensitivity_offset)) for factor in range(time_sensitivity_count)]
-	"""
-
-	tension_factor       = 1.0
-
 	log_base_period = (float(sample_rate) / (A * 2 ** -1))
 	log_octave_steps = 12
 	log_octave_count = 1
@@ -785,7 +750,7 @@ def periodic_test(generate = False):
 
 	fs = sampler.FileSampler(stdin, chunk_size, sample_rate, 1)
 
-	pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, cycle_area, log_octave_steps, log_octave_count)
+	pa = LogPeriodArray(log_base_period, float(sample_rate) / 60, cycle_area, log_octave_steps, log_octave_count)
 
 	sample = 0
 	frame  = 0
