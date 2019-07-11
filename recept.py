@@ -6,88 +6,6 @@ Infinite Impulse Response (IIR) filters for periodic analysis
 
 import bar
 
-dist               = lambda x, y: (x * x + y * y) ** 0.5
-mult               = lambda x, y: x * y
-safe_div           = lambda n, d: float('inf') if d == 0 else n / d
-key_func           = lambda sensation: sensation.avg_instant_period
-base_sensation     = lambda sensation: sensation.sensor.reference_concept if sensation.sensor.reference_concept is not None else sensation
-base_period        = lambda sensation: base_sensation(sensation).percept.period
-base_power         = lambda sensation: base_sensation(sensation).percept.r
-tension_key_func   = lambda sensation: dist(base_power(sensation), safe_div(sensation.avg_instant_period, abs(sensation.percept.period - sensation.avg_instant_period)))
-intensity_key_func = lambda sensation: mult(base_power(sensation), abs(sensation.recept.r_d))
-tension_func       = lambda sensation, tension_factor: 1.0 / sensation.period_factor * tension_factor
-sensation_ref      = lambda sensation: sensation.sensor.reference_concept
-tension_filter_func = sensation_ref
-"""
-Keyed Sequence Clustering
-"""
-
-def iter_print(sequence):
-	print "A %r" % (sequence,)
-	for element in sequence:
-		print "B %r" % (element,)
-		yield element
-
-def priors(sequence, previous = None):
-	for element in sequence:
-		yield (previous, element)
-		previous = element
-
-def enkey(sequence, key_func):
-	return ((key_func(element) if element is not None else 0, element) for element in sequence)
-
-def keyed_derive(keyed_sequence, previous = None):
-	return ((post_key - pre_key, (pre, post)) for (pre_key, pre), (post_key, post) in priors(keyed_sequence, (0, previous)))
-		
-def keyed_sorted(keyed_sequence):
-	return sorted(keyed_sequence, key = lambda (key, element): key)
-
-def keyed_edged(keyed_sequence, factor = 0.0):
-	return ((cmp(key, factor), element) for key, element in keyed_sequence)
-
-def gather_clusters(sequence, key_func, tension_key_func, tension_filter_func, tension_func, tension_factor = 1.0):
-	sequence_list = list(sequence)
-	tension_key_avg = sum(tension_key_func(e) for e in sequence_list) / len(sequence_list)
-
-	clusters = []
-	cluster = []
-	in_cluster = False
-	for delta, (pre, post) in keyed_derive(keyed_sorted(enkey(sequence_list, key_func))):
-		#print delta, -key_func(post) / post.period_factor * tension_factor
-		if tension_filter_func(post) and delta < tension_factor * tension_key_func(post) / tension_key_avg:
-			# within cluster threshold
-			if not in_cluster:
-				if len(cluster) > 0:
-					cluster.pop()
-					if len(cluster) > 0:
-						clusters.append((False, cluster))
-					cluster = [pre, post]
-				else:
-					cluster = [post]
-			else:
-				cluster.append(post)
-				cluster.sort(key = base_period)
-			in_cluster = True
-		else:
-			# outside cluster threshold
-			if in_cluster:
-				if len(cluster) > 0:
-					clusters.append((True, cluster))
-					cluster.sort(key = base_period)
-				cluster = [post]
-			else:
-				cluster.append(post)
-				cluster.sort(key = base_period)
-
-			in_cluster = False
-
-	if len(cluster) > 0:
-		clusters.append((in_cluster, cluster))
-		cluster.sort(key = base_period)
-
-	return clusters
-		
-
 """
 Pre-computed Windows
 """
@@ -533,6 +451,54 @@ class PeriodRecept:
 
 		
 
+class Lifecycle:
+	"""Complex Lifecycle/Frequency"""
+	def __init__(self):
+		self._init()
+
+	def _init(self):
+		self.r         = 0.0
+		self.phi       = 0.0
+		self.cycle     = 0
+		self.lifecycle = 0.0
+
+	def sample(self, cval):
+		# complex lifecycle
+		prev_phi = self.phi
+		self.r, self.phi = tau.polar(cval)
+		if   self.phi - prev_phi >  0.5:
+			self.cycle -= 1
+		elif self.phi - prev_phi < -0.5:
+			self.cycle += 1
+
+		self.lifecycle = self.cycle + self.phi
+
+		return self.lifecycle
+			
+
+class DeriveLifecycle(Lifecycle):
+	def __init__(self, response_factor = 1000):
+		"""response_factor is the receptor granularity, separating amplitude and phase"""
+		self.response_factor = response_factor
+		self._init()
+
+	def _init(self):
+		self.d_avg_state = ExponentialSmoother(0.0)
+		self.dd_avg_state = ExponentialSmoother(0.0)
+		Lifecycle._init(self)
+
+	def sample(self, v1, v2, v3):
+		d1, d2 = v2 - v1, v3 - v2
+		dd     = d2 - d1
+		self.d = d1
+		self.dd = dd
+		
+		self.d_avg = self.d_avg_state.sample(self.d, self.response_factor)
+		self.dd_avg = self.dd_avg_state.sample(self.dd, self.response_factor)
+		self.c_avg = self.d_avg + self.dd_avg * 1j
+		return Lifecycle.sample(self, self.c_avg)
+		
+
 class PeriodConcept:
 	"""Psychological Concept: Persistence of Periodic Value"""
 
@@ -551,18 +517,7 @@ class PeriodConcept:
 
 		#self.avg_instant_distance_state = ExponentialSmoother(0.0)
 
-		self.avg_sr_d_state   = ExponentialSmoother(0.0)
-		self.avg_sr_dd_state  = ExponentialSmoother(0.0)
-		self.avg_sr_cycle = 0
-		self.avg_sr_phi = 0.0
-		self.sample = 0
-		self.avg_sr_cycle = 0
-		self.prior_beat_cycle = 0
-		self.prior_beat_sample = 0
-		self.beat_period = 0
-
 	def receive(self):
-		self.sample += 1
 		# average instantaneous period
 		self.avg_instant_period = self.avg_instant_period_state.sample(self.recept.instant_period, self.recept.period * self.weight_factor)
 		self.avg_instant_period_offset = self.avg_instant_period - self.recept.period
@@ -575,44 +530,6 @@ class PeriodConcept:
 		self.instant_period_stddev = self.instant_period_stddev_state.sample(abs(self.instant_period_delta), abs(self.recept.instant_period * self.weight_factor))
 
 		#self.avg_instant_distance = self.avg_instant_distance_state.sample(self.recept.instant_distance, self.recept.period * self.weight_factor)
-
-		# scale space derivatives
-		if self.sensor.reference_concept is not None:
-			other1 = self.sensor.reference_concept
-			self.sr_d = other1.percept.r - self.percept.r
-
-			if other1.sensor.reference_concept is not None:
-				other2 = other1.sensor.reference_concept
-				self.sr_dd = other2.sr_d - self.sr_d
-			else:
-				self.sr_dd = 0.0
-		else:
-			self.sr_d  = 0.0
-			self.sr_dd = 0.0
-
-		# scale space complex lifecycle
-		if self.sr_dd != 0:
-			prev_avg_sr_phi = self.avg_sr_phi
-			self.avg_sr_d   = self.avg_sr_d_state.sample( self.sr_d,   self.recept.period * self.weight_factor)
-			self.avg_sr_dd  = self.avg_sr_dd_state.sample(self.sr_dd,  self.recept.period * self.weight_factor)
-			self.avg_sr_c   = self.avg_sr_d + self.avg_sr_dd * 1j
-			self.avg_sr_r, self.avg_sr_phi = tau.polar(self.avg_sr_c)
-			if self.avg_sr_phi - prev_avg_sr_phi > 0.5:
-				self.avg_sr_cycle -= 1
-				if self.avg_sr_cycle < self.prior_beat_cycle:
-					self.beat_period = self.sample - self.prior_beat_sample
-					self.prior_beat_sample = self.sample
-					self.prior_beat_cycle = self.avg_sr_cycle
-			elif self.avg_sr_phi - prev_avg_sr_phi < -0.5:
-				self.avg_sr_cycle += 1
-		else:
-			self.avg_sr_d  = 0.0
-			self.avg_sr_dd = 0.0
-			self.avg_sr_c  = 0.0
-			self.avg_sr_r  = 0.0
-			self.avg_sr_phi = 0.0
-			self.avg_sr_cycle = 0
-
 
 	def sample_recept(self):
 		self.recept = PeriodRecept(self.percept, self.prior_percept)
@@ -632,13 +549,11 @@ class PeriodConcept:
 
 	def __str__(self):
 		from math import log
-		return "%010.3f / %010.5f <- %s sr_d=%08.3f[%s] sr_dd=%08.3f[%s]" % (
+		return "%010.3f / %010.5f <- %s" % (
 			self.avg_instant_period,
 			self.instant_period_stddev,
 			self.recept,
 			#1.0 / abs(self.avg_instant_distance) if self.avg_instant_distance != 0 else 1.0, bar.bar(1.0 / abs(self.avg_instant_distance) if self.avg_instant_distance != 0 else 1.0, 1.0),
-			self.avg_sr_d,  bar.signed_bar_log(self.avg_sr_d,  self.percept.period),
-			self.avg_sr_dd, bar.signed_bar_log(self.avg_sr_dd, self.percept.period),
 			
 		)
 
@@ -677,6 +592,7 @@ class PeriodSensor:
 
 		return self.concept
 
+class ApexPeriodSensor(PeriodSensor):
 	def update_period(self, period):
 		self.period = period
 		self.sensor.update_period(period)
@@ -695,6 +611,24 @@ class ApexPeriodSensor(PeriodSensor):
 		PeriodSensor.__init__(self, period, phase, period_factor, phase_factor, initial_value)
 		self.sensor = ApexTimeSmoothing(period, phase, period_factor, initial_value)
 
+class PeriodScaleSpaceSensor:
+	def __init__(self, period, phase, response_period, scale_factor = 1.75, period_factor = 1.0, phase_factor = 1.0, initial_value = 0.0+0.0j):
+		self.period = period
+		self.phase = phase
+		self.response_period = response_period
+		self.period_sensors = [
+			PeriodSensor(period, phase, 0.5 * period_factor * scale_factor ** (-scale), phase_factor, initial_value)
+			for scale in range(3)
+		]
+		self.period_lifecycle = DeriveLifecycle(self.response_period)
+
+	def sample(self, time, time_value):
+		for period_sensor in self.period_sensors:
+			period_sensor.sample(time, time_value)
+		self.period_lifecycle.sample(self.period_sensors[2].concept.percept.r, self.period_sensors[1].concept.percept.r, self.period_sensors[0].concept.percept.r)
+		return self.period_sensors[0].concept, self.period_lifecycle
+
+
 class PeriodArray:
 	def sample(self, time, value):
 		return [
@@ -702,28 +636,18 @@ class PeriodArray:
 			for period_sensor in self.period_sensors
 		]
 
-	def accept_feedback(self, sensations, reference_concept = True, adjust_period = True):
-		for sensor, concept in zip(self.period_sensors, sensations):
-			if reference_concept:
-				sensor.reference_concept = concept
-
-			if adjust_period:
-				sensor.update_period_from_sensation(concept)
-			
-		
-
-	def by_cluster(self, sensations, tension_factor = 1.0):
-		return gather_clusters(sensations, key_func, tension_key_func, tension_filter_func, tension_func, tension_factor)
-
 class LogPeriodArray(PeriodArray):
-	def __init__(self, period, scale = 12, octaves = 1, period_factor = 1.0, phase_factor = 1.0):
+	def __init__(self, period, response_period, scale_factor = 1.75, scale = 12, octaves = 1, period_factor = 1.0, phase_factor = 1.0):
 		self.period_factor = period_factor
 		self.phase_factor  = phase_factor
+		self.response_period = response_period
+		self.scale_factor = scale_factor
 		self.period_sensors = [
-			PeriodSensor(period * 2 ** (float(n)/scale), 0.0, period_factor / ((2.0 ** (1.0/scale)) - 1), phase_factor)
+			PeriodScaleSpaceSensor(period * 2 ** (float(n)/scale), 0.0, response_period, scale_factor, period_factor / ((2.0 ** (1.0/scale)) - 1), phase_factor)
 			for n in range(- scale * octaves, 1)
 		]
 
+"""
 class LinearPeriodArray(PeriodArray):
 	def __init__(self, sampling_rate, start_frequency, stop_frequency, step_frequency, period_factor = 1, phase_factor = 1):
 		self.period_factor = period_factor
@@ -756,7 +680,7 @@ class EntropicPeriodArray(PeriodArray):
 			prev_sensation = sensation
 
 		return sensations
-
+"""
 
 def event_test():
 	from sys import stdin, stdout
@@ -844,10 +768,12 @@ def periodic_test(generate = False):
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
+	"""
 	time_sensitivity_count = 4
 	time_sensitivity_offset = 4
 	time_sensitivity_exponent = cycle_area
 	factors = [(time_sensitivity_exponent ** (factor - time_sensitivity_offset), time_sensitivity_exponent ** (factor - time_sensitivity_offset)) for factor in range(time_sensitivity_count)]
+	"""
 
 	tension_factor       = 1.0
 
@@ -859,11 +785,7 @@ def periodic_test(generate = False):
 
 	fs = sampler.FileSampler(stdin, chunk_size, sample_rate, 1)
 
-	pas = [
-		LogPeriodArray(log_base_period, log_octave_steps, log_octave_count, period_factor, phase_factor)
-		for period_factor, phase_factor in factors
-		
-	]
+	pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, cycle_area, log_octave_steps, log_octave_count)
 
 	sample = 0
 	frame  = 0
@@ -873,8 +795,6 @@ def periodic_test(generate = False):
 	x = 0.0
 	fade = 0.0
 	sampler.screen.clear()
-	main_freq_state = SmoothDuration(0.1, 100, None, 0.0, current_wave_period)
-	main_freq = None
 	if plot:
 		f1 = open("sr_d.dat", "w")
 		f2 = open("sr_dd.dat", "w")
@@ -925,26 +845,7 @@ def periodic_test(generate = False):
 				supersample -= 1
 			
 
-		prior_sensations = None
-		for pa in pas:
-			sensations = pa.sample(sample, n)
-			if sensations[0] is None:
-				continue
-
-			if prior_sensations:
-				pa.accept_feedback(prior_sensations, True, False)
-
-			prior_sensations = sensations
-
-		"""
-		lowest_sensation = None
-		for sensation in reversed(prior_sensations):
-			if lowest_sensation is None and sensation.avg_sr_dd < 0:
-				lowest_sensation = sensation
-		#sensation = sorted(prior_sensations, key = lambda sensation: sensation.avg_sr_dd / sensation.percept.period)[0]
-		if lowest_sensation and (lowest_sensation.avg_sr_dd < 0 or lowest_sensation.avg_sr_d < 0):
-			main_freq = main_freq_state.sample(lowest_sensation.avg_instant_period, float(sample) / sample_rate)
-		"""
+		sensations = pa.sample(sample, n)
 
 		# drawing
 		t = float(sample) / sample_rate
@@ -955,108 +856,27 @@ def periodic_test(generate = False):
 			draw_sample += float(sample_rate) / frame_rate
 			frame += 1
 
+		concept, lc = sensations[0]
 		if plot:
-			f1.write("%r\n" % prior_sensations[-1].avg_sr_d)
-			f2.write("%r\n" % prior_sensations[-1].avg_sr_dd)
-			from math import log
-			f3.write("%r\n" % prior_sensations[-1].avg_sr_r)
-			f4.write("%r\n" % prior_sensations[-1].avg_sr_phi)
+			f1.write("%r\n" % lc.d_avg)
+			f2.write("%r\n" % lc.dd_avg)
+			f3.write("%r\n" % lc.r)
+			f4.write("%r\n" % lc.phi)
 
 
 		if draw:
 			sampler.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s %s %s %010.5f %08i %08i " % (
-				note(sample_rate, sensation.avg_instant_period, A) if sensation.avg_sr_dd < 0 or sensation.avg_sr_d < 0 else " " * 9,
-				bar.signed_bar_log(sensation.percept.r,  sensation.percept.period),
-				bar.signed_bar_log(sensation.avg_sr_d,   sensation.percept.period),
-				bar.signed_bar_log(sensation.avg_sr_dd,  sensation.percept.period),
-				bar.bar_log(       sensation.avg_sr_r,   sensation.percept.period),
-				bar.signed_bar(    sensation.avg_sr_phi, 0.5),
-				bar.bar_log(       sensation.avg_sr_r if sensation.avg_sr_phi < 0 else 0.0,   sensation.percept.period),
-				bar.bar(           float(sample_rate) / sensation.beat_period if sensation.beat_period > 0 else 0.0, 20, 20),
-				float(sample_rate) / sensation.beat_period if sensation.beat_period > 0 else 0.0,
-				sensation.beat_period,
-				- sensation.avg_sr_cycle,
-			) for sensation in reversed(prior_sensations)))
-
-			"""
-			if lowest_sensation:
-				sampler.screen.printf(
-					"%s : %s\n",
-					note(sample_rate, lowest_sensation.avg_instant_period, A) if lowest_sensation.avg_sr_dd < 0 or lowest_sensation.avg_sr_d < 0 else " " * 9,
-					note(sample_rate, current_wave_period, A),
-				)
-			else:
-				sampler.screen.printf("\n")
-
-			if main_freq is not None:
-				sampler.screen.printf(
-					"%s\n",
-					note(sample_rate, main_freq, A),
-				)
-				midi = midi_note(sample_rate, main_freq, A)
-				bend = ((midi + 0.5) % 1.0) - 0.5
-				sampler.screen.printf("%s\n", bar.bar(midi - 24, 80, 80))
-				sampler.screen.printf("[%s]\n", bar.signed_bar(bend, 0.5, 20))
-			else:
-				sampler.screen.printf("%s\n%s\n%s\n%s\n", " " * 80, " " * 80, " " * 80, " " * 80)
-			"""
-
-		"""
-		pa2.accept_feedback(sensations1, True, False)
-		sensations2 = pa2.sample(sample, n)
-		if sensations2[0] is None:
-			continue
-
-		pa3.accept_feedback(sensations1, False, True)
-		sensations3 = pa3.sample(sample, n)
-		if sensations3[0] is None:
-			continue
-
-		pa4.accept_feedback(sensations1, False, True)
-		pa4.accept_feedback(sensations3, True, False)
-		sensations4 = pa4.sample(sample, n)
-		if sensations4[0] is None:
-			continue
-		"""
-
-		"""
-		sampler.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
-
-		sampler.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations1)))
-		#sampler.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations2)))
-		#sampler.screen.printf("%s\n\n", "\n".join(str(sensation) for sensation in reversed(sensations3)))
-		#sampler.screen.printf("%s",     "\n".join(str(sensation) for sensation in reversed(sensations4)))
-		"""
-		"""
-		report2 = ""
-		max_strength = 0.0
-		avg_strength = sum(sensation.percept.r for sensation in sensations1) / len(sensations1)
-		#dev_strength = avg_strength
-		dev_strength = sum(abs(delta) for delta, (a, b) in keyed_derive(enkey(sensations1, lambda sensation: sensation.percept.r)))
-		#print avg_strength, dev_strength
-		for (in_cluster, tonal_group) in reversed(pa2.by_cluster(sensations2, tension_factor)):#second_level)):
-			strongest                = sorted(tonal_group, key=intensity_key_func)[-1]
-			strongest_weight         = base_power(strongest)
-			strongest_period         = strongest.percept.period
-			strongest_instant_period = strongest.avg_instant_period
-
-			if in_cluster and not strongest_weight > avg_strength + dev_strength / 100:
-				in_cluster = False
-
-			report = ("%s                              " % ("+" if in_cluster else "-")).join("%s\n" % sensation for sensation in reversed(tonal_group))
-
-			#if in_cluster and strongest_weight / strongest_period > max_strength:
-			#	max_strength = strongest_weight / strongest_period
-			#	report2 = note(sample_rate, strongest_period)
-
-			#sum_weighted_period = sum((sensation.percept.r * sensation.period_factor * sensation.avg_instant_period) for sensation in tonal_group)
-			#sum_weights         = sum( sensation.percept.r * sensation.period_factor                                 for sensation in tonal_group)
-			#weighted_period = sum_weighted_period / sum_weights
-
-			report2 += ("%s %s %s %08.3f: %s") % ("+" if in_cluster else "-", note(sample_rate, strongest_instant_period) if in_cluster else "         ", "%08.3f" % strongest_instant_period if in_cluster else "        ", strongest_weight, report)
-		"""
+			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s %s %010.3f " % (
+				note(sample_rate, concept.avg_instant_period, A) if lc.dd_avg < 0 or lc.d_avg < 0 else " " * 9,
+				bar.signed_bar_log(concept.percept.r,  concept.percept.period),
+				bar.signed_bar_log(lc.d_avg,   concept.percept.period),
+				bar.signed_bar_log(lc.dd_avg,  concept.percept.period),
+				bar.bar_log(       lc.r,       concept.percept.period),
+				bar.signed_bar(    lc.phi, 0.5),
+				bar.bar_log(       lc.r if lc.phi < 0 else 0.0, concept.percept.period),
+				- lc.lifecycle,
+			) for concept, lc in reversed(sensations)))
 
 		sampler.screen.flush()
 
