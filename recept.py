@@ -428,7 +428,7 @@ class PeriodPercept:
 		monochord_phi_offset = monochord_offset / target_period
 
 		rotated_value = tau.rect(self.phi + monochord_phi_offset, self.r)
-		return PeriodPercept(target_period, self.period_factor, self.glissando_factor, time, rotated_value)
+		return PeriodPercept(target_period, self.period_factor, self.glissando_factor, self.time, rotated_value)
 
 	def superimpose_from_percept(self, source_percept):
 		self.value += source_percept.value
@@ -682,16 +682,26 @@ class PeriodScaleSpaceSensor:
 		self.period_lifecycle = DeriveLifecycle(self.response_period)
 		self.beat_lifecycle = IterLifecycle()
 
-	def sample(self, time, time_value):
+	def sample_sensor(self, time, time_value):
 		for period_sensor in self.period_sensors:
 			period_sensor.sample(time, time_value)
+
+	def sample_lifecycle(self):
 		self.period_lifecycle.sample(self.period_sensors[0].concept.percept.r, self.period_sensors[1].concept.percept.r, self.period_sensors[2].concept.percept.r)
 		self.beat_lifecycle.sample(self.period_lifecycle.lifecycle)
+
+	def values(self):
 		return self.period_sensors[0].concept, self.period_lifecycle, self.beat_lifecycle
 
+	def sample(self, time, time_value):
+		self.sample_sensor()
+		self.sample_lifecycle()
+		return self.values()
+
 	def superimpose_monochord_on(self, scale_space_sensor, monochord_ratio):
-		for source_percept, target_percept in zip(self.period_sensors, scale_space_sensor.period_sensors):
-			source_percept.superimpose_monochord_on(target_percept, monochord_ratio)
+		for source_sensor, target_sensor in zip(self.period_sensors, scale_space_sensor.period_sensors):
+			source_sensor.concept.percept.superimpose_monochord_on_percept(target_sensor.concept.percept, monochord_ratio)
+			target_sensor.concept.sample_recept()
 
 
 class PeriodArray:
@@ -700,6 +710,22 @@ class PeriodArray:
 			period_sensor.sample(time, value)
 			for period_sensor in self.period_sensors
 		]
+
+	def sample_sensor(self, time, value):
+		for period_sensor in self.period_sensors:
+			period_sensor.sample_sensor(time, value)
+		
+	def sample_lifecycle(self):
+		for period_sensor in self.period_sensors:
+			period_sensor.sample_lifecycle()
+
+	def values(self):
+		return [
+			period_sensor.values()
+			for period_sensor in self.period_sensors
+		]
+
+		
 
 class LogPeriodArray(PeriodArray):
 	def __init__(self, period, response_period, scale_factor = 1.75, scale = 12, octaves = 1, period_factor = 1.0, phase_factor = 1.0):
@@ -804,14 +830,16 @@ def periodic_test(generate = False):
 	plot        = False
 	sweep       = False
 	sweep_value = 0.99999
+	monochord   = True
+	monochord_ratio  = 3.0/2.0 # pythagorean 5th
+	monochord_source =       0 # lowest
+	monochord_target =       7 # even-tempered 5th      
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
-	log_base_period = (float(sample_rate) / (A * 2 ** -3))
-	log_octave_steps = 2
-	log_octave_count = 7
+	log_base_period = (float(sample_rate) / (A * 2 ** -1))
 	log_octave_steps = 12
-	log_octave_count = 5
+	log_octave_count = 1
 
 	wave_change_rate = 0.1
 
@@ -877,7 +905,16 @@ def periodic_test(generate = False):
 				supersample -= 1
 			
 
-		sensations = pa.sample(sample, n)
+		if monochord:
+			pa.sample_sensor(sample, n)
+			monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
+			monochord_target_sensor = list(reversed(pa.period_sensors))[monochord_target]
+			monochord_source_sensor.superimpose_monochord_on(monochord_target_sensor, monochord_ratio)
+			pa.sample_lifecycle()
+			sensations = pa.values()
+		else:
+			sensations = pa.sample(sample, n)
+			
 
 		# drawing
 		t = float(sample) / sample_rate
