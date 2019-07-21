@@ -419,6 +419,25 @@ class PeriodPercept:
 	def _init(self):
 		self.r, self.phi = tau.polar(self.value)
 
+	def produce_monochord_percept(self, target_percept, monochord_ratio):
+		source_period = self.period
+		target_period = target_percept.period
+
+		monochord_period = source_period * monochord_ratio
+		monochord_offset = target_period - monochord_period
+		monochord_phi_offset = monochord_offset / target_period
+
+		rotated_value = tau.rect(self.phi + monochord_phi_offset, self.r)
+		return PeriodPercept(target_period, self.period_factor, self.glissando_factor, time, rotated_value)
+
+	def superimpose_from_percept(self, source_percept):
+		self.value += source_percept.value
+		self._init()
+
+	def superimpose_monochord_on_percept(self, target_percept, monochord_ratio):
+		monochord_percept = self.produce_monochord_percept(target_percept, monochord_ratio)
+		target_percept.superimpose_from_percept(monochord_percept)
+
 	def __str__(self):
 		return "%010.3f + %010.3f / %010.3f: r=%08.3f[%s] phi=%08.3f[%s]" % (self.period, self.glissando_factor, self.period_factor, self.r, bar.bar(self.r, self.period), self.phi, bar.bar_log(self.phi + 0.5, 1.0))
 
@@ -632,7 +651,7 @@ class PeriodSensor:
 
 		return self.concept
 
-class ApexPeriodSensor(PeriodSensor):
+class DynamicPeriodSensor(PeriodSensor):
 	def update_period(self, period):
 		self.period = period
 		self.sensor.update_period(period)
@@ -669,6 +688,10 @@ class PeriodScaleSpaceSensor:
 		self.period_lifecycle.sample(self.period_sensors[0].concept.percept.r, self.period_sensors[1].concept.percept.r, self.period_sensors[2].concept.percept.r)
 		self.beat_lifecycle.sample(self.period_lifecycle.lifecycle)
 		return self.period_sensors[0].concept, self.period_lifecycle, self.beat_lifecycle
+
+	def superimpose_monochord_on(self, scale_space_sensor, monochord_ratio):
+		for source_percept, target_percept in zip(self.period_sensors, scale_space_sensor.period_sensors):
+			source_percept.superimpose_monochord_on(target_percept, monochord_ratio)
 
 
 class PeriodArray:
@@ -778,15 +801,17 @@ def periodic_test(generate = False):
 	sample_rate /= oversample
 	wave_period = A / oversample
 	wave_power  = 100   / oversample
-	plot        = True
+	plot        = False
 	sweep       = False
 	sweep_value = 0.99999
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
-	log_base_period = (float(sample_rate) / (A * 2 ** -1))
+	log_base_period = (float(sample_rate) / (A * 2 ** -3))
+	log_octave_steps = 2
+	log_octave_count = 7
 	log_octave_steps = 12
-	log_octave_count = 1
+	log_octave_count = 5
 
 	wave_change_rate = 0.1
 
@@ -874,15 +899,17 @@ def periodic_test(generate = False):
 		if draw:
 			sampler.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s %s %010.3f %010.3f " % (
+			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s %s %s %s %010.3f %010.3f " % (
 				note(sample_rate, concept.avg_instant_period, A) if lc.dd_avg < 0 or lc.d_avg < 0 else " " * 9,
 				bar.signed_bar_log(concept.percept.r,  concept.percept.period),
 				bar.signed_bar_log(lc.d_avg,   concept.percept.period),
 				bar.signed_bar_log(lc.dd_avg,  concept.percept.period),
 				bar.bar_log(       lc.r,       concept.percept.period),
 				bar.signed_bar(    lc.phi, 0.5),
-				bar.bar_log(       lc.r if lc.phi < 0 else 0.0, concept.percept.period),
-				- lc.lifecycle,
+				bar.bar_log(        lc.r if  lc.phi < 0 else 0.0, concept.percept.period),
+				bar.signed_bar(    blc.phi, 0.5),
+				bar.bar_log(       blc.r if blc.phi < 0 else 0.0, concept.percept.period),
+				-  lc.lifecycle,
 				- blc.lifecycle,
 			) for concept, lc, blc in reversed(sensations)))
 
