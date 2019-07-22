@@ -833,12 +833,12 @@ def periodic_test(generate = False):
 	monochord   = True
 	monochord_ratio  = 3.0/2.0 # pythagorean 5th
 	monochord_source =       0 # lowest
-	monochord_target =       7 # even-tempered 5th      
+	monochord_target =       14 # even-tempered 5th      
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
 	log_base_period = (float(sample_rate) / (A * 2 ** -1))
-	log_octave_steps = 12
+	log_octave_steps = 24
 	log_octave_count = 1
 
 	wave_change_rate = 0.1
@@ -907,9 +907,19 @@ def periodic_test(generate = False):
 
 		if monochord:
 			pa.sample_sensor(sample, n)
+
 			monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
-			monochord_target_sensor = list(reversed(pa.period_sensors))[monochord_target]
-			monochord_source_sensor.superimpose_monochord_on(monochord_target_sensor, monochord_ratio)
+			monochord_target_sensor = list(reversed(pa.period_sensors))[7 * 2]
+			monochord_source_sensor.superimpose_monochord_on(monochord_target_sensor, 3.0/2.0)
+
+			monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
+			monochord_target_sensor = list(reversed(pa.period_sensors))[4 * 2]
+			monochord_source_sensor.superimpose_monochord_on(monochord_target_sensor, 5.0/4.0)
+
+			monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
+			monochord_target_sensor = list(reversed(pa.period_sensors))[9 * 2]
+			monochord_source_sensor.superimpose_monochord_on(monochord_target_sensor, 5.0/3.0)
+
 			pa.sample_lifecycle()
 			sensations = pa.values()
 		else:
