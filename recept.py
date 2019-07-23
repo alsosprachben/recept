@@ -437,24 +437,17 @@ class PeriodPercept:
 	def _init(self):
 		self.r, self.phi = tau.polar(self.value)
 
-	def dup(self):
-		return PeriodPercept(self.period, self.period_factor, self.glissando_factor, self.time, self.value, self.r, self.phi)
+	def produce_monochord_percept(self, monochord):
+		rotated_value, rotated_r, rotated_phi = monochord.rotate(self.value, self.r, self.phi)
 
-	def produce_monochord_percept(self, target_percept, monochord_ratio):
-		source_period = self.period
-		target_period = target_percept.period
-
-		self.monochord = Monochord(source_period, target_period, monochord_ratio)
-		rotated_value, rotated_r, rotated_phi = self.monochord.rotate(self.value, self.r, self.phi)
-
-		return PeriodPercept(target_period, self.period_factor, self.glissando_factor, self.time, rotated_value, rotated_r, rotated_phi)
+		return PeriodPercept(monochord.target_period, self.period_factor, self.glissando_factor, self.time, rotated_value, rotated_r, rotated_phi)
 
 	def superimpose_from_percept(self, source_percept):
 		self.value += source_percept.value
 		self._init()
 
-	def superimpose_monochord_on_percept(self, target_percept, monochord_ratio):
-		monochord_percept = self.produce_monochord_percept(target_percept, monochord_ratio)
+	def superimpose_monochord_on_percept(self, target_percept, monochord):
+		monochord_percept = self.produce_monochord_percept(monochord)
 		target_percept.superimpose_from_percept(monochord_percept)
 
 	def __str__(self):
@@ -717,9 +710,15 @@ class PeriodScaleSpaceSensor:
 		self.sample_lifecycle()
 		return self.values()
 
-	def superimpose_monochord_on(self, scale_space_sensor, monochord_ratio):
-		for source_sensor, target_sensor in zip(self.period_sensors, scale_space_sensor.period_sensors):
-			source_sensor.concept.percept.superimpose_monochord_on_percept(target_sensor.concept.percept, monochord_ratio)
+	def get_monochord(self, target_percept, monochord_ratio):
+		source_period = self.period
+		target_period = target_percept.period
+
+		return Monochord(source_period, target_period, monochord_ratio)
+
+	def superimpose_monochord_on(self, other, monochord):
+		for source_sensor, target_sensor in zip(self.period_sensors, other.period_sensors):
+			source_sensor.concept.percept.superimpose_monochord_on_percept(target_sensor.concept.percept, monochord)
 			target_sensor.concept.sample_recept()
 
 
@@ -849,7 +848,7 @@ def periodic_test(generate = False):
 	plot        = False
 	sweep       = False
 	sweep_value = 0.99999
-	monochord   = True
+	monochord_on   = True
 	monochord_ratio  = 3.0/2.0 # pythagorean 5th
 	monochord_source =       0 # lowest
 	monochord_target =       14 # even-tempered 5th      
@@ -879,6 +878,24 @@ def periodic_test(generate = False):
 		f2 = open("sr_dd.dat", "w")
 		f3 = open("sr_ddd.dat", "w")
 		f4 = open("sr_dddd.dat", "w")
+
+	monochords = []
+	if monochord_on:
+		monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
+		monochord_target_sensor = list(reversed(pa.period_sensors))[7 * 2]
+		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 3.0/2.0)
+		monochords.append((monochord_source_sensor, monochord_target_sensor, monochord))
+
+		monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
+		monochord_target_sensor = list(reversed(pa.period_sensors))[4 * 2]
+		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 5.0/4.0)
+		monochords.append((monochord_source_sensor, monochord_target_sensor, monochord))
+
+		monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
+		monochord_target_sensor = list(reversed(pa.period_sensors))[9 * 2]
+		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 5.0/3.0)
+		monochords.append((monochord_source_sensor, monochord_target_sensor, monochord))
+
 
 	while True:
 		sample += 1
@@ -924,24 +941,11 @@ def periodic_test(generate = False):
 				supersample -= 1
 			
 
-		monochords = []
-		if monochord:
+		if monochord_on:
 			pa.sample_sensor(sample, n)
 
-			monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
-			monochord_target_sensor = list(reversed(pa.period_sensors))[7 * 2]
-			monochord_source_sensor.superimpose_monochord_on(monochord_target_sensor, 3.0/2.0)
-			monochords.append((monochord_source_sensor, monochord_target_sensor))
-
-			monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
-			monochord_target_sensor = list(reversed(pa.period_sensors))[4 * 2]
-			monochord_source_sensor.superimpose_monochord_on(monochord_target_sensor, 5.0/4.0)
-			monochords.append((monochord_source_sensor, monochord_target_sensor))
-
-			monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
-			monochord_target_sensor = list(reversed(pa.period_sensors))[9 * 2]
-			monochord_source_sensor.superimpose_monochord_on(monochord_target_sensor, 5.0/3.0)
-			monochords.append((monochord_source_sensor, monochord_target_sensor))
+			for monochord_source_sensor, monochord_target_sensor, monochord in monochords:
+				monochord_source_sensor.superimpose_monochord_on(monochord_target_sensor, monochord)
 
 			pa.sample_lifecycle()
 			sensations = pa.values()
