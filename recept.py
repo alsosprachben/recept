@@ -496,10 +496,11 @@ class PeriodRecept:
 
 class Lifecycle:
 	"""Complex Lifecycle/Frequency"""
-	def __init__(self):
-		self._init()
+	def __init__(self, max_r = 1.0):
+		self._init(max_r)
 
-	def _init(self):
+	def _init(self, max_r = 1.0):
+		self.max_r     = max_r
 		self.r         = 0.0
 		self.phi       = 0.0
 		self.cycle     = 0
@@ -518,17 +519,23 @@ class Lifecycle:
 
 		return self.lifecycle
 			
+	def __str__(self):
+		return "%s %s %010.3f" % (
+			bar.signed_bar(    self.phi, 0.5, 16),
+			bar.bar_log(       self.r if  self.phi < 0 else 0.0, self.max_r),
+			-  self.lifecycle,
+		)
 
 class DeriveLifecycle(Lifecycle):
-	def __init__(self, response_factor = 1000):
+	def __init__(self, max_r = 1.0, response_factor = 1000):
 		"""response_factor is the receptor granularity, separating amplitude and phase"""
 		self.response_factor = response_factor
-		self._init()
+		self._init(max_r)
 
-	def _init(self):
+	def _init(self, max_r = 1.0):
 		self.d_avg_state = ExponentialSmoother(0.0)
 		self.dd_avg_state = ExponentialSmoother(0.0)
-		Lifecycle._init(self)
+		Lifecycle._init(self, max_r)
 
 	def derive(self, v1, v2, v3):
 		d1, d2 = v2 - v1, v3 - v2
@@ -553,10 +560,10 @@ class DeriveLifecycle(Lifecycle):
 
 
 class IterLifecycle(Lifecycle):
-	def __init__(self):
+	def __init__(self, max_r = 1.0):
 		self.d_state = Delta()
 		self.dd_state = Delta()
-		Lifecycle._init(self)
+		Lifecycle._init(self, max_r)
 
 	def sample(self, value):
 		self.d  = self.d_state.sample(value)
@@ -691,8 +698,8 @@ class PeriodScaleSpaceSensor:
 			PeriodSensor(period, phase, period_factor * scale_factor ** (-1-scale), phase_factor, initial_value)
 			for scale in range(3)
 		]
-		self.period_lifecycle = DeriveLifecycle(self.response_period)
-		self.beat_lifecycle = IterLifecycle()
+		self.period_lifecycle = DeriveLifecycle(self.period, self.response_period)
+		self.beat_lifecycle = IterLifecycle(self.period)
 
 	def sample_sensor(self, time, time_value):
 		for period_sensor in self.period_sensors:
@@ -975,21 +982,18 @@ def periodic_test(generate = False):
 
 			for concept, lc, blc in reversed(sensations):
 				sampler.screen.printf(
-					"%s %s %s %s %s %s %s %s %s %010.3f %010.3f \n",
+					"%s %s %s %s \n",
 					note(sample_rate, concept.avg_instant_period, A) if lc.dd_avg < 0 or lc.d_avg < 0 else " " * 9,
-					bar.signed_bar_log(concept.percept.r,  concept.percept.period),
-					bar.signed_bar_log(lc.d_avg,   concept.percept.period),
-					bar.signed_bar_log(lc.dd_avg,  concept.percept.period),
 					bar.bar_log(       lc.r,       concept.percept.period),
-					bar.signed_bar(    lc.phi, 0.5, 16),
-					bar.bar_log(        lc.r if  lc.phi < 0 else 0.0, concept.percept.period),
-					bar.signed_bar(    blc.phi, 0.5, 16),
-					bar.bar_log(       blc.r if blc.phi < 0 else 0.0, concept.percept.period),
-					-  lc.lifecycle,
-					- blc.lifecycle,
+					lc,
+					blc,
 				)
 
-			#for monochord_source_sensor, monochord_target_sensor in monochords:
+			for monochord_source_sensor, monochord_target_sensor, monochord in monochords:
+				pass
+				#sampler.screen.printf(
+				#	
+				#)
 
 		sampler.screen.flush()
 
