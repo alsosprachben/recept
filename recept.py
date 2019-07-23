@@ -405,30 +405,49 @@ class ApexTimeSmoothing(DynamicTimeSmoothing):
 		else:
 			return (None, None, None)
 
-class PeriodPercept:
-	"""Physical Percept: Representation of Periodic Value"""
-
-	def __init__(self, period,      period_factor,      glissando_factor,      time,      value):
-		(
-		      self.period, self.period_factor, self.glissando_factor, self.time, self.value
-		) = (
-			   period,      period_factor,      glissando_factor,      time,      value
-		)
+class Monochord:
+	def __init__(self, source_period, target_period, ratio):
+		self.source_period = source_period
+		self.target_period = target_period
+		self.ratio = ratio
 		self._init()
 
 	def _init(self):
+		self.period = self.source_period * self.ratio
+		self.offset = self.target_period - self.period
+		self.phi_offset = self.offset / self.target_period
+		self.value = tau.rect(self.phi_offset)
+
+	def rotate(self, cval, r, phi):
+		return (cval * self.value, r, (((phi + self.phi_offset) + 0.5) % 1.0) - 0.5)
+
+
+class PeriodPercept:
+	"""Physical Percept: Representation of Periodic Value"""
+
+	def __init__(self, period,      period_factor,      glissando_factor,      time,      value,      r = None,      phi = None):
+		(
+		      self.period, self.period_factor, self.glissando_factor, self.time, self.value, self.r,        self.phi
+		) = (
+			   period,      period_factor,      glissando_factor,      time,      value,      r,             phi
+		)
+		if r is None:
+			self._init()
+
+	def _init(self):
 		self.r, self.phi = tau.polar(self.value)
+
+	def dup(self):
+		return PeriodPercept(self.period, self.period_factor, self.glissando_factor, self.time, self.value, self.r, self.phi)
 
 	def produce_monochord_percept(self, target_percept, monochord_ratio):
 		source_period = self.period
 		target_period = target_percept.period
 
-		monochord_period = source_period * monochord_ratio
-		monochord_offset = target_period - monochord_period
-		monochord_phi_offset = monochord_offset / target_period
+		self.monochord = Monochord(source_period, target_period, monochord_ratio)
+		rotated_value, rotated_r, rotated_phi = self.monochord.rotate(self.value, self.r, self.phi)
 
-		rotated_value = tau.rect(self.phi + monochord_phi_offset, self.r)
-		return PeriodPercept(target_period, self.period_factor, self.glissando_factor, self.time, rotated_value)
+		return PeriodPercept(target_period, self.period_factor, self.glissando_factor, self.time, rotated_value, rotated_r, rotated_phi)
 
 	def superimpose_from_percept(self, source_percept):
 		self.value += source_percept.value
@@ -905,20 +924,24 @@ def periodic_test(generate = False):
 				supersample -= 1
 			
 
+		monochords = []
 		if monochord:
 			pa.sample_sensor(sample, n)
 
 			monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
 			monochord_target_sensor = list(reversed(pa.period_sensors))[7 * 2]
 			monochord_source_sensor.superimpose_monochord_on(monochord_target_sensor, 3.0/2.0)
+			monochords.append((monochord_source_sensor, monochord_target_sensor))
 
 			monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
 			monochord_target_sensor = list(reversed(pa.period_sensors))[4 * 2]
 			monochord_source_sensor.superimpose_monochord_on(monochord_target_sensor, 5.0/4.0)
+			monochords.append((monochord_source_sensor, monochord_target_sensor))
 
 			monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
 			monochord_target_sensor = list(reversed(pa.period_sensors))[9 * 2]
 			monochord_source_sensor.superimpose_monochord_on(monochord_target_sensor, 5.0/3.0)
+			monochords.append((monochord_source_sensor, monochord_target_sensor))
 
 			pa.sample_lifecycle()
 			sensations = pa.values()
@@ -946,19 +969,23 @@ def periodic_test(generate = False):
 		if draw:
 			sampler.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-			sampler.screen.printf("%s\n\n", "\n".join("%s %s %s %s %s %s %s %s %s %010.3f %010.3f " % (
-				note(sample_rate, concept.avg_instant_period, A) if lc.dd_avg < 0 or lc.d_avg < 0 else " " * 9,
-				bar.signed_bar_log(concept.percept.r,  concept.percept.period),
-				bar.signed_bar_log(lc.d_avg,   concept.percept.period),
-				bar.signed_bar_log(lc.dd_avg,  concept.percept.period),
-				bar.bar_log(       lc.r,       concept.percept.period),
-				bar.signed_bar(    lc.phi, 0.5),
-				bar.bar_log(        lc.r if  lc.phi < 0 else 0.0, concept.percept.period),
-				bar.signed_bar(    blc.phi, 0.5),
-				bar.bar_log(       blc.r if blc.phi < 0 else 0.0, concept.percept.period),
-				-  lc.lifecycle,
-				- blc.lifecycle,
-			) for concept, lc, blc in reversed(sensations)))
+			for concept, lc, blc in reversed(sensations):
+				sampler.screen.printf(
+					"%s %s %s %s %s %s %s %s %s %010.3f %010.3f \n",
+					note(sample_rate, concept.avg_instant_period, A) if lc.dd_avg < 0 or lc.d_avg < 0 else " " * 9,
+					bar.signed_bar_log(concept.percept.r,  concept.percept.period),
+					bar.signed_bar_log(lc.d_avg,   concept.percept.period),
+					bar.signed_bar_log(lc.dd_avg,  concept.percept.period),
+					bar.bar_log(       lc.r,       concept.percept.period),
+					bar.signed_bar(    lc.phi, 0.5, 16),
+					bar.bar_log(        lc.r if  lc.phi < 0 else 0.0, concept.percept.period),
+					bar.signed_bar(    blc.phi, 0.5, 16),
+					bar.bar_log(       blc.r if blc.phi < 0 else 0.0, concept.percept.period),
+					-  lc.lifecycle,
+					- blc.lifecycle,
+				)
+
+			#for monochord_source_sensor, monochord_target_sensor in monochords:
 
 		sampler.screen.flush()
 
