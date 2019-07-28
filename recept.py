@@ -494,88 +494,7 @@ class PeriodRecept:
 
 		
 
-class Lifecycle:
-	"""Complex Lifecycle/Frequency"""
-	def __init__(self, max_r = 1.0):
-		self._init(max_r)
 
-	def _init(self, max_r = 1.0):
-		self.max_r     = max_r
-		self.r         = 0.0
-		self.phi       = 0.0
-		self.cycle     = 0
-		self.lifecycle = 0.0
-
-	def sample(self, cval):
-		# complex lifecycle
-		prev_phi = self.phi
-		self.r, self.phi = tau.polar(cval)
-		if   self.phi - prev_phi >  0.5:
-			self.cycle -= 1
-		elif self.phi - prev_phi < -0.5:
-			self.cycle += 1
-
-		self.lifecycle = self.cycle + self.phi
-
-		return self.lifecycle
-			
-	def __str__(self):
-		return "%s %s %010.3f" % (
-			bar.signed_bar(    self.phi, 0.5, 16),
-			bar.bar_log(       self.r if  self.phi < 0 else 0.0, self.max_r),
-			-  self.lifecycle,
-		)
-
-class DeriveLifecycle(Lifecycle):
-	def __init__(self, max_r = 1.0, response_factor = 1000):
-		"""response_factor is the receptor granularity, separating amplitude and phase"""
-		self.response_factor = response_factor
-		self._init(max_r)
-
-	def _init(self, max_r = 1.0):
-		self.d_avg_state = ExponentialSmoother(0.0)
-		self.dd_avg_state = ExponentialSmoother(0.0)
-		Lifecycle._init(self, max_r)
-
-	def derive(self, v1, v2, v3):
-		d1, d2 = v2 - v1, v3 - v2
-		dd     = d2 - d1
-		self.d = d1
-		self.dd = dd
-
-	def sample_direct(self, v1, v2, v3):
-		self.derive(v1, v2, v3)
-		self.c = self.d + self.dd * 1j
-		return Lifecycle.sample(self, self.c)
-		
-	def sample_avg(self, v1, v2, v3):
-		self.derive(v1, v2, v3)
-		
-		self.d_avg = self.d_avg_state.sample(self.d, self.response_factor)
-		self.dd_avg = self.dd_avg_state.sample(self.dd, self.response_factor)
-		self.c_avg = self.d_avg + self.dd_avg * 1j
-		return Lifecycle.sample(self, self.c_avg)
-
-	sample = sample_avg
-
-
-class IterLifecycle(Lifecycle):
-	def __init__(self, max_r = 1.0):
-		self.d_state = Delta()
-		self.dd_state = Delta()
-		Lifecycle._init(self, max_r)
-
-	def sample(self, value):
-		self.d  = self.d_state.sample(value)
-		if self.d is None:
-			self.d = 0.0
-		self.dd = self.dd_state.sample(self.d)
-		if self.dd is None:
-			self.dd = 0.0
-		self.c = self.d + self.dd * 1j
-		return Lifecycle.sample(self, self.c)
-
-	
 
 class PeriodConcept:
 	"""Psychological Concept: Persistence of Periodic Value"""
@@ -689,6 +608,95 @@ class ApexPeriodSensor(PeriodSensor):
 		PeriodSensor.__init__(self, period, phase, period_factor, phase_factor, initial_value)
 		self.sensor = ApexTimeSmoothing(period, phase, period_factor, initial_value)
 
+"""
+Scale-Space Event Lifecycle Sensors
+"""
+
+class Lifecycle:
+	"""Complex Lifecycle/Frequency"""
+	def __init__(self, max_r = 1.0):
+		self._init(max_r)
+
+	def _init(self, max_r = 1.0):
+		self.max_r     = max_r
+		self.r         = 0.0
+		self.phi       = 0.0
+		self.cycle     = 0
+		self.lifecycle = 0.0
+
+	def sample(self, cval):
+		# complex lifecycle
+		prev_phi = self.phi
+		self.r, self.phi = tau.polar(cval)
+		if   self.phi - prev_phi >  0.5:
+			self.cycle -= 1
+		elif self.phi - prev_phi < -0.5:
+			self.cycle += 1
+
+		self.lifecycle = self.cycle + self.phi
+
+		return self.lifecycle
+			
+	def __str__(self):
+		return "%s %s %010.3f" % (
+			bar.signed_bar(    self.phi, 0.5, 16),
+			bar.bar_log(       self.r if  self.phi < 0 else 0.0, self.max_r),
+			-  self.lifecycle,
+		)
+
+class DeriveLifecycle(Lifecycle):
+	def __init__(self, max_r = 1.0, response_factor = 1000):
+		"""response_factor is the receptor granularity, separating amplitude and phase"""
+		self.response_factor = response_factor
+		self._init(max_r)
+
+	def _init(self, max_r = 1.0):
+		self.d_avg_state = ExponentialSmoother(0.0)
+		self.dd_avg_state = ExponentialSmoother(0.0)
+		Lifecycle._init(self, max_r)
+
+	def derive(self, v1, v2, v3):
+		d1, d2 = v2 - v1, v3 - v2
+		dd     = d2 - d1
+		self.d = d1
+		self.dd = dd
+
+	def sample_direct(self, v1, v2, v3):
+		self.derive(v1, v2, v3)
+		self.c = self.d + self.dd * 1j
+		return Lifecycle.sample(self, self.c)
+		
+	def sample_avg(self, v1, v2, v3):
+		self.derive(v1, v2, v3)
+		
+		self.d_avg = self.d_avg_state.sample(self.d, self.response_factor)
+		self.dd_avg = self.dd_avg_state.sample(self.dd, self.response_factor)
+		self.c_avg = self.d_avg + self.dd_avg * 1j
+		return Lifecycle.sample(self, self.c_avg)
+
+	sample = sample_avg
+
+
+class IterLifecycle(Lifecycle):
+	def __init__(self, max_r = 1.0):
+		self.d_state = Delta()
+		self.dd_state = Delta()
+		Lifecycle._init(self, max_r)
+
+	def sample(self, value):
+		self.d  = self.d_state.sample(value)
+		if self.d is None:
+			self.d = 0.0
+		self.dd = self.dd_state.sample(self.d)
+		if self.dd is None:
+			self.dd = 0.0
+		self.c = self.d + self.dd * 1j
+		return Lifecycle.sample(self, self.c)
+
+"""
+Period Scale-Space
+"""
+	
 class PeriodScaleSpaceSensor:
 	def __init__(self, period, phase, response_period, scale_factor = 1.75, period_factor = 1.0, phase_factor = 1.0, initial_value = 0.0+0.0j):
 		self.period = period
@@ -729,6 +737,7 @@ class PeriodScaleSpaceSensor:
 			target_sensor.concept.sample_recept()
 
 
+
 class PeriodArray:
 	def sample(self, time, value):
 		return [
@@ -749,6 +758,7 @@ class PeriodArray:
 			period_sensor.values()
 			for period_sensor in self.period_sensors
 		]
+
 
 		
 
@@ -771,6 +781,37 @@ class LinearPeriodArray(PeriodArray):
 			PeriodScaleSpaceSensor(1.0 / (float(frequency) / sampling_rate), 0.0, response_period, scale_factor, period_factor / (float(step_frequency) / sampling_rate) * (float(frequency) / sampling_rate), phase_factor)
 			for frequency in reversed(range(start_frequency, stop_frequency, step_frequency))
 		]
+
+"""
+Duration Scale Space
+"""
+
+class DurationArray:
+	def sample(self, time, value):
+		return [
+			duration_sensor.sample(time, value)
+			for duration_sensor in self.duration_sensors
+		]
+	
+
+class DurationScaleSpaceSensor:
+	def __init__(self, target_duration, window_size, response_period, scale_factor = 1.75, prior_value = None, initial_duration = 0.0, initial_value = 0.0, prior_sequence = 0.0):
+		self.duration_sensors = [
+			SmoothDurationDistribution(target_duration * scale_factor ** (-1-scale), window_size, prior_value, initial_duration, initial_Value, prior_sequence)
+			for scale in range(3)
+		]
+
+class LogDurationArray(DurationArray):
+	def __init__(self, target_duration, window_size, response_period, scale_factor = 1.75, steps = 12, octaves = 1):
+		self.response_period = response_period
+		self.scale_factor = scale_factor
+		self.duration_sensors = [
+			DurationScaleSpaceSensor(target_duration * 2 ** (float(n)/scale), octaves, window_size, response_period, scale_factor)
+			for n in range(- scale * octaves, 1)
+		]
+
+		
+
 
 def event_test():
 	from sys import stdin, stdout
@@ -890,17 +931,17 @@ def periodic_test(generate = False):
 	if monochord_on:
 		monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
 		monochord_target_sensor = list(reversed(pa.period_sensors))[7 * 2]
-		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 3.0/2.0)
+		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 2 ** (7.0/12)) #3.0/2.0)
 		monochords.append((monochord_source_sensor, monochord_target_sensor, monochord))
 
 		monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
 		monochord_target_sensor = list(reversed(pa.period_sensors))[4 * 2]
-		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 5.0/4.0)
+		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 2 ** (4.0/12)) #5.0/4.0)
 		monochords.append((monochord_source_sensor, monochord_target_sensor, monochord))
 
 		monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
 		monochord_target_sensor = list(reversed(pa.period_sensors))[9 * 2]
-		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 5.0/3.0)
+		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 2 ** (9.0/12)) #5.0/3.0)
 		monochords.append((monochord_source_sensor, monochord_target_sensor, monochord))
 
 
