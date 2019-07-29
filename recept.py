@@ -721,7 +721,7 @@ class PeriodScaleSpaceSensor:
 		return self.period_sensors[0].concept, self.period_lifecycle, self.beat_lifecycle
 
 	def sample(self, time, time_value):
-		self.sample_sensor()
+		self.sample_sensor(time, time_value)
 		self.sample_lifecycle()
 		return self.values()
 
@@ -816,16 +816,16 @@ class DurationScaleSpaceSensor:
 		self.response_period = response_period
 
 		self.duration_sensors = [
-			SmoothDurationDistribution(target_duration * scale_factor ** (-1-scale), window_size, prior_value, initial_duration, initial_Value, prior_sequence)
+			SmoothDurationDistribution(target_duration * scale_factor ** (-1-scale), window_size, prior_value, initial_duration, initial_value, prior_sequence)
 			for scale in range(3)
 		]
 
-		self.period_lifecycle = DeriveLifecycle(self.period, self.response_period)
-		self.beat_lifecycle = IterLifecycle(self.period)
+		self.period_lifecycle = DeriveLifecycle(self.target_duration, self.response_period)
+		self.beat_lifecycle = IterLifecycle(self.target_duration)
 
 	def sample_sensor(self, time, time_value):
 		for duration_sensor in self.duration_sensors:
-			duration_sensor.sample(time, time_value)
+			duration_sensor.sample(time_value, time)
 
 	def sample_lifecycle(self):
 		self.period_lifecycle.sample(self.duration_sensors[0].v.ave.v, self.duration_sensors[1].v.ave.v, self.duration_sensors[2].v.ave.v)
@@ -835,7 +835,7 @@ class DurationScaleSpaceSensor:
 		return self.duration_sensors[0], self.period_lifecycle, self.beat_lifecycle
 
 	def sample(self, time, time_value):
-		self.sample_sensor()
+		self.sample_sensor(time, time_value)
 		self.sample_lifecycle()
 		return self.values()
 
@@ -858,10 +858,7 @@ def event_test():
 
 	import sampler
 
-	sd_list = [
-		SmoothDurationDistribution(duration, 3)
-		for duration in range(1, 10)
-	]
+	sss = DurationScaleSpaceSensor(3, 3, 3)
 
 	sampler.screen.clear()
 	sample = 0
@@ -879,9 +876,16 @@ def event_test():
 
 		sample += 1
 
-		results = [sd.sample(n,  t) for sd in sd_list]
+		d, lc, blc = sss.sample(t, n)
 
-		sampler.screen.printf("event at time %.3f sample %i: %06.2f\n%s", t, sample, n, "\n".join(str(e) for e in sd_list))
+		sampler.screen.printf("event at time %.3f sample %i: %06.2f\n", t, sample, n)
+		sampler.screen.printf(
+			"%s %s %s \n",
+			d,
+			lc,
+			blc,
+		)
+
 		sampler.screen.flush()
 
 def midi_note(sample_rate, period, A4 = 440.0):
