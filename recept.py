@@ -783,7 +783,7 @@ class LinearPeriodArray(PeriodArray):
 		]
 
 """
-Duration Scale Space
+Duration Scale-Space
 """
 
 class DurationArray:
@@ -792,14 +792,53 @@ class DurationArray:
 			duration_sensor.sample(time, value)
 			for duration_sensor in self.duration_sensors
 		]
-	
+
+	def sample_sensor(self, time, value):
+		for duration_sensor in self.duration_sensors:
+			duration_sensor.sample_sensor(time, value)
+		
+	def sample_lifecycle(self):
+		for duration_sensor in self.duration_sensors:
+			duration_sensor.sample_lifecycle()
+
+	def values(self):
+		return [
+			duration_sensor.values()
+			for duration_sensor in self.duration_sensors
+		]
+
+
 
 class DurationScaleSpaceSensor:
 	def __init__(self, target_duration, window_size, response_period, scale_factor = 1.75, prior_value = None, initial_duration = 0.0, initial_value = 0.0, prior_sequence = 0.0):
+		self.target_duration = target_duration
+		self.window_size = window_size
+		self.response_period = response_period
+
 		self.duration_sensors = [
 			SmoothDurationDistribution(target_duration * scale_factor ** (-1-scale), window_size, prior_value, initial_duration, initial_Value, prior_sequence)
 			for scale in range(3)
 		]
+
+		self.period_lifecycle = DeriveLifecycle(self.period, self.response_period)
+		self.beat_lifecycle = IterLifecycle(self.period)
+
+	def sample_sensor(self, time, time_value):
+		for duration_sensor in self.duration_sensors:
+			duration_sensor.sample(time, time_value)
+
+	def sample_lifecycle(self):
+		self.period_lifecycle.sample(self.duration_sensors[0].v, self.duration_sensors[1].v, self.duration_sensors[2].v)
+		self.beat_lifecycle.sample(self.period_lifecycle.lifecycle)
+
+	def values(self):
+		return self.duration_sensors[0].concept, self.period_lifecycle, self.beat_lifecycle
+
+	def sample(self, time, time_value):
+		self.sample_sensor()
+		self.sample_lifecycle()
+		return self.values()
+
 
 class LogDurationArray(DurationArray):
 	def __init__(self, target_duration, window_size, response_period, scale_factor = 1.75, steps = 12, octaves = 1):
