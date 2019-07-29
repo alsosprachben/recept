@@ -828,7 +828,8 @@ class DurationScaleSpaceSensor:
 			duration_sensor.sample(time_value, time)
 
 	def sample_lifecycle(self):
-		self.period_lifecycle.sample(self.duration_sensors[0].v.ave.v, self.duration_sensors[1].v.ave.v, self.duration_sensors[2].v.ave.v)
+		reciprocate = lambda v: 1.0 / v if v != 0 else float("inf")
+		self.period_lifecycle.sample(reciprocate(self.duration_sensors[0].v.dev.v), reciprocate(self.duration_sensors[1].v.dev.v), reciprocate(self.duration_sensors[2].v.dev.v))
 		self.beat_lifecycle.sample(self.period_lifecycle.lifecycle)
 
 	def values(self):
