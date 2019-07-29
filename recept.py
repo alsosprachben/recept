@@ -828,11 +828,11 @@ class DurationScaleSpaceSensor:
 			duration_sensor.sample(time, time_value)
 
 	def sample_lifecycle(self):
-		self.period_lifecycle.sample(self.duration_sensors[0].v, self.duration_sensors[1].v, self.duration_sensors[2].v)
+		self.period_lifecycle.sample(self.duration_sensors[0].v.ave.v, self.duration_sensors[1].v.ave.v, self.duration_sensors[2].v.ave.v)
 		self.beat_lifecycle.sample(self.period_lifecycle.lifecycle)
 
 	def values(self):
-		return self.duration_sensors[0].concept, self.period_lifecycle, self.beat_lifecycle
+		return self.duration_sensors[0], self.period_lifecycle, self.beat_lifecycle
 
 	def sample(self, time, time_value):
 		self.sample_sensor()
