@@ -861,7 +861,7 @@ def event_test():
 
 	import sampler
 
-	sss = DurationScaleSpaceSensor(1, 100, 3) 
+	sss = DurationScaleSpaceSensor(1, 100, 1) 
 
 	sampler.screen.clear()
 	sample = 0

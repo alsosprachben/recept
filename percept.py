@@ -5,6 +5,8 @@ def main():
 	from time import sleep, time
 	from sys import stdout
 
+	transition = False
+
 	while True:
 		for i in range(400):
 			x = random.normalvariate(-50, 1)
@@ -12,11 +14,12 @@ def main():
 			stdout.write("%f\n" % x)
 			stdout.flush()
 
-		for i in range(100):
-			x = random.normalvariate(-50 + i, 1)
-			sleep(random.expovariate(100.0))
-			stdout.write("%f\n" % x)
-			stdout.flush()
+		if transition:
+			for i in range(100):
+				x = random.normalvariate(-50 + i, 1)
+				sleep(random.expovariate(100.0))
+				stdout.write("%f\n" % x)
+				stdout.flush()
 
 		for i in range(400):
 			x = random.normalvariate(50, 1)
@@ -24,11 +27,12 @@ def main():
 			stdout.write("%f\n" % x)
 			stdout.flush()
 
-		for i in range(100):
-			x = random.normalvariate(50 - i, 1)
-			sleep(random.expovariate(100.0))
-			stdout.write("%f\n" % x)
-			stdout.flush()
+		if transition:
+			for i in range(100):
+				x = random.normalvariate(50 - i, 1)
+				sleep(random.expovariate(100.0))
+				stdout.write("%f\n" % x)
+				stdout.flush()
 
 
 if __name__ == "__main__":
