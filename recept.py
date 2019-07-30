@@ -169,13 +169,11 @@ class Distribution:
 	"""
 
 	def __init__(self, initial_value = 0.0, prior_sequence = None):
-		self.d = Delta(prior_sequence) # derivative (for deviation)
-
 		self.ave = ExponentialSmoother(initial_value) # mean average
 		self.dev = ExponentialSmoother(0.0)           # standard deviation
 
 	def sample(self, value, factor):
-		deviation = abs(self.d.sample(value))
+		deviation = abs(self.ave.v - value)
 
 		self.ave.sample(value, factor)
 		self.dev.sample(deviation, factor)
@@ -626,6 +624,7 @@ class Lifecycle:
 
 	def sample(self, cval):
 		# complex lifecycle
+		self.cval = cval
 		prev_phi = self.phi
 		self.r, self.phi = tau.polar(cval)
 		if   self.phi - prev_phi >  0.5:
@@ -638,8 +637,11 @@ class Lifecycle:
 		return self.lifecycle
 			
 	def __str__(self):
-		return "%s %s %010.3f" % (
-			bar.signed_bar(    self.phi, 0.5, 16),
+		return "%s %s %s %010.3f" % (
+			#bar.signed_bar_log(       self.cval.real, self.max_r),
+			#bar.signed_bar_log(       self.cval.imag, self.max_r),
+			bar.signed_bar(    self.phi, 0.5),
+			bar.bar_log(       self.r, self.max_r),
 			bar.bar_log(       self.r if  self.phi < 0 else 0.0, self.max_r),
 			-  self.lifecycle,
 		)
@@ -859,7 +861,7 @@ def event_test():
 
 	import sampler
 
-	sss = DurationScaleSpaceSensor(3, 3, 3)
+	sss = DurationScaleSpaceSensor(1, 100, 3) 
 
 	sampler.screen.clear()
 	sample = 0

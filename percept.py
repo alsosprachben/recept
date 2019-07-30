@@ -6,15 +6,27 @@ def main():
 	from sys import stdout
 
 	while True:
-		for i in range(50):
-			x = random.normalvariate(10, 5)
-			sleep(random.expovariate(10.0))
+		for i in range(400):
+			x = random.normalvariate(-50, 1)
+			sleep(random.expovariate(100.0))
 			stdout.write("%f\n" % x)
 			stdout.flush()
 
-		for i in range(50):
-			x = random.normalvariate(50, 25)
-			sleep(random.expovariate(10.0))
+		for i in range(100):
+			x = random.normalvariate(-50 + i, 1)
+			sleep(random.expovariate(100.0))
+			stdout.write("%f\n" % x)
+			stdout.flush()
+
+		for i in range(400):
+			x = random.normalvariate(50, 1)
+			sleep(random.expovariate(100.0))
+			stdout.write("%f\n" % x)
+			stdout.flush()
+
+		for i in range(100):
+			x = random.normalvariate(50 - i, 1)
+			sleep(random.expovariate(100.0))
 			stdout.write("%f\n" % x)
 			stdout.flush()
 
