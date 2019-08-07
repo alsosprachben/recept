@@ -1105,7 +1105,8 @@ def periodic_test(generate = False):
 
 			for concept, lc, blc in reversed(sensations):
 				sampler.screen.printf(
-					"%s %s %s \n",
+					"%s %s %s %s \n",
+					note(sample_rate, concept.percept.period, A),
 					note(sample_rate, concept.avg_instant_period, A) if lc.dd_avg < 0 or lc.d_avg < 0 else " " * 9,
 					bar.bar_log(       lc.r,       concept.percept.period),
 					lc,
