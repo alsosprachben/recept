@@ -637,9 +637,9 @@ class Lifecycle:
 		return self.lifecycle
 			
 	def __str__(self):
-		return "%s %s %s %010.3f" % (
-			#bar.signed_bar_log(       self.cval.real, self.max_r),
-			#bar.signed_bar_log(       self.cval.imag, self.max_r),
+		return "%s %s %s %s %s %010.3f" % (
+			bar.signed_bar_log(       self.cval.real, self.max_r),
+			bar.signed_bar_log(       self.cval.imag, self.max_r),
 			bar.signed_bar(    self.phi, 0.5),
 			bar.bar_log(       self.r, self.max_r),
 			bar.bar_log(       self.r if  self.phi < 0 else 0.0, self.max_r),
@@ -818,7 +818,7 @@ class DurationScaleSpaceSensor:
 		self.response_period = response_period
 
 		self.duration_sensors = [
-			SmoothDurationDistribution(target_duration * scale_factor ** (-1-scale), window_size, prior_value, initial_duration, initial_value, prior_sequence)
+			SmoothDurationDistribution(target_duration * scale_factor ** (-scale), window_size, prior_value, initial_duration, initial_value, prior_sequence)
 			for scale in range(3)
 		]
 
@@ -861,7 +861,7 @@ def event_test():
 
 	import sampler
 
-	sss = DurationScaleSpaceSensor(1, 100, 1) 
+	sss = DurationScaleSpaceSensor(.2, 100.0, 5.0) 
 
 	sampler.screen.clear()
 	sample = 0
@@ -900,10 +900,11 @@ def midi_note(sample_rate, period, A4 = 440.0):
 	"""
 
 	from math import log
+	n_A4 = 69
 
 	Hz = float(sample_rate) / float(period)
 	try:
-		n = 12.0 * (log(Hz / A4) / log(2)) + 80 - 24
+		n = 12.0 * (log(Hz / A4) / log(2)) + n_A4
 	except ValueError:
 		n = 0
 	return n
@@ -934,7 +935,8 @@ def periodic_test(generate = False):
 	frame_size  = int(args.get(3))
 	oversample  = int(args.get(4))
 
-	A = 415.0
+	A = 440.0
+	C = A * 2 ** ((-12 + 3.0)/12.0)
 	frame_rate  = float(sample_rate) / frame_size
 	sample_rate /= oversample
 	wave_period = A / oversample
@@ -949,7 +951,7 @@ def periodic_test(generate = False):
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
-	log_base_period = (float(sample_rate) / (A * 2 ** -1))
+	log_base_period = (float(sample_rate) / (C * 2 ** 0))
 	log_octave_steps = 24
 	log_octave_count = 1
 
@@ -1069,11 +1071,11 @@ def periodic_test(generate = False):
 
 			for concept, lc, blc in reversed(sensations):
 				sampler.screen.printf(
-					"%s %s %s %s \n",
+					"%s %s %s \n",
 					note(sample_rate, concept.avg_instant_period, A) if lc.dd_avg < 0 or lc.d_avg < 0 else " " * 9,
 					bar.bar_log(       lc.r,       concept.percept.period),
 					lc,
-					blc,
+					#blc,
 				)
 
 			for monochord_source_sensor, monochord_target_sensor, monochord in monochords:
