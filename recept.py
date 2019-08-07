@@ -741,6 +741,23 @@ class PeriodScaleSpaceSensor:
 
 
 class PeriodArray:
+	def __init__(self, response_period, octave_bandwidth = 12, scale_factor = 1.75, period_factor = 1.0, phase_factor = 1.0):
+		self.period_factor = period_factor
+		self.phase_factor  = phase_factor
+		self.response_period = response_period
+		self.scale_factor = scale_factor
+		self.octave_bandwidth = octave_bandwidth
+		self.period_bandwidth = 1.0 / ((2.0 ** (1.0 / self.octave_bandwidth)) - 1)
+		self.period_sensors = []
+		self.populate()
+
+	def add_period_sensor(self, period, bandwidth_factor = 1.0):
+		self.period_sensors.append(PeriodScaleSpaceSensor(period, 0.0, self.response_period, self.scale_factor, self.period_bandwidth * bandwidth_factor, self.phase_factor))
+
+	def populate(self):
+		"stub"
+		return
+
 	def sample(self, time, value):
 		return [
 			period_sensor.sample(time, value)
@@ -765,15 +782,31 @@ class PeriodArray:
 		
 
 class LogPeriodArray(PeriodArray):
-	def __init__(self, period, response_period, scale_factor = 1.75, scale = 12, octaves = 1, period_factor = 1.0, phase_factor = 1.0):
-		self.period_factor = period_factor
-		self.phase_factor  = phase_factor
-		self.response_period = response_period
-		self.scale_factor = scale_factor
-		self.period_sensors = [
-			PeriodScaleSpaceSensor(period * 2 ** (float(n)/scale), 0.0, response_period, scale_factor, period_factor / ((2.0 ** (1.0/scale)) - 1), phase_factor)
-			for n in range(- scale * octaves, 1)
-		]
+	def __init__(self, period, response_period, octaves = 1, octave_bandwidth = 12, scale_factor = 1.75, period_factor = 1.0, phase_factor = 1.0):
+		self.period = period
+		self.octaves = octaves
+		PeriodArray.__init__(self, response_period, octave_bandwidth, scale_factor, period_factor, phase_factor)
+
+	def populate(self):
+		for n in range(- self.octave_bandwidth * self.octaves, 1):
+			self.add_period_sensor(self.period * 2 ** (float(n)/self.octave_bandwidth))
+		
+
+class UkePeriodArray(PeriodArray):
+	def __init__(self, sample_rate, response_period, octave_bandwidth = 12, scale_factor = 1.75, period_factor = 1.0, phase_factor = 1.0):
+		self.sample_rate = sample_rate
+		PeriodArray.__init__(self, response_period, octave_bandwidth, scale_factor, period_factor, phase_factor)
+
+	def populate(self):
+		C4 = 440 * 2 ** (float(-12 + 3) / 12)
+		G4 = C4 * 3.0 / 2.0
+		E4 = C4 * 5.0 / 4.0
+		A4 = C4 * 5.0 / 3.0
+
+		self.add_period_sensor(self.sample_rate / C4)
+		self.add_period_sensor(self.sample_rate / E4)
+		self.add_period_sensor(self.sample_rate / G4)
+		self.add_period_sensor(self.sample_rate / A4)
 
 class LinearPeriodArray(PeriodArray):
 	def __init__(self, sampling_rate, response_period, scale_factor = 1.75, start_frequency = 50, stop_frequency = 2000, step_frequency = 50, period_factor = 1, phase_factor = 1):
@@ -916,7 +949,7 @@ def note(sample_rate, period, A4 = 440.0):
 
 	note = int(floor(n + 0.5))
 
-	octave = note / 12
+	octave = note / 12 - 1
 	octave_note = note % 12
 	cents = 100.0 * ((((n) + 0.5) % 1) - 0.5)
 
@@ -945,13 +978,10 @@ def periodic_test(generate = False):
 	sweep       = False
 	sweep_value = 0.99999
 	monochord_on   = True
-	monochord_ratio  = 3.0/2.0 # pythagorean 5th
-	monochord_source =       0 # lowest
-	monochord_target =       14 # even-tempered 5th      
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
-	log_base_period = (float(sample_rate) / (C * 2 ** 0))
+	log_base_period = float(sample_rate) / C
 	log_octave_steps = 24
 	log_octave_count = 1
 
@@ -959,7 +989,10 @@ def periodic_test(generate = False):
 
 	fs = sampler.FileSampler(stdin, chunk_size, sample_rate, 1)
 
-	pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, cycle_area, log_octave_steps, log_octave_count)
+	if monochord_on:
+		pa = UkePeriodArray(sample_rate, float(sample_rate) / 20)
+	else:
+		pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, log_octave_count, log_octave_steps, cycle_area)
 
 	sample = 0
 	frame  = 0
@@ -977,19 +1010,20 @@ def periodic_test(generate = False):
 
 	monochords = []
 	if monochord_on:
-		monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
-		monochord_target_sensor = list(reversed(pa.period_sensors))[7 * 2]
-		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 2 ** (7.0/12)) #3.0/2.0)
+
+		monochord_source_sensor = pa.period_sensors[0]
+		monochord_target_sensor = pa.period_sensors[1]
+		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 5.0/4.0)
 		monochords.append((monochord_source_sensor, monochord_target_sensor, monochord))
 
-		monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
-		monochord_target_sensor = list(reversed(pa.period_sensors))[4 * 2]
-		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 2 ** (4.0/12)) #5.0/4.0)
+		monochord_source_sensor = pa.period_sensors[0]
+		monochord_target_sensor = pa.period_sensors[2]
+		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 3.0/2.0)
 		monochords.append((monochord_source_sensor, monochord_target_sensor, monochord))
 
-		monochord_source_sensor = list(reversed(pa.period_sensors))[monochord_source]
-		monochord_target_sensor = list(reversed(pa.period_sensors))[9 * 2]
-		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 2 ** (9.0/12)) #5.0/3.0)
+		monochord_source_sensor = pa.period_sensors[0]
+		monochord_target_sensor = pa.period_sensors[3]
+		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 5.0/3.0)
 		monochords.append((monochord_source_sensor, monochord_target_sensor, monochord))
 
 

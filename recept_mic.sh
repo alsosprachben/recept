@@ -2,7 +2,7 @@
 sample_rate=44100
 chunk_size=735
 frame_size=735
-oversample=10
+oversample=1
 
 # raspberry pi USB mic
 #export AUDIODEV=hw:1,0 AUDIODRIVER=alsa
