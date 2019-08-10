@@ -710,6 +710,7 @@ class PeriodScaleSpaceSensor:
 		]
 		self.period_lifecycle = DeriveLifecycle(self.period, self.response_period)
 		self.beat_lifecycle = IterLifecycle(self.period)
+		self.monochords = []
 
 	def sample_sensor(self, time, time_value):
 		for period_sensor in self.period_sensors:
@@ -724,6 +725,7 @@ class PeriodScaleSpaceSensor:
 
 	def sample(self, time, time_value):
 		self.sample_sensor(time, time_value)
+		self.sample_monochords()
 		self.sample_lifecycle()
 		return self.values()
 
@@ -738,6 +740,12 @@ class PeriodScaleSpaceSensor:
 			source_sensor.concept.percept.superimpose_monochord_on_percept(target_sensor.concept.percept, monochord)
 			target_sensor.concept.sample_recept()
 
+	def add_monochord(self, source_percept, monochord_ratio):
+		self.monochords.append( (source_percept, source_percept.get_monochord(self, monochord_ratio)) )
+
+	def sample_monochords(self):
+		for source_percept, monochord in self.monochords:
+			source_percept.superimpose_monochord_on(self, monochord)
 
 
 class PeriodArray:
@@ -751,8 +759,11 @@ class PeriodArray:
 		self.period_sensors = []
 		self.populate()
 
-	def add_period_sensor(self, period, bandwidth_factor = 1.0):
-		self.period_sensors.append(PeriodScaleSpaceSensor(period, 0.0, self.response_period, self.scale_factor, self.period_bandwidth * bandwidth_factor, self.phase_factor))
+	def add_period_sensor(self, period, monochord_source_sensor = None, monochord_ratio = None, bandwidth_factor = 1.0):
+		period_sensor = PeriodScaleSpaceSensor(period, 0.0, self.response_period, self.scale_factor, self.period_bandwidth * bandwidth_factor, self.phase_factor)
+		if monochord_source_sensor is not None:
+			period_sensor.add_monochord(monochord_source_sensor, monochord_ratio)
+		self.period_sensors.append(period_sensor)
 
 	def populate(self):
 		"stub"
@@ -771,6 +782,10 @@ class PeriodArray:
 	def sample_lifecycle(self):
 		for period_sensor in self.period_sensors:
 			period_sensor.sample_lifecycle()
+
+	def sample_monochords(self):
+		for period_sensor in self.period_sensors:
+			period_sensor.sample_monochords()
 
 	def values(self):
 		return [
@@ -793,20 +808,31 @@ class LogPeriodArray(PeriodArray):
 		
 
 class UkePeriodArray(PeriodArray):
-	def __init__(self, sample_rate, response_period, octave_bandwidth = 12, scale_factor = 1.75, period_factor = 1.0, phase_factor = 1.0):
+	def __init__(self, sample_rate, response_period, octave_bandwidth = 36, scale_factor = 1.75, period_factor = 1.0, phase_factor = 1.0):
 		self.sample_rate = sample_rate
 		PeriodArray.__init__(self, response_period, octave_bandwidth, scale_factor, period_factor, phase_factor)
 
 	def populate(self):
+		ratio_M3rd = 2 ** (4.0/12)
+		ratio_5th  = 2 ** (7.0/12)
+		ratio_M6th = 2 ** (9.0/12)
+		#ratio_M3rd = 5.0 / 4.0
+		#ratio_5th  = 3.0 / 2.0
+		#ratio_M6th = 5.0 / 3.0
+
 		C4 = 440 * 2 ** (float(-12 + 3) / 12)
-		G4 = C4 * 3.0 / 2.0
-		E4 = C4 * 5.0 / 4.0
-		A4 = C4 * 5.0 / 3.0
+		G4 = C4 * ratio_5th
+		E4 = C4 * ratio_M3rd
+		A4 = C4 * ratio_M6th
 
 		self.add_period_sensor(self.sample_rate / C4)
 		self.add_period_sensor(self.sample_rate / E4)
 		self.add_period_sensor(self.sample_rate / G4)
 		self.add_period_sensor(self.sample_rate / A4)
+
+		self.add_period_sensor(self.sample_rate / E4, self.period_sensors[0], ratio_M3rd)
+		self.add_period_sensor(self.sample_rate / G4, self.period_sensors[0], ratio_5th)
+		self.add_period_sensor(self.sample_rate / A4, self.period_sensors[0], ratio_M6th)
 
 class LinearPeriodArray(PeriodArray):
 	def __init__(self, sampling_rate, response_period, scale_factor = 1.75, start_frequency = 50, stop_frequency = 2000, step_frequency = 50, period_factor = 1, phase_factor = 1):
@@ -974,10 +1000,8 @@ def periodic_test(generate = False):
 	sample_rate /= oversample
 	wave_period = A / oversample
 	wave_power  = 100   / oversample
-	plot        = False
 	sweep       = False
 	sweep_value = 0.99999
-	monochord_on   = True
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
@@ -989,10 +1013,8 @@ def periodic_test(generate = False):
 
 	fs = sampler.FileSampler(stdin, chunk_size, sample_rate, 1)
 
-	if monochord_on:
-		pa = UkePeriodArray(sample_rate, float(sample_rate) / 20)
-	else:
-		pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, log_octave_count, log_octave_steps, cycle_area)
+	pa = UkePeriodArray(sample_rate, float(sample_rate) / 20)
+	#pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, log_octave_count, log_octave_steps, cycle_area)
 
 	sample = 0
 	frame  = 0
@@ -1002,31 +1024,6 @@ def periodic_test(generate = False):
 	x = 0.0
 	fade = 0.0
 	sampler.screen.clear()
-	if plot:
-		f1 = open("sr_d.dat", "w")
-		f2 = open("sr_dd.dat", "w")
-		f3 = open("sr_ddd.dat", "w")
-		f4 = open("sr_dddd.dat", "w")
-
-	monochords = []
-	if monochord_on:
-
-		monochord_source_sensor = pa.period_sensors[0]
-		monochord_target_sensor = pa.period_sensors[1]
-		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 5.0/4.0)
-		monochords.append((monochord_source_sensor, monochord_target_sensor, monochord))
-
-		monochord_source_sensor = pa.period_sensors[0]
-		monochord_target_sensor = pa.period_sensors[2]
-		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 3.0/2.0)
-		monochords.append((monochord_source_sensor, monochord_target_sensor, monochord))
-
-		monochord_source_sensor = pa.period_sensors[0]
-		monochord_target_sensor = pa.period_sensors[3]
-		monochord = monochord_source_sensor.get_monochord(monochord_target_sensor, 5.0/3.0)
-		monochords.append((monochord_source_sensor, monochord_target_sensor, monochord))
-
-
 	while True:
 		sample += 1
 
@@ -1070,18 +1067,7 @@ def periodic_test(generate = False):
 				n += get_sample(fs)
 				supersample -= 1
 			
-
-		if monochord_on:
-			pa.sample_sensor(sample, n)
-
-			for monochord_source_sensor, monochord_target_sensor, monochord in monochords:
-				monochord_source_sensor.superimpose_monochord_on(monochord_target_sensor, monochord)
-
-			pa.sample_lifecycle()
-			sensations = pa.values()
-		else:
-			sensations = pa.sample(sample, n)
-			
+		
 
 		# drawing
 		t = float(sample) / sample_rate
@@ -1092,18 +1078,14 @@ def periodic_test(generate = False):
 			draw_sample += float(sample_rate) / frame_rate
 			frame += 1
 
-		concept, lc, blc = sensations[0]
-		if plot:
-			f1.write("%r\n" % lc.d_avg)
-			f2.write("%r\n" % lc.dd_avg)
-			f3.write("%r\n" % lc.phi)
-			f4.write("%r\n" % blc.phi)
-
 
 		if draw:
 			sampler.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
-			for concept, lc, blc in reversed(sensations):
+		for period_sensor in pa.period_sensors:
+			concept, lc, blc = period_sensor.sample(sample, n)
+
+			if draw:	
 				sampler.screen.printf(
 					"%s %s %s %s \n",
 					note(sample_rate, concept.percept.period, A),
@@ -1112,12 +1094,9 @@ def periodic_test(generate = False):
 					lc,
 					#blc,
 				)
-
-			for monochord_source_sensor, monochord_target_sensor, monochord in monochords:
-				pass
-				#sampler.screen.printf(
-				#	
-				#)
+			
+			
+			
 
 		sampler.screen.flush()
 
