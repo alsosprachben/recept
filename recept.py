@@ -617,6 +617,7 @@ class Lifecycle:
 
 	def _init(self, max_r = 1.0):
 		self.max_r     = max_r
+		self.F         = 0.0 # Free Energy, where cval.real is negative entropy, and cval.imag is negative energy.
 		self.r         = 0.0
 		self.phi       = 0.0
 		self.cycle     = 0
@@ -625,6 +626,7 @@ class Lifecycle:
 	def sample(self, cval):
 		# complex lifecycle
 		self.cval = cval
+		self.F = cval.real - cval.imag
 		prev_phi = self.phi
 		self.r, self.phi = tau.polar(cval)
 		if   self.phi - prev_phi >  0.5:
@@ -637,7 +639,8 @@ class Lifecycle:
 		return self.lifecycle
 			
 	def __str__(self):
-		return "%s %s %s %s %s %010.3f" % (
+		return "%s %s %s %s %s %s %010.3f" % (
+			bar.signed_bar_log(       self.F,         self.max_r),
 			bar.signed_bar_log(       self.cval.real, self.max_r),
 			bar.signed_bar_log(       self.cval.imag, self.max_r),
 			bar.signed_bar(    self.phi, 0.5),
@@ -813,12 +816,12 @@ class UkePeriodArray(PeriodArray):
 		PeriodArray.__init__(self, response_period, octave_bandwidth, scale_factor, period_factor, phase_factor)
 
 	def populate(self):
-		ratio_M3rd = 2 ** (4.0/12)
-		ratio_5th  = 2 ** (7.0/12)
-		ratio_M6th = 2 ** (9.0/12)
-		#ratio_M3rd = 5.0 / 4.0
-		#ratio_5th  = 3.0 / 2.0
-		#ratio_M6th = 5.0 / 3.0
+		#ratio_M3rd = 2 ** (4.0/12)
+		#ratio_5th  = 2 ** (7.0/12)
+		#ratio_M6th = 2 ** (9.0/12)
+		ratio_M3rd = 5.0 / 4.0
+		ratio_5th  = 3.0 / 2.0
+		ratio_M6th = 5.0 / 3.0
 
 		C4 = 440 * 2 ** (float(-12 + 3) / 12)
 		G4 = C4 * ratio_5th
