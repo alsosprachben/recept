@@ -945,7 +945,7 @@ def event_test():
 
 		sampler.screen.printf("event at time %.3f sample %i: %06.2f\n", t, sample, n)
 		sampler.screen.printf(
-			"%s %s %s \n",
+			"%s\n %s\n %s \n",
 			d,
 			lc,
 			blc,
@@ -1001,23 +1001,23 @@ def periodic_test(generate = False):
 	C = A * 2 ** ((-12 + 3.0)/12.0)
 	frame_rate  = float(sample_rate) / frame_size
 	sample_rate /= oversample
-	wave_period = A / oversample
+	wave_period = float(sample_rate) / A
 	wave_power  = 100   / oversample
 	sweep       = False
 	sweep_value = 0.99999
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
-	log_base_period = float(sample_rate) / C
-	log_octave_steps = 24
-	log_octave_count = 1
+	log_base_period = float(sample_rate) / C * 2 * 2
+	log_octave_steps = 12
+	log_octave_count = 5
 
 	wave_change_rate = 0.1
 
 	fs = sampler.FileSampler(stdin, chunk_size, sample_rate, 1)
 
-	pa = UkePeriodArray(sample_rate, float(sample_rate) / 20)
-	#pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, log_octave_count, log_octave_steps, cycle_area)
+	#pa = UkePeriodArray(sample_rate, float(sample_rate) / 20, 24)
+	pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, log_octave_count, log_octave_steps, cycle_area)
 
 	sample = 0
 	frame  = 0
@@ -1025,6 +1025,7 @@ def periodic_test(generate = False):
 
 	draw_sample = sample + float(sample_rate) / frame_rate
 	x = 0.0
+	y = 0.0
 	fade = 0.0
 	sampler.screen.clear()
 	while True:
@@ -1036,16 +1037,17 @@ def periodic_test(generate = False):
 				if current_wave_period < wave_period / 8:
 					current_wave_period = wave_period
 
-			x += 1.0 / current_wave_period
+			x += A / sample_rate
+			y += C / sample_rate
 
 			j = int(float(sample) * wave_change_rate / sample_rate) % 3
 			j = 0
 
 			from math import pi, cos
 			if j  == 0:
-				diff = 10
 				n =  cos(2.0 * pi * x)         * wave_power / 4
-				n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
+				n += cos(2.0 * pi * y)         * wave_power / 4
+				#n += cos(2.0 * pi * x * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
 				#n += cos(2.0 * pi * x * 2)         * wave_power / 4
 				#n += cos(2.0 * pi * x * 2 * (sample_rate / (float(sample_rate) + wave_period * diff))) * wave_power / 4
 			elif j == 1:
