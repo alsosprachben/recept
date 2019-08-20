@@ -6,8 +6,8 @@ def main():
 	from sys import stdout
 
 	transition = True
-
 	dev = 1
+
 	while True:
 		for i in range(400):
 			x = random.normalvariate(-50, dev)
