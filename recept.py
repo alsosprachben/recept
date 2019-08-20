@@ -1016,8 +1016,8 @@ def periodic_test(generate = False):
 
 	fs = sampler.FileSampler(stdin, chunk_size, sample_rate, 1)
 
-	#pa = UkePeriodArray(sample_rate, float(sample_rate) / 20, 24)
-	pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, log_octave_count, log_octave_steps, cycle_area)
+	pa = UkePeriodArray(sample_rate, float(sample_rate) / 20, 24)
+	#pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, log_octave_count, log_octave_steps, cycle_area)
 
 	sample = 0
 	frame  = 0
@@ -1037,8 +1037,9 @@ def periodic_test(generate = False):
 				if current_wave_period < wave_period / 8:
 					current_wave_period = wave_period
 
-			x += A / sample_rate
-			y += C / sample_rate
+			diff = 0
+			x += (A + diff) / sample_rate
+			y += (C + diff) / sample_rate
 
 			j = int(float(sample) * wave_change_rate / sample_rate) % 3
 			j = 0
@@ -1094,8 +1095,8 @@ def periodic_test(generate = False):
 				sampler.screen.printf(
 					"%s %s %s %s \n",
 					note(sample_rate, concept.percept.period, A),
-					note(sample_rate, concept.avg_instant_period, A) if lc.dd_avg < 0 or lc.d_avg < 0 else " " * 9,
-					bar.bar_log(       lc.r,       concept.percept.period),
+					note(sample_rate, concept.avg_instant_period, A) if lc.dd_avg < 0 else " " * 9,
+					bar.bar_log(      concept.percept.r + lc.F       if lc.dd_avg < 0 else 0,       concept.percept.period),
 					lc,
 					#blc,
 				)
