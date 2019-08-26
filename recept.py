@@ -809,7 +809,6 @@ class LogPeriodArray(PeriodArray):
 		for n in range(- self.octave_bandwidth * self.octaves, 1):
 			self.add_period_sensor(self.period * 2 ** (float(n)/self.octave_bandwidth))
 		
-
 class UkePeriodArray(PeriodArray):
 	def __init__(self, sample_rate, response_period, octave_bandwidth = 36, scale_factor = 1.75, period_factor = 1.0, phase_factor = 1.0):
 		self.sample_rate = sample_rate
@@ -836,6 +835,42 @@ class UkePeriodArray(PeriodArray):
 		self.add_period_sensor(self.sample_rate / E4, self.period_sensors[0], ratio_M3rd)
 		self.add_period_sensor(self.sample_rate / G4, self.period_sensors[0], ratio_5th)
 		self.add_period_sensor(self.sample_rate / A4, self.period_sensors[0], ratio_M6th)
+
+
+class GuitarPeriodArray(PeriodArray):
+	def __init__(self, sample_rate, response_period, octave_bandwidth = 36, scale_factor = 1.75, period_factor = 1.0, phase_factor = 1.0):
+		self.sample_rate = sample_rate
+		PeriodArray.__init__(self, response_period, octave_bandwidth, scale_factor, period_factor, phase_factor)
+
+	def populate(self):
+		#ratio_M3rd = 2 ** (4.0/12)
+		#ratio_5th  = 2 ** (7.0/12)
+		#ratio_M6th = 2 ** (9.0/12)
+		ratio_M3rd = 5.0 / 4.0
+		ratio_5th  = 3.0 / 2.0
+		ratio_M6th = 5.0 / 3.0
+
+		C4 = 440 * 2 ** (float(-12 + 3) / 12)
+
+		E2 = C4 * 2 ** (float(12 * -2 + 4)  / 12)
+		A2 = C4 * 2 ** (float(12 * -2 + 9)  / 12)
+		D3 = C4 * 2 ** (float(12 * -1 + 2)  / 12)
+		G3 = C4 * 2 ** (float(12 * -1 + 7)  / 12)
+		B3 = C4 * 2 ** (float(12 * -1 + 11) / 12)
+		E4 = C4 * 2 ** (float(          4)  / 12)
+
+		self.add_period_sensor(self.sample_rate / E2)
+		self.add_period_sensor(self.sample_rate / A2)
+		self.add_period_sensor(self.sample_rate / D3)
+		self.add_period_sensor(self.sample_rate / G3)
+		self.add_period_sensor(self.sample_rate / B3)
+		self.add_period_sensor(self.sample_rate / E4)
+
+		self.add_period_sensor(self.sample_rate / A2, self.period_sensors[0], A2 / E2)
+		self.add_period_sensor(self.sample_rate / D3, self.period_sensors[0], D3 / E2)
+		self.add_period_sensor(self.sample_rate / G3, self.period_sensors[0], G3 / E2)
+		self.add_period_sensor(self.sample_rate / B3, self.period_sensors[0], B3 / E2)
+		self.add_period_sensor(self.sample_rate / E4, self.period_sensors[0], E4 / E2)
 
 class LinearPeriodArray(PeriodArray):
 	def __init__(self, sampling_rate, response_period, scale_factor = 1.75, start_frequency = 50, stop_frequency = 2000, step_frequency = 50, period_factor = 1, phase_factor = 1):
@@ -997,18 +1032,20 @@ def periodic_test(generate = False):
 	frame_size  = int(args.get(3))
 	oversample  = int(args.get(4))
 
-	A = 440.0
-	C = A * 2 ** ((-12 + 3.0)/12.0)
+	A4 = 440.0
+	C4 = A4 * 2 ** ((-12 + 3.0)/12.0)
+	E2 = C4 * 2 ** (float(12 * -2 + 4)  / 12)
+	A2 = C4 * 2 ** (float(12 * -2 + 9)  / 12)
 	frame_rate  = float(sample_rate) / frame_size
 	sample_rate /= oversample
-	wave_period = float(sample_rate) / A
+	wave_period = float(sample_rate) / A4
 	wave_power  = 100   / oversample
 	sweep       = False
 	sweep_value = 0.99999
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
-	log_base_period = float(sample_rate) / C * 2 * 2
+	log_base_period = float(sample_rate) / C4 * 2 * 2
 	log_octave_steps = 12
 	log_octave_count = 5
 
@@ -1016,7 +1053,7 @@ def periodic_test(generate = False):
 
 	fs = sampler.FileSampler(stdin, chunk_size, sample_rate, 1)
 
-	pa = UkePeriodArray(sample_rate, float(sample_rate) / 20, 24)
+	pa = GuitarPeriodArray(sample_rate, float(sample_rate) / 20, 36)
 	#pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, log_octave_count, log_octave_steps, cycle_area)
 
 	sample = 0
@@ -1038,8 +1075,8 @@ def periodic_test(generate = False):
 					current_wave_period = wave_period
 
 			diff = 0
-			x += (A + diff) / sample_rate
-			y += (C + diff) / sample_rate
+			x += (E2 + diff) / sample_rate
+			y += (A2 + diff) / sample_rate
 
 			j = int(float(sample) * wave_change_rate / sample_rate) % 3
 			j = 0
@@ -1094,9 +1131,9 @@ def periodic_test(generate = False):
 			if draw:	
 				sampler.screen.printf(
 					"%s %s %s %s \n",
-					note(sample_rate, concept.percept.period, A),
-					note(sample_rate, concept.avg_instant_period, A) if lc.dd_avg < 0 else " " * 9,
-					bar.bar_log(      concept.percept.r + lc.F       if lc.dd_avg < 0 else 0,       concept.percept.period),
+					note(sample_rate, concept.percept.period, A4),
+					note(sample_rate, concept.avg_instant_period, A4) if lc.dd_avg < 0 else " " * 9,
+					bar.bar_log(      concept.percept.r + lc.F        if lc.dd_avg < 0 else 0,       concept.percept.period),
 					lc,
 					#blc,
 				)
