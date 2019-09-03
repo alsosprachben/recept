@@ -1047,13 +1047,14 @@ def periodic_test(generate = False):
 
 	log_base_period = float(sample_rate) / C4 * 2 * 2
 	log_octave_steps = 12
-	log_octave_count = 5
+	log_octave_count = 2
 
 	wave_change_rate = 0.1
 
 	fs = sampler.FileSampler(stdin, chunk_size, sample_rate, 1)
 
 	pa = GuitarPeriodArray(sample_rate, float(sample_rate) / 20, 36)
+	#pa = UkePeriodArray(sample_rate, float(sample_rate) / 20, 24)
 	#pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, log_octave_count, log_octave_steps, cycle_area)
 
 	sample = 0
@@ -1133,7 +1134,7 @@ def periodic_test(generate = False):
 					"%s %s %s %s \n",
 					note(sample_rate, concept.percept.period, A4),
 					note(sample_rate, concept.avg_instant_period, A4) if lc.dd_avg < 0 else " " * 9,
-					bar.bar_log(      concept.percept.r + lc.F        if lc.dd_avg < 0 else 0,       concept.percept.period),
+					bar.bar_log(      concept.percept.r + (abs(lc.F) ** e if lc.F >= 0 else -abs(lc.F) ** e)       if lc.dd_avg < 0 else 0,       concept.percept.period ** e),
 					lc,
 					#blc,
 				)
