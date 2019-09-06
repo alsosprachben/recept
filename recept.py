@@ -1076,6 +1076,9 @@ def periodic_test(generate = False):
 	y = 0.0
 	fade = 0.0
 	sampler.screen.clear()
+	start_time = time()
+	prior_settled_time = 0.0
+	avg_drift_time_state = ExponentialSmoothing(frame_rate)
 	while True:
 		sample += 1
 
@@ -1124,7 +1127,7 @@ def periodic_test(generate = False):
 		
 
 		# drawing
-		t = float(sample) / sample_rate
+		sample_time = float(sample) / sample_rate
 
 		draw = False
 		if sample >= draw_sample:
@@ -1134,7 +1137,13 @@ def periodic_test(generate = False):
 
 
 		if draw:
-			sampler.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
+			real_time = time() - start_time
+			settled_time = sample_time - real_time
+			drift_time = prior_settled_time - settled_time
+			avg_drift_time = avg_drift_time_state.sample(drift_time)
+			prior_settled_time = settled_time
+
+			sampler.screen.printf("event at sample_time %.3f - real_time %.3f = settled_time %.3f (avg_drift_time %08.5f), frame %i sample %i: %06.2f\n", sample_time, real_time, settled_time, avg_drift_time, frame, sample, n)
 
 			sampler.screen.printf(
 				"%9s %9s %14s %s\n",
