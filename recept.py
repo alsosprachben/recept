@@ -637,6 +637,16 @@ class Lifecycle:
 		self.lifecycle = self.cycle + self.phi
 
 		return self.lifecycle
+
+	header = "%15s %15s %15s %15s %14s %14s %10s" % (
+		"free energy",
+		"entropy",
+		"neg energy",
+		"phase",
+		"amplitude",
+		"onset-amp",
+		"count",
+	)
 			
 	def __str__(self):
 		return "%s %s %s %s %s %s %010.3f" % (
@@ -1045,7 +1055,7 @@ def periodic_test(generate = False):
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
-	log_base_period = float(sample_rate) / C4 * 2 * 2
+	log_base_period = float(sample_rate) / C4 * 2
 	log_octave_steps = 12
 	log_octave_count = 5
 
@@ -1053,8 +1063,8 @@ def periodic_test(generate = False):
 
 	fs = sampler.FileSampler(stdin, chunk_size, sample_rate, 1)
 
-	pa = GuitarPeriodArray(sample_rate, float(sample_rate) / 20, 36)
-	#pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, log_octave_count, log_octave_steps, cycle_area)
+	#pa = UkePeriodArray(sample_rate, float(sample_rate) / 20, 36)
+	pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, log_octave_count, log_octave_steps, cycle_area)
 
 	sample = 0
 	frame  = 0
@@ -1075,8 +1085,8 @@ def periodic_test(generate = False):
 					current_wave_period = wave_period
 
 			diff = 0
-			x += (E2 + diff) / sample_rate
-			y += (A2 + diff) / sample_rate
+			x += (C4 + diff) / sample_rate
+			y += (C4 * 4 / 3 + diff) / sample_rate
 
 			j = int(float(sample) * wave_change_rate / sample_rate) % 3
 			j = 0
@@ -1125,10 +1135,18 @@ def periodic_test(generate = False):
 		if draw:
 			sampler.screen.printf("event at time %.3f frame %i sample %i: %06.2f\n", t, frame, sample, n)
 
+			sampler.screen.printf(
+				"%9s %9s %14s %s\n",
+				"target",
+				"observed",
+				"value",
+				Lifecycle.header,
+			)
+
 		for period_sensor in pa.period_sensors:
 			concept, lc, blc = period_sensor.sample(sample, n)
 
-			if draw:	
+			if draw:
 				sampler.screen.printf(
 					"%s %s %s %s \n",
 					note(sample_rate, concept.percept.period, A4),
