@@ -1049,7 +1049,6 @@ def periodic_test(generate = False):
 	frame_rate  = float(sample_rate) / frame_size
 	sample_rate /= oversample
 	wave_period = float(sample_rate) / A4
-	wave_power  = 100   / oversample
 	sweep       = False
 	sweep_value = 0.99999
 	from math import exp, e
@@ -1076,13 +1075,12 @@ def periodic_test(generate = False):
 	y = 0.0
 	fade = 0.0
 	sampler.screen.clear()
-	start_time = time()
-	prior_settled_time = 0.0
-	avg_drift_time_state = ExponentialSmoothing(frame_rate)
+	start_time = None
 	while True:
 		sample += 1
 
 		if generate:
+			wave_power = 100 / oversample
 			if sweep:
 				current_wave_period *= sweep_value
 				if current_wave_period < wave_period / 8:
@@ -1137,13 +1135,22 @@ def periodic_test(generate = False):
 
 
 		if draw:
-			real_time = time() - start_time
-			settled_time = sample_time - real_time
-			drift_time = prior_settled_time - settled_time
-			avg_drift_time = avg_drift_time_state.sample(drift_time)
-			prior_settled_time = settled_time
+			if start_time is None:
+				start_time           = time()
+				real_time            = 0.0 
+				lost_time            = 0.0
+				prior_lost_time      = 0.0
+				avg_time_leak_state = ExponentialSmoothing(frame_rate)
+			else:
+				real_time            = time() - start_time
+				lost_time            = real_time - sample_time
 
-			sampler.screen.printf("event at sample_time %.3f - real_time %.3f = settled_time %.3f (avg_drift_time %08.5f), frame %i sample %i: %06.2f\n", sample_time, real_time, settled_time, avg_drift_time, frame, sample, n)
+			time_leak = lost_time - prior_lost_time
+			prior_lost_time = lost_time
+			avg_time_leak = avg_time_leak_state.sample(time_leak)
+
+
+			sampler.screen.printf("Sample rate %i/%i, Nyquist at %s, time lost %.3f, avg time leak %08.5f, frame %i sample %i: %06.2f\n", sample_rate * oversample, oversample, note(sample_rate, 2, A4), lost_time, avg_time_leak, frame, sample, n)
 
 			sampler.screen.printf(
 				"%9s %9s %14s %s\n",
