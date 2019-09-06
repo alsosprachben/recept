@@ -1057,7 +1057,7 @@ def periodic_test(generate = False):
 
 	log_base_period = float(sample_rate) / C4 * 2
 	log_octave_steps = 12
-	log_octave_count = 2
+	log_octave_count = 5
 
 	wave_change_rate = 0.1
 
