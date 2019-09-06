@@ -1054,7 +1054,7 @@ def periodic_test(generate = False):
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
-	log_base_period = float(sample_rate) / C4 * 2
+	log_base_period = float(sample_rate) / C4 * 2 * 2
 	log_octave_steps = 12
 	log_octave_count = 5
 
@@ -1149,11 +1149,22 @@ def periodic_test(generate = False):
 			prior_lost_time = lost_time
 			avg_time_leak = avg_time_leak_state.sample(time_leak)
 
+			sampler.screen.printf("=> Sampling Report\n%10s %9s %9s %9s %9s %9s %9s\n",
+				"sample-rate",
+				"Nyquist",
+				"time-lost",
+				"time-leak",
+				"frame",
+				"sample",
+				"value",
+			)
+			sampler.screen.printf("%08i/%02i %9s %09.5f %09.5f %09i %09i %09.3f\n", sample_rate * oversample, oversample, note(sample_rate, 2, A4), lost_time, avg_time_leak, frame, sample, n)
 
-			sampler.screen.printf("Sample rate %i/%i, Nyquist at %s, time lost %.3f, avg time leak %08.5f, frame %i sample %i: %06.2f\n", sample_rate * oversample, oversample, note(sample_rate, 2, A4), lost_time, avg_time_leak, frame, sample, n)
+			sampler.screen.printf("\n")
 
 			sampler.screen.printf(
-				"%9s %9s %14s %s\n",
+				"=> Sensor Report at %i frames per second\n%9s %9s %14s %s\n",
+				frame_rate,
 				"target",
 				"observed",
 				"value",
