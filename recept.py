@@ -1069,9 +1069,10 @@ def periodic_test(generate = False):
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
-	log_base_period = float(sample_rate) / C4 / 2 / 2 / 2
+	log_base_period = float(sample_rate) / C4 * 2 * 2
 	log_octave_steps = 12
 	log_octave_count = 5
+	log_sub_octave_count = 1
 
 	wave_change_rate = 0.1
 
@@ -1081,15 +1082,11 @@ def periodic_test(generate = False):
 	#pa = GuitarPeriodArray(sample_rate, float(sample_rate) / 20, 36)
 	#pa = UkePeriodArray(sample_rate, float(sample_rate) / 20, 24)
 
-	pa_octaves = [
-		LogPeriodArray(log_base_period, float(sample_rate)                     / 20, 1, log_octave_steps, cycle_area),
-		LogPeriodArray(log_base_period, float(sample_rate) / 2                 / 20, 1, log_octave_steps, cycle_area),
-		LogPeriodArray(log_base_period, float(sample_rate) / 2 / 2             / 20, 1, log_octave_steps, cycle_area),
-		LogPeriodArray(log_base_period, float(sample_rate) / 2 / 2 / 2         / 20, 1, log_octave_steps, cycle_area),
-		LogPeriodArray(log_base_period, float(sample_rate) / 2 / 2 / 2 / 2     / 20, 1, log_octave_steps, cycle_area),
-		LogPeriodArray(log_base_period, float(sample_rate) / 2 / 2 / 2 / 2 / 2 / 20, 1, log_octave_steps, cycle_area),
-		LogPeriodArray(log_base_period, float(sample_rate) / 2 / 2 / 2 / 2 / 2 / 2 / 20, 1, log_octave_steps, cycle_area),
-	]
+	pa_octaves = []
+	for o in range(log_sub_octave_count):
+		bit = 1 << o
+		pa_octaves.append(LogPeriodArray(log_base_period, float(sample_rate) / bit / 20, log_octave_count, log_octave_steps, cycle_area))
+
 	pa_samplers = OctaveSamplers(len(pa_octaves))
 
 	sample = 0
