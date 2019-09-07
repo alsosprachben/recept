@@ -988,7 +988,7 @@ def event_test():
 
 		d, lc, blc = sss.sample(t, n)
 
-		sampler.screen.printf("event at time {:.3f} sample {:i}: {:06.2f}\n", t, sample, n)
+		sampler.screen.printf("event at time {:.3f} sample {:d}: {:06.2f}\n", t, sample, n)
 		sampler.screen.printf(
 			"{}\n {}\n {} \n",
 			d,
@@ -1149,7 +1149,7 @@ def periodic_test(generate = False):
 			prior_lost_time = lost_time
 			avg_time_leak = avg_time_leak_state.sample(time_leak)
 
-			sampler.screen.printf("=> Sampling Report\n{:10} {:9} {:9} {:9} {:>9} {:>9} {:>9} {:>9}\n",
+			sampler.screen.printf("    Sampling Report\n    {:10} {:9} {:9} {:9} {:>9} {:>9} {:>9} {:>9}\n",
 				"sample-rate",
 				"Nyquist",
 				"time-lost",
@@ -1159,7 +1159,7 @@ def periodic_test(generate = False):
 				"sample",
 				"value",
 			)
-			sampler.screen.printf("{:8d}/{:<2d} {:9} {:+9.5f} {:+9.5f} {:9} {:9d} {:9d} {:+09.3f}\n",
+			sampler.screen.printf("    {:8d}/{:<2d} {:9} {:+9.5f} {:+9.5f} {:9} {:9d} {:9d} {:+09.3f}\n",
 				sample_rate * oversample,
 				oversample, note(sample_rate, 2, A4),
 				lost_time,
@@ -1173,7 +1173,7 @@ def periodic_test(generate = False):
 			sampler.screen.printf("\n")
 
 			sampler.screen.printf(
-				"=> Sensor Report at {:f} frames per second\n{:<9} {:<9} {:<14} {}\n",
+				"Sensor Report at {:.3f} frames per second\n{:<9} {:<9} {:<14} {}\n",
 				frame_rate,
 				"target",
 				"observed",
