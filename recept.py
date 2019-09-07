@@ -1205,14 +1205,14 @@ def periodic_test(generate = False):
 			)
 
 		
-		for e, bit, sub_sample, sub_n in pa_samplers.sample(sample, n):
-			pa = pa_octaves[e]
+		for pos, bit, sub_sample, sub_n in pa_samplers.sample(sample, n):
+			pa = pa_octaves[pos]
 			
 			for period_sensor in pa.period_sensors:
 				concept, lc, blc = period_sensor.sample(sub_sample, sub_n)
 
-		for e, pa in enumerate(pa_octaves):
-			bit = 1 << e
+		for pos, pa in enumerate(pa_octaves):
+			bit = 1 << pos
 			for period_sensor in pa.period_sensors:
 				concept, lc, blc = period_sensor.values()
 				if draw:
