@@ -37,7 +37,7 @@ class Screen:
 		self.buf = escape_reset
 
 	def printf(self, fmt, *args):
-		self.buf += fmt % args
+		self.buf += fmt.format(*args)
 
 	def clear(self):
 		from sys import stdout

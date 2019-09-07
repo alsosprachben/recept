@@ -638,18 +638,18 @@ class Lifecycle:
 
 		return self.lifecycle
 
-	header = "%15s %15s %15s %15s %14s %14s %10s" % (
+	header = "{:^15} {:^15} {:^15} {:^15} {:<14} {:<14} {:>10}".format(
 		"free energy",
 		"entropy",
-		"neg energy",
+		"- energy",
 		"phase",
 		"amplitude",
 		"onset-amp",
-		"count",
+		"cycle",
 	)
 			
 	def __str__(self):
-		return "%s %s %s %s %s %s %010.3f" % (
+		return "{:15} {:15} {:15} {:15} {:14} {:14} {:>10.3f}".format(
 			bar.signed_bar_log(       self.F,         self.max_r),
 			bar.signed_bar_log(       self.cval.real, self.max_r),
 			bar.signed_bar_log(       self.cval.imag, self.max_r),
@@ -988,9 +988,9 @@ def event_test():
 
 		d, lc, blc = sss.sample(t, n)
 
-		sampler.screen.printf("event at time %.3f sample %i: %06.2f\n", t, sample, n)
+		sampler.screen.printf("event at time {:.3f} sample {:i}: {:06.2f}\n", t, sample, n)
 		sampler.screen.printf(
-			"%s\n %s\n %s \n",
+			"{}\n {}\n {} \n",
 			d,
 			lc,
 			blc,
@@ -1149,7 +1149,7 @@ def periodic_test(generate = False):
 			prior_lost_time = lost_time
 			avg_time_leak = avg_time_leak_state.sample(time_leak)
 
-			sampler.screen.printf("=> Sampling Report\n%10s %9s %9s %9s %9s %9s %9s %9s\n",
+			sampler.screen.printf("=> Sampling Report\n{:10} {:9} {:9} {:9} {:>9} {:>9} {:>9} {:>9}\n",
 				"sample-rate",
 				"Nyquist",
 				"time-lost",
@@ -1159,16 +1159,25 @@ def periodic_test(generate = False):
 				"sample",
 				"value",
 			)
-			sampler.screen.printf("%08i/%02i %9s %09.5f %09.5f %9s %09i %09i %09.3f\n", sample_rate * oversample, oversample, note(sample_rate, 2, A4), lost_time, avg_time_leak, ("good" if abs(avg_time_leak) < 0.0001 else "bad"), frame, sample, n)
+			sampler.screen.printf("{:8d}/{:<2d} {:9} {:+9.5f} {:+9.5f} {:9} {:9d} {:9d} {:+09.3f}\n",
+				sample_rate * oversample,
+				oversample, note(sample_rate, 2, A4),
+				lost_time,
+				avg_time_leak,
+				("good" if abs(avg_time_leak) < 0.0001 else "bad"),
+				frame,
+				sample,
+				n,
+			)
 
 			sampler.screen.printf("\n")
 
 			sampler.screen.printf(
-				"=> Sensor Report at %i frames per second\n%9s %9s %14s %s\n",
+				"=> Sensor Report at {:f} frames per second\n{:<9} {:<9} {:<14} {}\n",
 				frame_rate,
 				"target",
 				"observed",
-				"value",
+				"percept",
 				Lifecycle.header,
 			)
 
@@ -1177,7 +1186,7 @@ def periodic_test(generate = False):
 
 			if draw:
 				sampler.screen.printf(
-					"%s %s %s %s \n",
+					"{:9} {:9} {:14} {} \n",
 					note(sample_rate, concept.percept.period, A4),
 					note(sample_rate, concept.avg_instant_period, A4) if lc.dd_avg < 0 else " " * 9,
 					bar.bar_log(      concept.percept.r + (abs(lc.F) ** e if lc.F >= 0 else -abs(lc.F) ** e)       if lc.dd_avg < 0 else 0,       concept.percept.period ** e),
