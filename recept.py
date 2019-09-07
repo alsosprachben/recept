@@ -891,6 +891,21 @@ class LinearPeriodArray(PeriodArray):
 			for frequency in reversed(range(start_frequency, stop_frequency, step_frequency))
 		]
 
+class OctaveSamplers:
+	def __init__(self, exponent = 1):
+		self.exponent = exponent
+		self.i = 0
+		self.states = [0.0] * self.exponent
+
+	def sample(self, time, value):
+		self.i += 1
+		for e in range(self.exponent):
+			bit = 1 << e
+			self.states[e] += value
+			if self.i & bit != (self.i - 1) & bit:
+				yield e, bit, time / bit, self.states[e] / bit
+				self.states[e] = 0.0
+
 """
 Duration Scale-Space
 """
@@ -1054,7 +1069,7 @@ def periodic_test(generate = False):
 	from math import exp, e
 	cycle_area = 1.0 / (1.0 - exp(-1))
 
-	log_base_period = float(sample_rate) / C4 * 2 * 2
+	log_base_period = float(sample_rate) / C4 / 2 / 2 / 2
 	log_octave_steps = 12
 	log_octave_count = 5
 
@@ -1062,9 +1077,20 @@ def periodic_test(generate = False):
 
 	fs = sampler.FileSampler(stdin, chunk_size, sample_rate, 1)
 
-	pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, log_octave_count, log_octave_steps, cycle_area)
+	#pa = LogPeriodArray(log_base_period, float(sample_rate) / 20, log_octave_count, log_octave_steps, cycle_area)
 	#pa = GuitarPeriodArray(sample_rate, float(sample_rate) / 20, 36)
 	#pa = UkePeriodArray(sample_rate, float(sample_rate) / 20, 24)
+
+	pa_octaves = [
+		LogPeriodArray(log_base_period, float(sample_rate)                     / 20, 1, log_octave_steps, cycle_area),
+		LogPeriodArray(log_base_period, float(sample_rate) / 2                 / 20, 1, log_octave_steps, cycle_area),
+		LogPeriodArray(log_base_period, float(sample_rate) / 2 / 2             / 20, 1, log_octave_steps, cycle_area),
+		LogPeriodArray(log_base_period, float(sample_rate) / 2 / 2 / 2         / 20, 1, log_octave_steps, cycle_area),
+		LogPeriodArray(log_base_period, float(sample_rate) / 2 / 2 / 2 / 2     / 20, 1, log_octave_steps, cycle_area),
+		LogPeriodArray(log_base_period, float(sample_rate) / 2 / 2 / 2 / 2 / 2 / 20, 1, log_octave_steps, cycle_area),
+		LogPeriodArray(log_base_period, float(sample_rate) / 2 / 2 / 2 / 2 / 2 / 2 / 20, 1, log_octave_steps, cycle_area),
+	]
+	pa_samplers = OctaveSamplers(len(pa_octaves))
 
 	sample = 0
 	frame  = 0
@@ -1181,19 +1207,27 @@ def periodic_test(generate = False):
 				Lifecycle.header,
 			)
 
-		for period_sensor in pa.period_sensors:
-			concept, lc, blc = period_sensor.sample(sample, n)
-
-			if draw:
-				sampler.screen.printf(
-					"{:9} {:9} {:14} {} \n",
-					note(sample_rate, concept.percept.period, A4),
-					note(sample_rate, concept.avg_instant_period, A4) if lc.dd_avg < 0 else " " * 9,
-					bar.bar_log(      concept.percept.r + (abs(lc.F) ** e if lc.F >= 0 else -abs(lc.F) ** e)       if lc.dd_avg < 0 else 0,       concept.percept.period ** e),
-					lc,
-					#blc,
-				)
+		
+		for e, bit, sub_sample, sub_n in pa_samplers.sample(sample, n):
+			pa = pa_octaves[e]
 			
+			for period_sensor in pa.period_sensors:
+				concept, lc, blc = period_sensor.sample(sub_sample, sub_n)
+
+		for e, pa in enumerate(pa_octaves):
+			bit = 1 << e
+			for period_sensor in pa.period_sensors:
+				concept, lc, blc = period_sensor.values()
+				if draw:
+					sampler.screen.printf(
+						"{:9} {:9} {:14} {} \n",
+						note(sample_rate / bit, concept.percept.period, A4),
+						note(sample_rate / bit, concept.avg_instant_period, A4) if lc.dd_avg < 0 else " " * 9,
+						bar.bar_log(      concept.percept.r + (abs(lc.F) ** e if lc.F >= 0 else -abs(lc.F) ** e)       if lc.dd_avg < 0 else 0,       concept.percept.period ** e),
+						lc,
+						#blc,
+					)
+				
 			
 			
 
