@@ -1149,16 +1149,17 @@ def periodic_test(generate = False):
 			prior_lost_time = lost_time
 			avg_time_leak = avg_time_leak_state.sample(time_leak)
 
-			sampler.screen.printf("=> Sampling Report\n%10s %9s %9s %9s %9s %9s %9s\n",
+			sampler.screen.printf("=> Sampling Report\n%10s %9s %9s %9s %9s %9s %9s %9s\n",
 				"sample-rate",
 				"Nyquist",
 				"time-lost",
 				"time-leak",
+				"time-sync",
 				"frame",
 				"sample",
 				"value",
 			)
-			sampler.screen.printf("%08i/%02i %9s %09.5f %09.5f %09i %09i %09.3f\n", sample_rate * oversample, oversample, note(sample_rate, 2, A4), lost_time, avg_time_leak, frame, sample, n)
+			sampler.screen.printf("%08i/%02i %9s %09.5f %09.5f %9s %09i %09i %09.3f\n", sample_rate * oversample, oversample, note(sample_rate, 2, A4), lost_time, avg_time_leak, ("good" if abs(avg_time_leak) < 0.0001 else "bad"), frame, sample, n)
 
 			sampler.screen.printf("\n")
 
