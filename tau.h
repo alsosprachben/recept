@@ -1,3 +1,6 @@
+#ifndef TAU_H
+#define TAU_H
+
 #include <math.h>
 #include <complex.h>
 
@@ -13,3 +16,5 @@
 
 #define rad_polar(cval) (cabs(cval),         carg(cval))
 #define polar(    cval) (cabs(cval), rad2tau(carg(cval)))
+
+#endif
