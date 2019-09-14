@@ -1133,11 +1133,13 @@ def periodic_test(generate = False):
 			for period_sensor in pa.period_sensors:
 				concept, lc, blc = period_sensor.values()
 				if draw:
+					pc = (-lc.dd_avg if lc.dd_avg < 0 else 0) + (lc.F * 1j if lc.F < 0 else 0)
+					power = abs(pc)
 					sampler.screen.printf(
 						"{:9} {:9} {:14} {} \n",
 						note(sample_rate / bit, concept.percept.period, A4),
-						note(sample_rate / bit, concept.avg_instant_period, A4) if lc.dd_avg < 0 else " " * 9,
-						bar.bar_log(      concept.percept.r + (abs(lc.F) ** e if lc.F >= 0 else -abs(lc.F) ** e)       if lc.dd_avg < 0 else 0,       concept.percept.period ** e),
+						note(sample_rate / bit, concept.avg_instant_period, A4) if power > 0 else " " * 9,
+						bar.bar_log(power if power > 0 else 0,       concept.percept.period),
 						lc,
 						#blc,
 					)
