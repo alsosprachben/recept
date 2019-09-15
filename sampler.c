@@ -37,7 +37,7 @@ int filesampler_read(struct filesampler *sampler_ptr) {
 	if (available < 0) {
 		errno = EFAULT;
 		return -1;
-	} else if (available == 0) {
+	} else if (available != 0) {
 		received = read(sampler_ptr->fileno, sampler_ptr->buf + sampler_ptr->buf_consume_cursor, sampler_ptr->buf_size - sampler_ptr->buf_consume_cursor);
 		if (received == -1) {
 			return -1;
@@ -45,7 +45,7 @@ int filesampler_read(struct filesampler *sampler_ptr) {
 			sampler_ptr->hit_eof = 1;
 			return 0;
 		} else {
-			sampler_ptr->buf_consume_cursor += received;
+			sampler_ptr->buf_produce_cursor += received;
 		}
 	}
 
@@ -55,10 +55,13 @@ int filesampler_supply(struct filesampler *sampler_ptr) {
 	ssize_t available;
 
 	available = sampler_ptr->buf_produce_cursor - sampler_ptr->buf_consume_cursor;
-
-	if (available < sampler_ptr->sample_size) {
+	if (available == 0) {
 		sampler_ptr->buf_consume_cursor = 0;
 		sampler_ptr->buf_produce_cursor = 0;
+	}
+
+	available = sampler_ptr->buf_produce_cursor - sampler_ptr->buf_consume_cursor;
+	if (available < sampler_ptr->sample_size) {
 		return filesampler_read(sampler_ptr);
 	}
 
@@ -71,6 +74,7 @@ int filesampler_supply(struct filesampler *sampler_ptr) {
 int filesampler_demand_next(struct filesampler *sampler_ptr, char **sample_ptr) {
 	ssize_t received;
 	ssize_t available;
+	int i;
 
 	received = filesampler_supply(sampler_ptr);
 	if (received == -1) {
@@ -80,8 +84,9 @@ int filesampler_demand_next(struct filesampler *sampler_ptr, char **sample_ptr) 
 	available = sampler_ptr->buf_produce_cursor - sampler_ptr->buf_consume_cursor;
 
 	if (available >= sampler_ptr->sample_size) {
-		/* read from and increment consume cursor */
-		*sample_ptr = sampler_ptr->buf + sampler_ptr->buf_consume_cursor;
+		for (i = 0; i < sampler_ptr->sample_size; i++) {
+			(*sample_ptr)[i] = *(sampler_ptr->buf + sampler_ptr->buf_consume_cursor + i);
+		}
 		sampler_ptr->buf_consume_cursor += sampler_ptr->sample_size;
 		return 1;
 	}
@@ -90,7 +95,57 @@ int filesampler_demand_next(struct filesampler *sampler_ptr, char **sample_ptr) 
 }
 
 #ifdef SAMPLER_TEST
+
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <inttypes.h>
+
 int main() {
+	int rc;
+	int fd;
+	struct filesampler sampler;
+	int i;
+	int16_t sample;
+
+	rc = open("/dev/urandom", O_RDONLY);
+	if (rc == -1) {
+		perror("open");
+		return -1;
+	}
+	fd = rc;
+
+	rc = filesampler_init(&sampler, fd, 44100, 16, 128);
+	if (rc == -1) {
+		perror("filesampler_init");
+		return -1;
+	}
+
+	for (i = 0; i < 10000; i++) {
+		char *sample_ptr;
+		sample_ptr = (char *) &sample;
+		rc = filesampler_demand_next(&sampler, &sample_ptr);
+		if (rc == -1) {
+			perror("filesampler_demand_next");
+			return -1;
+		}
+
+		printf("sample %i: %"PRIi16"\n", i, sample);
+	}
+	
+	filesampler_deinit(&sampler);
+	if (sampler.buf != NULL) {
+		errno = EINVAL;
+		perror("filesampler_deinit");
+		return -1;
+	}
+
+	rc = close(fd);
+	if (rc == -1) {
+		perror("close");
+		return -1;
+	}
+
 	return 0;
 }
 #endif
