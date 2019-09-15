@@ -129,7 +129,7 @@ void bar_draw_signed(union bar_u *bar_ptr, char *buf, size_t buflen, double n, d
 			bar_draw_blank(bar_ptr, buf + ((buflen - 2) / 2) + 2, (buflen - 2) / 2);
 		} else {
 			bar_draw(      bar_ptr, buf + ((buflen - 2) / 2) + 2, (buflen - 2) / 2,  n * ((buflen - 2) / 2) / d, 0);
-			bar_draw_blank(bar_ptr, buf,                    buflen / 2);
+			bar_draw_blank(bar_ptr, buf,                          (buflen - 2) / 2);
 		}
 	}
 }

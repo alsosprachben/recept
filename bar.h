@@ -9,9 +9,9 @@ enum bar_orientation {
 	bar_signed,
 	bar_negative,
 };
-#define BAR_POS_LEGEND '['
-#define BAR_SIG_LEGEND 'I'
-#define BAR_NEG_LEGEND ']'
+#define BAR_POS_LEGEND '|'
+#define BAR_SIG_LEGEND '|'
+#define BAR_NEG_LEGEND '|'
 #define BAR_REMAINDER_MAP " -+="
 #define BAR_REMAINDER_LEN 4
 #define BAR_FILL '#'
