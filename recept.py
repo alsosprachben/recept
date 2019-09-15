@@ -1113,11 +1113,11 @@ def periodic_test(generate = False):
 			sampler.screen.printf("\n")
 
 			sampler.screen.printf(
-				"Sensor Report at {:.3f} frames per second\n{:<9} {:<9} {:<14} {}\n",
+				"Sensor Report at {:.3f} frames per second\n{:<9} {:<9} {:^14} {}\n",
 				frame_rate,
 				"target",
 				"observed",
-				"percept",
+				"power",
 				Lifecycle.header,
 			)
 
@@ -1138,8 +1138,8 @@ def periodic_test(generate = False):
 					sampler.screen.printf(
 						"{:9} {:9} {:14} {} \n",
 						note(sample_rate / bit, concept.percept.period, A4),
-						note(sample_rate / bit, concept.avg_instant_period, A4) if power > 0 else " " * 9,
-						bar.bar_log(power if power > 0 else 0,       concept.percept.period),
+						note(sample_rate / bit, concept.avg_instant_period, A4) if power > 0 else "",
+						bar.bar_log(power, concept.percept.period),
 						lc,
 						#blc,
 					)

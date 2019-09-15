@@ -1,9 +1,15 @@
 #include "bar.h"
 
+#include <math.h>
+#include <unistd.h>
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 void bar_init(union bar_u *bar_ptr, enum bar_orientation bar_type, enum bar_scale bar_unit) {
 	bar_ptr->barvar.bar_head.bar_type = bar_type;
 	bar_ptr->barvar.bar_head.bar_unit = bar_unit;
-	bar_ptr->barvar.bar_head.bar_size = sizeof (union bar_u) - sizeof (struct bar_header);
+	bar_ptr->barvar.bar_head.bar_size = sizeof (union bar_u) - sizeof (struct bar_header) - 1;
 }
 
 void bar_init_size(union bar_u *bar_ptr, enum bar_orientation bar_type, enum bar_scale bar_unit, uint8_t bar_size) {
@@ -12,6 +18,162 @@ void bar_init_size(union bar_u *bar_ptr, enum bar_orientation bar_type, enum bar
 	bar_ptr->barvar.bar_head.bar_size = bar_size;
 }
 
-void bar_set(union bar_u *bar_ptr, double n) {
-	
+/*
+ * Draw the bar into the specified buffer, where scaling is already calculated.
+ *
+ * `bufpos` may overflow buflen, and is constrained by this drawing function.
+ */
+void bar_draw(union bar_u *bar_ptr, char *buf, size_t buflen, double bufpos, int left) {
+	static char *remainder_map = BAR_REMAINDER_MAP;
+
+	int    bufpos_i; /* `bufpos` floored to an int */
+	double bufpos_r; /* `bufpos` remainder of floored value */
+	int    i;        /* index into buf up to buflen */
+
+	bufpos = MAX(0, MIN(buflen, bufpos)); /* constrain bufpos to between 0 and `buflen` */
+	bufpos_i = (int) floor(bufpos);
+	bufpos_r = bufpos - bufpos_i;
+
+	if (left) {
+		for (i = buflen; i >= ((int) buflen) - bufpos_i; i--) {
+			buf[i] = '#';
+		}
+		for (i = ((int) buflen) - bufpos_i; i >= 0; i--) {
+			buf[i] = ' ';
+		}
+		/* bufpos_r = 1.0 - bufpos_r; */
+		i = buflen - bufpos_i;
+	} else {
+		for (i = 0; i < bufpos_i; i++) {
+			buf[i] = '#';
+		}
+		for (i = bufpos_i + 1; i < buflen; i++) {
+			buf[i] = ' ';
+		}
+		i = bufpos_i;
+	}
+
+	if (i >= 0 && i < buflen) {
+		buf[i] = remainder_map[(int) floor(bufpos_r * BAR_REMAINDER_LEN)];
+	}
 }
+
+void bar_scale(union bar_u *bar_ptr, double *n_ptr, double *d_ptr) {
+	switch (bar_ptr->barvar.bar_head.bar_unit) {
+		case bar_linear:
+			break;
+		case bar_log:
+			if (*n_ptr < 0) {
+				*n_ptr = -log(1.0 - *n_ptr);
+			} else {
+				*n_ptr =  log(1.0 + *n_ptr);
+			}
+			*d_ptr = log(1.0 + *d_ptr);
+			break;
+	}
+}
+
+void bar_draw_blank(union bar_u *bar_ptr, char *buf, size_t buflen) {
+	int i;
+
+	for (i = 0; i < buflen; i++) {
+		buf[i] = ' ';
+	}
+}
+void bar_draw_unsigned(union bar_u *bar_ptr, char *buf, size_t buflen, double n, double d, int neg) {
+	double bufpos;
+
+	if (d == 0) {
+		bar_draw_blank(bar_ptr, buf, buflen);
+		return;
+	}
+
+	bar_scale(bar_ptr, &n, &d);
+
+	bufpos = n * buflen / d;
+
+	buf[0] = BAR_POS_LEGEND;
+	bar_draw(bar_ptr, buf + 1, buflen - 1, bufpos, neg);
+}
+void bar_draw_signed(union bar_u *bar_ptr, char *buf, size_t buflen, double n, double d) {
+	double bufpos;
+
+	if (d == 0 || buflen < 3) {
+		bar_draw_blank(bar_ptr, buf, buflen);
+		return;
+	}
+
+	bar_scale(bar_ptr, &n, &d);
+
+	if (buflen % 2 == 1) {
+		/* odd length, use one center character */
+		buf[buflen / 2 + 1] = BAR_SIG_LEGEND;
+		if (n < 0) {
+			bar_draw(      bar_ptr, buf,                    buflen / 2, -n * (buflen / 2) / d, 1);
+			bar_draw_blank(bar_ptr, buf + (buflen / 2 + 2), buflen / 2 + 1);
+		} else {
+			bar_draw(      bar_ptr, buf + (buflen / 2 + 2), buflen / 2,  n * (buflen / 2) / d, 0);
+			bar_draw_blank(bar_ptr, buf,                    buflen / 2 + 1);
+		}
+	} else {
+		/* even length, use two center characters */
+		buf[buflen / 2    ] = BAR_NEG_LEGEND;
+		buf[buflen / 2 + 1] = BAR_POS_LEGEND;
+		if (n < 0) {
+			bar_draw(      bar_ptr, buf,                    buflen / 2 - 1, -n * (buflen / 2 - 1) / d, 1);
+			bar_draw_blank(bar_ptr, buf + (buflen / 2 + 2), buflen / 2);
+		} else {
+			bar_draw(      bar_ptr, buf + (buflen / 2 + 2), buflen / 2 - 1,  n * (buflen / 2 - 1) / d, 0);
+			bar_draw_blank(bar_ptr, buf,                    buflen / 2);
+		}
+	}
+}
+
+void bar_set(union bar_u *bar_ptr, double n, double d) {
+	switch (bar_ptr->barvar.bar_head.bar_type) {
+		case bar_positive:
+			bar_draw_unsigned(bar_ptr, bar_ptr->barvar.buf, bar_ptr->barvar.bar_head.bar_size, n, d, 0);
+			break;
+		case bar_negative:
+			bar_draw_unsigned(bar_ptr, bar_ptr->barvar.buf, bar_ptr->barvar.bar_head.bar_size, n, d, 1);
+			break;
+		case bar_signed:
+			bar_draw_signed(bar_ptr, bar_ptr->barvar.buf, bar_ptr->barvar.bar_head.bar_size, n, d);
+			break;
+		case bar_null:
+			break;
+		
+	}
+
+	/* terminate as a string */
+	bar_ptr->barvar.buf[bar_ptr->barvar.bar_head.bar_size + 1] = '\0';
+}
+
+char *bar_str(union bar_u *bar_ptr) {
+	return bar_ptr->barvar.buf;
+}
+
+
+
+#ifdef BAR_TEST
+#include <stdio.h>
+
+int main() {
+	union bar_u bar;
+	int s;
+
+	bar_init(&bar, bar_signed, bar_linear);
+	for (s = -10000; s <= 10000; s += 1000) {
+		bar_set(&bar, s, 10000);
+		printf("%s\n", bar_str(&bar));
+	}
+	printf("\n");
+
+	bar_init(&bar, bar_signed, bar_log);
+	for (s = -10000; s <= 10000; s += 1000) {
+		bar_set(&bar, s, 10000);
+		printf("%s\n", bar_str(&bar));
+	}
+	printf("\n");
+}
+#endif

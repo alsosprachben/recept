@@ -28,13 +28,13 @@ def bar(n, d, s = default_bar_size, left = False):
 		return " " * int(s)
 
 from math import e
-def bar_log(n, d, s = default_bar_size, base = e, start = e * 2, left = False):
+def bar_log(n, d, s = default_bar_size, base = e, start = 1.0, left = False):
 	try:
 		from math import log
 		log_base = log(base)
 		#print n, d
 		#print start + log(n) , log_base, start + log(d) , log_base, s
-		return bar(start + log(n) / log_base, start + log(d) / log_base, s, left)
+		return bar(log(start + n) / log_base, log(start + d) / log_base, s, left)
 	except ValueError:
 		return " " * int(s)
 
@@ -44,7 +44,7 @@ def signed_bar(n, d, s = default_bar_size / 2):
 	else:
 		return bar(-n, d, s, True) + "|" + (" " * s)
 
-def signed_bar_log(n, d, s = default_bar_size / 2, base = e, start = e * 2):
+def signed_bar_log(n, d, s = default_bar_size / 2, base = e, start = 1.0):
 	if n > 0.0:
 		return (" " * s) + "|" + bar_log(n, d, s, base, start)
 	elif n < 0.0:

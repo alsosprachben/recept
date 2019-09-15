@@ -9,15 +9,16 @@ enum bar_orientation {
 	bar_signed,
 	bar_negative,
 };
-#define BAR_POS_LEGEND ']'
+#define BAR_POS_LEGEND '['
 #define BAR_SIG_LEGEND 'I'
-#define BAR_NEG_LEGEND '['
+#define BAR_NEG_LEGEND ']'
+#define BAR_REMAINDER_MAP " -+="
+#define BAR_REMAINDER_LEN 4
+#define BAR_FILL '#'
 
 enum bar_scale {
 	bar_linear = 0,
-	bar_log2,
-	bar_loge,
-	bar_log10,
+	bar_log,
 };
 
 struct bar_header {
@@ -33,7 +34,7 @@ union bar_u {
 	} barvar;
 	struct bar15_s {
 		struct bar_header bar_head;
-		char buf[15];
+		char buf[16];
 	} bar15;
 };
 
@@ -41,6 +42,6 @@ void bar_init(     union bar_u *bar, enum bar_orientation bar_type, enum bar_sca
 void bar_init_size(union bar_u *bar, enum bar_orientation bar_type, enum bar_scale bar_unit, uint8_t bar_size);
 
 
-void bar_set(union bar_u *bar_ptr, double n);
+void bar_set(union bar_u *bar_ptr, double n, double d);
 
 #endif
