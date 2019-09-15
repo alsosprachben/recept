@@ -35,14 +35,14 @@ void bar_draw(union bar_u *bar_ptr, char *buf, size_t buflen, double bufpos, int
 	bufpos_r = bufpos - bufpos_i;
 
 	if (left) {
-		for (i = buflen; i >= ((int) buflen) - bufpos_i; i--) {
+		for (i = buflen - 1; i >= ((int) buflen - 1) - bufpos_i; i--) {
 			buf[i] = '#';
 		}
-		for (i = ((int) buflen) - bufpos_i; i >= 0; i--) {
+		for (i = ((int) buflen - 2) - bufpos_i; i >= 0; i--) {
 			buf[i] = ' ';
 		}
 		/* bufpos_r = 1.0 - bufpos_r; */
-		i = buflen - bufpos_i;
+		i = buflen - bufpos_i - 1;
 	} else {
 		for (i = 0; i < bufpos_i; i++) {
 			buf[i] = '#';
@@ -90,10 +90,15 @@ void bar_draw_unsigned(union bar_u *bar_ptr, char *buf, size_t buflen, double n,
 
 	bar_scale(bar_ptr, &n, &d);
 
-	bufpos = n * buflen / d;
+	bufpos = n * (buflen - 1) / d;
 
-	buf[0] = BAR_POS_LEGEND;
-	bar_draw(bar_ptr, buf + 1, buflen - 1, bufpos, neg);
+	if (neg) {
+		buf[buflen - 1] = BAR_NEG_LEGEND;
+		bar_draw(bar_ptr, buf, buflen - 1, bufpos, neg);
+	} else {
+		buf[0] = BAR_POS_LEGEND;
+		bar_draw(bar_ptr, buf + 1, buflen - 1, bufpos, neg);
+	}
 }
 void bar_draw_signed(union bar_u *bar_ptr, char *buf, size_t buflen, double n, double d) {
 	double bufpos;
@@ -107,23 +112,23 @@ void bar_draw_signed(union bar_u *bar_ptr, char *buf, size_t buflen, double n, d
 
 	if (buflen % 2 == 1) {
 		/* odd length, use one center character */
-		buf[buflen / 2 + 1] = BAR_SIG_LEGEND;
+		buf[buflen / 2] = BAR_SIG_LEGEND;
 		if (n < 0) {
-			bar_draw(      bar_ptr, buf,                    buflen / 2, -n * (buflen / 2) / d, 1);
-			bar_draw_blank(bar_ptr, buf + (buflen / 2 + 2), buflen / 2 + 1);
+			bar_draw(      bar_ptr, buf,                    (buflen - 1) / 2, -n * ((buflen - 1) / 2) / d, 1);
+			bar_draw_blank(bar_ptr, buf + (buflen / 2 + 1), (buflen - 1) / 2);
 		} else {
-			bar_draw(      bar_ptr, buf + (buflen / 2 + 2), buflen / 2,  n * (buflen / 2) / d, 0);
-			bar_draw_blank(bar_ptr, buf,                    buflen / 2 + 1);
+			bar_draw(      bar_ptr, buf + (buflen / 2 + 1), (buflen - 1) / 2,  n * ((buflen - 1) / 2) / d, 0);
+			bar_draw_blank(bar_ptr, buf,                    (buflen - 1) / 2);
 		}
 	} else {
 		/* even length, use two center characters */
-		buf[buflen / 2    ] = BAR_NEG_LEGEND;
-		buf[buflen / 2 + 1] = BAR_POS_LEGEND;
+		buf[(buflen - 2) / 2 + 0] = BAR_NEG_LEGEND;
+		buf[(buflen - 2) / 2 + 1] = BAR_POS_LEGEND;
 		if (n < 0) {
-			bar_draw(      bar_ptr, buf,                    buflen / 2 - 1, -n * (buflen / 2 - 1) / d, 1);
-			bar_draw_blank(bar_ptr, buf + (buflen / 2 + 2), buflen / 2);
+			bar_draw(      bar_ptr, buf,                          (buflen - 2) / 2, -n * ((buflen - 2) / 2) / d, 1);
+			bar_draw_blank(bar_ptr, buf + ((buflen - 2) / 2) + 2, (buflen - 2) / 2);
 		} else {
-			bar_draw(      bar_ptr, buf + (buflen / 2 + 2), buflen / 2 - 1,  n * (buflen / 2 - 1) / d, 0);
+			bar_draw(      bar_ptr, buf + ((buflen - 2) / 2) + 2, (buflen - 2) / 2,  n * ((buflen - 2) / 2) / d, 0);
 			bar_draw_blank(bar_ptr, buf,                    buflen / 2);
 		}
 	}
@@ -146,7 +151,7 @@ void bar_set(union bar_u *bar_ptr, double n, double d) {
 	}
 
 	/* terminate as a string */
-	bar_ptr->barvar.buf[bar_ptr->barvar.bar_head.bar_size + 1] = '\0';
+	bar_ptr->barvar.buf[bar_ptr->barvar.bar_head.bar_size] = '\0';
 }
 
 char *bar_str(union bar_u *bar_ptr) {
@@ -175,5 +180,78 @@ int main() {
 		printf("%s\n", bar_str(&bar));
 	}
 	printf("\n");
+
+	bar_init(&bar, bar_positive, bar_linear);
+	for (s = -10000; s <= 10000; s += 1000) {
+		bar_set(&bar, s, 10000);
+		printf("%s\n", bar_str(&bar));
+	}
+	printf("\n");
+
+	bar_init(&bar, bar_positive, bar_log);
+	for (s = -10000; s <= 10000; s += 1000) {
+		bar_set(&bar, s, 10000);
+		printf("%s\n", bar_str(&bar));
+	}
+	printf("\n");
+
+	bar_init(&bar, bar_negative, bar_linear);
+	for (s = -10000; s <= 10000; s += 1000) {
+		bar_set(&bar, s, 10000);
+		printf("%s\n", bar_str(&bar));
+	}
+	printf("\n");
+
+	bar_init(&bar, bar_negative, bar_log);
+	for (s = -10000; s <= 10000; s += 1000) {
+		bar_set(&bar, s, 10000);
+		printf("%s\n", bar_str(&bar));
+	}
+	printf("\n");
+
+
+
+	bar_init_size(&bar, bar_signed, bar_linear, 14);
+	for (s = -10000; s <= 10000; s += 1000) {
+		bar_set(&bar, s, 10000);
+		printf("%s\n", bar_str(&bar));
+	}
+	printf("\n");
+
+	bar_init_size(&bar, bar_signed, bar_log, 14);
+	for (s = -10000; s <= 10000; s += 1000) {
+		bar_set(&bar, s, 10000);
+		printf("%s\n", bar_str(&bar));
+	}
+	printf("\n");
+
+	bar_init_size(&bar, bar_positive, bar_linear, 14);
+	for (s = -10000; s <= 10000; s += 1000) {
+		bar_set(&bar, s, 10000);
+		printf("%s\n", bar_str(&bar));
+	}
+	printf("\n");
+
+	bar_init_size(&bar, bar_positive, bar_log, 14);
+	for (s = -10000; s <= 10000; s += 1000) {
+		bar_set(&bar, s, 10000);
+		printf("%s\n", bar_str(&bar));
+	}
+	printf("\n");
+
+	bar_init_size(&bar, bar_negative, bar_linear, 14);
+	for (s = -10000; s <= 10000; s += 1000) {
+		bar_set(&bar, s, 10000);
+		printf("%s\n", bar_str(&bar));
+	}
+	printf("\n");
+
+	bar_init_size(&bar, bar_negative, bar_log, 14);
+	for (s = -10000; s <= 10000; s += 1000) {
+		bar_set(&bar, s, 10000);
+		printf("%s\n", bar_str(&bar));
+	}
+	printf("\n");
+
 }
 #endif
