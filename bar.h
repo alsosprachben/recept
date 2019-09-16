@@ -21,10 +21,12 @@ enum bar_scale {
 	bar_log,
 };
 
+#define BAR_BUF_PTR 1
 struct bar_header {
 	enum bar_orientation bar_type;
 	enum bar_scale       bar_unit;
 	uint8_t bar_size;
+	int bar_flags;
 };
 
 union bar_u {
@@ -36,12 +38,18 @@ union bar_u {
 		struct bar_header bar_head;
 		char buf[16];
 	} bar15;
+	struct barptr_s {
+		struct bar_header bar_head;
+		char *buf;
+	} barptr;
 };
 
-void bar_init(     union bar_u *bar, enum bar_orientation bar_type, enum bar_scale bar_unit);
-void bar_init_size(union bar_u *bar, enum bar_orientation bar_type, enum bar_scale bar_unit, uint8_t bar_size);
+void bar_init(     union bar_u *bar_ptr, enum bar_orientation bar_type, enum bar_scale bar_unit);
+void bar_init_size(union bar_u *bar_ptr, enum bar_orientation bar_type, enum bar_scale bar_unit, uint8_t bar_size);
+void bar_init_buf( union bar_u *bar_ptr, enum bar_orientation bar_type, enum bar_scale bar_unit, char *buf, uint8_t bar_size);
 
 
 void bar_set(union bar_u *bar_ptr, double n, double d);
+char *bar_get_buf(union bar_u *bar_ptr);
 
 #endif
