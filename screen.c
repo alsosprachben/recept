@@ -3,13 +3,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 int screen_clear() {
-	return printf("%s", ESCAPE_CLEAR);
+	int rc;
+	rc = printf("%s", ESCAPE_CLEAR);
+	if (rc == -1) {
+		return -1;
+	}
+	rc = fflush(stdout);
+	if (rc == -1) {
+		return -1;
+	}
+
+	return 0;
 }
 
 int screen_draw(struct screen *screen_ptr) {
+	int rc;
 	return printf("%s", screen_ptr->buf);
+	if (rc == -1) {
+		return -1;
+	}
+	rc = fflush(stdout);
+	if (rc == -1) {
+		return -1;
+	}
+
+	return 0;
 }
 
 char *screen_pos(struct screen *screen_ptr, int column, int row) {

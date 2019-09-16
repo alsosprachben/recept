@@ -94,6 +94,97 @@ int filesampler_demand_next(struct filesampler *sampler_ptr, char **sample_ptr) 
 	return 0;
 }
 
+#ifdef OSC_TEST
+#include <stdio.h>
+#include <errno.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+#include "screen.h"
+#include "bar.h"
+
+int main(int argc, char *argv[]) {
+	int rc;
+	int columns;
+	int rows;
+	struct screen screen;
+	struct filesampler sampler;
+	int16_t sample;
+	int row;
+	char *rowbuf;
+	union bar_u *bar_rows;
+
+	if (argc < 3) {
+		perror("please specify columns and rows");
+		return -1;
+	}
+
+	rc = sscanf(argv[1], "%i", &columns);
+	if (rc == 1) {
+	} else if (rc == -1) {
+		perror("sscanf");
+	} else {
+		perror("expecting integer columns as the first argument");
+	}
+	
+	rc = sscanf(argv[2], "%i", &rows);
+	if (rc == 1) {
+	} else if (rc == -1) {
+		perror("sscanf");
+	} else {
+		perror("expecting integer rows as the second argument");
+	}
+
+	rows--; /* leave a row for the cursor at the bottom of the screen */
+
+	rc = screen_init(&screen, columns, rows);
+	if (rc == -1) {
+		perror("screen_init");
+		return -1;
+	}
+
+	rc = filesampler_init(&sampler, STDIN_FILENO, 44100, 16, rows);
+	if (rc == -1) {
+		perror("filesampler_init");
+		return -1;
+	}
+
+	bar_rows = calloc(rows, sizeof (bar_rows));
+	if (bar_rows == NULL) {
+		perror("calloc");
+		return -1;
+	}
+	for (row = 0; row < rows; row++) {
+		rowbuf = screen_pos(&screen, 0, row);
+		bar_init_buf(&bar_rows[row], bar_signed, bar_log, rowbuf, columns);
+	}
+	for (;;) {
+		for (row = 0; row < rows; row++) {
+			char *sample_ptr;
+			sample_ptr = (char *) &sample;
+			rc = filesampler_demand_next(&sampler, &sample_ptr);
+			if (rc == -1) {
+				perror("filesampler_demand_next");
+				return -1;
+			}
+
+			bar_set(&bar_rows[row], sample, 1 << 15);
+		}
+
+		screen_draw(&screen);
+	}
+
+	screen_deinit(&screen);
+	if (screen.buf != NULL) {
+		errno = EINVAL;
+		perror("screen_deinit");
+		return -1;
+	}
+
+	return 0;
+}
+#endif
+
 #ifdef SAMPLER_TEST
 
 #include <fcntl.h>
