@@ -99,17 +99,19 @@ int filesampler_demand_next(struct filesampler *sampler_ptr, char **sample_ptr) 
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <fcntl.h>
 
 #include "screen.h"
 #include "bar.h"
 
 int main(int argc, char *argv[]) {
 	int rc;
+	int fd;
 	int columns;
 	int rows;
 	struct screen screen;
 	struct filesampler sampler;
-	int16_t sample;
+	int32_t sample;
 	int row;
 	char *rowbuf;
 	union bar_u *bar_rows;
@@ -143,7 +145,13 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	rc = filesampler_init(&sampler, STDIN_FILENO, 44100, 16, rows);
+	rc = open("input.sock", O_RDONLY);
+	if (rc == -1) {
+		perror("open");
+		return -1;
+	}
+	fd = rc;
+	rc = filesampler_init(&sampler, fd, 44100, 32, rows);
 	if (rc == -1) {
 		perror("filesampler_init");
 		return -1;
@@ -168,7 +176,7 @@ int main(int argc, char *argv[]) {
 				return -1;
 			}
 
-			bar_set(&bar_rows[row], sample, 1 << 15);
+			bar_set(&bar_rows[row], sample, 1L << 31);
 		}
 
 		screen_draw(&screen);
