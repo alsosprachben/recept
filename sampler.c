@@ -100,6 +100,7 @@ int filesampler_demand_next(struct filesampler *sampler_ptr, char **sample_ptr) 
 #include <stdint.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <math.h>
 
 #include "screen.h"
 #include "bar.h"
@@ -108,16 +109,20 @@ int main(int argc, char *argv[]) {
 	int rc;
 	int fd;
 	int columns;
+	int sample_rate;
+	int fps;
+	int mod;
 	int rows;
+	int frame;
 	struct screen screen;
 	struct filesampler sampler;
-	int32_t sample;
+	int16_t sample;
 	int row;
 	char *rowbuf;
 	union bar_u *bar_rows;
 
 	if (argc < 3) {
-		perror("please specify columns and rows");
+		perror("please specify arguments: $COLUMNS $LINES $sample_rate $fps");
 		return -1;
 	}
 
@@ -139,6 +144,34 @@ int main(int argc, char *argv[]) {
 
 	rows--; /* leave a row for the cursor at the bottom of the screen */
 
+	if (argc < 4) {
+		sample_rate = 44100;
+	} else {
+		rc = sscanf(argv[3], "%i", &sample_rate);
+		if (rc == 1) {
+		} else if (rc == -1) {
+			perror("sscanf");
+		} else {
+			perror("expecting integer sample rate as the third argument");
+		}
+	}
+
+	if (argc < 5) {
+		fps = 60;
+	} else {
+		rc = sscanf(argv[4], "%i", &fps);
+		if (rc == 1) {
+		} else if (rc == -1) {
+			perror("sscanf");
+		} else {
+			perror("expecting integer frame rate as the forth argument");
+		}
+	}
+
+	frame = 0;
+
+	mod = (int) (floor(((double) sample_rate) / rows / fps));
+
 	rc = screen_init(&screen, columns, rows);
 	if (rc == -1) {
 		perror("screen_init");
@@ -151,7 +184,7 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 	fd = rc;
-	rc = filesampler_init(&sampler, fd, 44100, 32, rows);
+	rc = filesampler_init(&sampler, fd, 44100, 16, rows);
 	if (rc == -1) {
 		perror("filesampler_init");
 		return -1;
@@ -176,10 +209,16 @@ int main(int argc, char *argv[]) {
 				return -1;
 			}
 
-			bar_set(&bar_rows[row], sample, 1L << 31);
+			if (frame % mod == 0) {
+				bar_set(&bar_rows[row], sample, 1L << 15);
+			}
 		}
 
-		screen_draw(&screen);
+		if (frame % mod == 0) {
+			screen_draw(&screen);
+		}
+
+		frame++;
 	}
 
 	screen_deinit(&screen);
