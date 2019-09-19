@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <stdarg.h>
 
 int screen_clear() {
 	int rc;
@@ -35,6 +36,44 @@ int screen_draw(struct screen *screen_ptr) {
 
 char *screen_pos(struct screen *screen_ptr, int column, int row) {
 	return &screen_ptr->frame[row * screen_ptr->columns + column];
+}
+
+/*
+ * Set `size_t n` to be one larger than the amount of space you want printed,
+ * to allow space for interacting with the terminator generated from the underlying `vsnprintf()`.
+ * If `new_terminator` is `'\0'` then restore the terminator with what was previously in the frame buffer.
+ * Take care at the end of the frame buffer.
+ * The string terminator will never be null, but rather either:
+ *  1. the new_terminator, or
+ *  2. the previous character in the terminal position (if new_terminator is null).
+ */
+int screen_nprintf(struct screen *screen_ptr, int column, int row, size_t n, char new_terminator, const char *format, ...) {
+	int rc;
+	va_list args;
+	char *s;
+	char terminator;
+
+	s = screen_pos(screen_ptr, column, row);
+
+	if (new_terminator == '\0') {
+		terminator = s[n - 1];
+	} else {
+		terminator = new_terminator;
+	}
+
+	va_start(args, format);
+
+	rc = vsnprintf(s, n, format, args);
+	if (rc != -1) {
+		s[n - 1] = terminator;
+		if (rc < n - 1) {
+			s[rc] = terminator;
+		}
+	}
+
+	va_end(args);
+
+	return rc;
 }
 
 void screen_blank(struct screen *screen_ptr) {

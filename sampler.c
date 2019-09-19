@@ -112,6 +112,7 @@ int main(int argc, char *argv[]) {
 	int sample_rate;
 	int fps;
 	int mod;
+	int lines;
 	int rows;
 	int frame;
 	struct screen screen;
@@ -134,7 +135,7 @@ int main(int argc, char *argv[]) {
 		perror("expecting integer columns as the first argument");
 	}
 	
-	rc = sscanf(argv[2], "%i", &rows);
+	rc = sscanf(argv[2], "%i", &lines);
 	if (rc == 1) {
 	} else if (rc == -1) {
 		perror("sscanf");
@@ -142,7 +143,7 @@ int main(int argc, char *argv[]) {
 		perror("expecting integer rows as the second argument");
 	}
 
-	rows--; /* leave a row for the cursor at the bottom of the screen */
+	rows = lines - 1; /* leave a row for the cursor at the bottom of the screen */
 
 	if (argc < 4) {
 		sample_rate = 44100;
@@ -171,7 +172,11 @@ int main(int argc, char *argv[]) {
 	frame = 0;
 
 	mod = (int) (floor(((double) sample_rate) / rows / fps));
-
+	/*
+	printf("%i %i %i %i\n", sample_rate, fps, frame, mod);
+	fflush(stdout);
+	exit(0);
+	*/
 	rc = screen_init(&screen, columns, rows);
 	if (rc == -1) {
 		perror("screen_init");
@@ -215,6 +220,8 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (frame % mod == 0) {
+			/* screen_nprintf(&screen, 0, 0, 8, '\0', "%s", "12345678901234567890"); */
+			screen_nprintf(&screen, 0, 0, 20, '\0', "%i %i %i %i", sample_rate, fps, frame, mod);
 			screen_draw(&screen);
 		}
 

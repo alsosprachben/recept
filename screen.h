@@ -20,4 +20,5 @@ void screen_deinit(struct screen *screen_ptr);
 
 char *screen_pos(struct screen *screen_ptr, int column, int row);
 int screen_draw(struct screen *screen_ptr);
+int screen_nprintf(struct screen *screen_ptr, int column, int row, size_t n, char new_terminator, const char *format, ...);
 #endif
