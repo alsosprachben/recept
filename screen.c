@@ -52,25 +52,38 @@ int screen_nprintf(struct screen *screen_ptr, int column, int row, size_t n, cha
 	va_list args;
 	char *s;
 	char terminator;
+	int i;
+	int fmt_n;
 
+	va_start(args, format);
+	rc = vsnprintf(&terminator, 0, format, args);
+	if (rc == -1) {
+		return -1;
+	}
+	va_end(args);
+
+	fmt_n = rc;
+	if (fmt_n == 0) {
+		return 0;
+	}
+
+	if (fmt_n >= n) {
+		fmt_n = n - 1;
+	}
+	
 	s = screen_pos(screen_ptr, column, row);
 
 	if (new_terminator == '\0') {
-		terminator = s[n - 1];
+		terminator = s[fmt_n];
 	} else {
 		terminator = new_terminator;
 	}
 
 	va_start(args, format);
-
 	rc = vsnprintf(s, n, format, args);
 	if (rc != -1) {
-		s[n - 1] = terminator;
-		if (rc < n - 1) {
-			s[rc] = terminator;
-		}
+		s[fmt_n] = terminator;
 	}
-
 	va_end(args);
 
 	return rc;

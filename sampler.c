@@ -220,8 +220,8 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (frame % mod == 0) {
-			/* screen_nprintf(&screen, 0, 0, 8, '\0', "%s", "12345678901234567890"); */
 			screen_nprintf(&screen, 0, 0, 20, '\0', "%i %i %i %i", sample_rate, fps, frame, mod);
+			screen_nprintf(&screen, 0, 1, 8,  '\0', "%s", "12345678901234567890");
 			screen_draw(&screen);
 		}
 
