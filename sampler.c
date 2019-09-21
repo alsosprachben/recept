@@ -111,6 +111,7 @@ int main(int argc, char *argv[]) {
 	int columns;
 	int sample_rate;
 	int fps;
+	double efps;
 	int mod;
 	int lines;
 	int rows;
@@ -172,11 +173,8 @@ int main(int argc, char *argv[]) {
 	frame = 0;
 
 	mod = (int) (floor(((double) sample_rate) / rows / fps));
-	/*
-	printf("%i %i %i %i\n", sample_rate, fps, frame, mod);
-	fflush(stdout);
-	exit(0);
-	*/
+	efps = ((double) sample_rate) / rows / mod;
+
 	rc = screen_init(&screen, columns, rows);
 	if (rc == -1) {
 		perror("screen_init");
@@ -221,7 +219,7 @@ int main(int argc, char *argv[]) {
 
 		if (frame % mod == 0) {
 			screen_nprintf(&screen, 0, 0, 20, '\0', "%i %i %i %i", sample_rate, fps, frame, mod);
-			screen_nprintf(&screen, 0, 1, 8,  '\0', "%s", "12345678901234567890");
+			screen_nprintf(&screen, 0, 1, 20, '\0', "Effective FPS: %f", efps);
 			screen_draw(&screen);
 		}
 
