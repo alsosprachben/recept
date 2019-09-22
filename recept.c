@@ -93,7 +93,7 @@ void distribution_dc_init(struct distribution_dc *dist_dc_ptr, double complex in
 	exponential_smoother_dc_init(&dist_dc_ptr->dev, initial_value);
 }
 void distribution_dc_sample(struct distribution_dc *dist_dc_ptr, double complex value, double factor, double complex *ave_ptr, double complex *dev_ptr) {
-	double deviation = fabs(dist_dc_ptr->ave.v - value);
+	double deviation = cabs(delta_dc(dist_dc_ptr->ave.v, value));
 
 	exponential_smoother_dc_sample(&dist_dc_ptr->ave, value, factor);
 	exponential_smoother_dc_sample(&dist_dc_ptr->dev, deviation, factor);
