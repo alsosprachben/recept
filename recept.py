@@ -106,7 +106,7 @@ class Distribution:
 
 class WeightedDistribution(Distribution):
 	"""
-	Infinite Impulse Response distribution, represented by exponentially smoothed average and deviation, with pre-defined window wize.
+	Infinite Impulse Response distribution, represented by exponentially smoothed average and deviation, with pre-defined window size.
 	"""
 
 	def __init__(self, window_size = 1.0, initial_value = 0.0, prior_sequence = None):

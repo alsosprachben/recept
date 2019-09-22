@@ -10,6 +10,101 @@ double complex delta_dc(double complex cval, double complex prior_cval) {
 	}
 }
 
+void exponential_smoother_d_init(struct exponential_smoother_d *es_d_ptr, double initial_value) {
+	es_d_ptr->v = initial_value;
+}
+double exponential_smoother_d_sample(struct exponential_smoother_d *es_d_ptr, double value, double factor) {
+	es_d_ptr->v += (value - es_d_ptr->v) / factor;
+	return es_d_ptr->v;
+}
+
+void exponential_smoother_dc_init(struct exponential_smoother_dc *es_d_ptr, double complex initial_value) {
+	es_d_ptr->v = initial_value;
+}
+double complex exponential_smoother_dc_sample(struct exponential_smoother_dc *es_d_ptr, double complex value, double factor) {
+	es_d_ptr->v += (value - es_d_ptr->v) / factor;
+	return es_d_ptr->v;
+}
+
+void exponential_smoothing_d_init(struct exponential_smoothing_d *esg_d_ptr, double window_size, double initial_value) {
+	esg_d_ptr->w = window_size;
+	exponential_smoother_d_init(&esg_d_ptr->v, initial_value);
+}
+double exponential_smoothing_d_sample(struct exponential_smoothing_d *esg_d_ptr, double value) {
+	return exponential_smoother_d_sample(&esg_d_ptr->v, value, esg_d_ptr->w);
+}
+
+void exponential_smoothing_dc_init(struct exponential_smoothing_dc *esg_dc_ptr, double window_size, double complex initial_value) {
+	esg_dc_ptr->w = window_size;
+	exponential_smoother_dc_init(&esg_dc_ptr->v, initial_value);
+}
+double exponential_smoothing_dc_sample(struct exponential_smoothing_dc *esg_dc_ptr, double complex value) {
+	return exponential_smoother_dc_sample(&esg_dc_ptr->v, value, esg_dc_ptr->w);
+}
+
+void delta_d_init(struct delta_d *d_d_ptr, int has_prior, double prior_sequence) {
+	d_d_ptr->has_prior = has_prior;
+	d_d_ptr->prior_sequence = prior_sequence;
+}
+int delta_d_sample(struct delta_d *d_d_ptr, double sequence_value, double *delta_value_ptr) {
+	int has_value;
+	if (d_d_ptr->has_prior) {
+		has_value = 0;
+	} else {
+		has_value = 1;
+		*delta_value_ptr = sequence_value - d_d_ptr->prior_sequence;
+	}
+
+	return has_value;
+}
+
+void delta_dc_init(struct delta_dc *d_dc_ptr, int has_prior, double complex prior_sequence) {
+	d_dc_ptr->has_prior = has_prior;
+	d_dc_ptr->prior_sequence = prior_sequence;
+}
+int delta_dc_sample(struct delta_dc *d_dc_ptr, double complex sequence_value, double complex *delta_value_ptr) {
+	int has_value;
+	if (d_dc_ptr->has_prior) {
+		has_value = 0;
+	} else {
+		has_value = 1;
+		*delta_value_ptr = delta_dc(sequence_value, d_dc_ptr->prior_sequence);
+	}
+
+	return has_value;
+}
+
+void distribution_d_init(struct distribution_d *dist_d_ptr, double initial_value) {
+	exponential_smoother_d_init(&dist_d_ptr->ave, initial_value);
+	exponential_smoother_d_init(&dist_d_ptr->dev, initial_value);
+}
+void distribution_d_sample(struct distribution_d *dist_d_ptr, double value, double factor, double *ave_ptr, double *dev_ptr) {
+	double deviation = fabs(dist_d_ptr->ave.v - value);
+
+	exponential_smoother_d_sample(&dist_d_ptr->ave, value, factor);
+	exponential_smoother_d_sample(&dist_d_ptr->dev, deviation, factor);
+
+	*ave_ptr = dist_d_ptr->ave.v;
+	*dev_ptr = dist_d_ptr->dev.v;
+}
+
+void distribution_dc_init(struct distribution_dc *dist_dc_ptr, double complex initial_value) {
+	exponential_smoother_dc_init(&dist_dc_ptr->ave, initial_value);
+	exponential_smoother_dc_init(&dist_dc_ptr->dev, initial_value);
+}
+void distribution_dc_sample(struct distribution_dc *dist_dc_ptr, double complex value, double factor, double complex *ave_ptr, double complex *dev_ptr) {
+	double deviation = fabs(dist_dc_ptr->ave.v - value);
+
+	exponential_smoother_dc_sample(&dist_dc_ptr->ave, value, factor);
+	exponential_smoother_dc_sample(&dist_dc_ptr->dev, deviation, factor);
+
+	*ave_ptr = dist_dc_ptr->ave.v;
+	*dev_ptr = dist_dc_ptr->dev.v;
+}
+
+
+
+
 
 int main() {
 	return 0;
