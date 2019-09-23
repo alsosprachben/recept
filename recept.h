@@ -46,4 +46,13 @@ struct weighted_distribution_dc {
 	double w;
 };
 
+struct apex_d {
+	struct delta_d delta;
+	int prior_is_positive;
+};
+struct apex_dc {
+	struct delta_dc delta;
+	int prior_is_positive;
+};
+
 #endif

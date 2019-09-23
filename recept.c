@@ -118,6 +118,46 @@ void weighted_distribution_dc_sample(struct weighted_distribution_dc *wdist_dc_p
 	distribution_dc_sample(&wdist_dc_ptr->dist, value, wdist_dc_ptr->w, ave_ptr, dev_ptr);
 }
 
+void apex_d_init(struct apex_d *ax_d_ptr, int has_prior, double prior_sequence) {
+	delta_d_init(&ax_d_ptr->delta, has_prior, prior_sequence);
+	ax_d_ptr->prior_is_positive = 1;
+}
+int apex_d_sample(struct apex_d *ax_d_ptr, double sequence_value, double *delta_value_ptr) {
+	int has_value;
+	int is_positive;
+
+	has_value = delta_d_sample(&ax_d_ptr->delta, sequence_value, delta_value_ptr);
+	if (has_value) {
+		is_positive = *delta_value_ptr >= 0;
+		if (ax_d_ptr->prior_is_positive != is_positive) {
+			ax_d_ptr->prior_is_positive = is_positive;
+			return 1;
+		}
+	}
+
+	return 0;
+}
+void apex_dc_init(struct apex_dc *ax_dc_ptr, int has_prior, double complex prior_sequence) {
+	delta_dc_init(&ax_dc_ptr->delta, has_prior, prior_sequence);
+	ax_dc_ptr->prior_is_positive = 1;
+}
+int apex_dc_sample(struct apex_dc *ax_dc_ptr, double complex sequence_value, double complex *delta_value_ptr) {
+	int has_value;
+	int is_positive;
+
+	has_value = delta_dc_sample(&ax_dc_ptr->delta, sequence_value, delta_value_ptr);
+	if (has_value) {
+		is_positive = creal(*delta_value_ptr) >= 0;
+		if (ax_dc_ptr->prior_is_positive != is_positive) {
+			ax_dc_ptr->prior_is_positive = is_positive;
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+
 
 #ifdef RECEPT_TEST
 

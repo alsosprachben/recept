@@ -50,4 +50,14 @@ struct weighted_distribution_dc;
 void weighted_distribution_dc_init(struct weighted_distribution_dc *wdist_dc_ptr, double complex initial_value, double window_size);
 void weighted_distribution_dc_sample(struct weighted_distribution_dc *wdist_dc_ptr, double complex value, double complex *ave_ptr, double complex *dev_ptr);
 
+
+/* Returns the given (double) sample if it is changing direction. That is, return on the derivative changing sign. */
+struct apex_d;
+void apex_d_init(struct apex_d *ax_d_ptr, int has_prior, double prior_sequence);
+int apex_d_sample(struct apex_d *ax_d_ptr, double sequence_value, double *delta_value_ptr);
+/* Returns the given (double complex) sample if it is changing direction. That is, return on the derivative changing sign. */
+struct apex_dc;
+void apex_dc_init(struct apex_dc *ax_dc_ptr, int has_prior, double complex prior_sequence);
+int apex_dc_sample(struct apex_dc *ax_dc_ptr, double complex sequence_value, double complex *delta_value_ptr);
+
 #endif
