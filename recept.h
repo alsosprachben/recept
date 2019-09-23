@@ -55,4 +55,10 @@ struct apex_dc {
 	int prior_is_positive;
 };
 
+struct dynamic_window_d {
+	double td;
+	struct delta_d s;
+	struct exponential_smoothing_d ed;
+};
+
 #endif

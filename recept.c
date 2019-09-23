@@ -157,6 +157,24 @@ int apex_dc_sample(struct apex_dc *ax_dc_ptr, double complex sequence_value, dou
 	return 0;
 }
 
+void dynamic_window_d_init(struct dynamic_window_d *dw_d_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_value) {
+	dw_d_ptr->td = target_duration;
+	delta_d_init(&dw_d_ptr->s, has_prior, prior_value);
+	exponential_smoothing_d_init(&dw_d_ptr->ed, window_size, initial_value);
+}
+double dynamic_window_d_sample(struct dynamic_window_d *dw_d_ptr, double sequence_value) {
+	int has_duration_since;
+	double duration_since;
+	double expected_duration;
+
+	has_duration_since = delta_d_sample(&dw_d_ptr->s, sequence_value, &duration_since);
+	if (has_duration_since) {
+		expected_duration = exponential_smoothing_d_sample(&dw_d_ptr->ed, duration_since);
+		return dw_d_ptr->td / expected_duration;
+	} else {
+		return dw_d_ptr->td;
+	}
+}
 
 
 #ifdef RECEPT_TEST

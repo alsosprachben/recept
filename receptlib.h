@@ -60,4 +60,11 @@ struct apex_dc;
 void apex_dc_init(struct apex_dc *ax_dc_ptr, int has_prior, double complex prior_sequence);
 int apex_dc_sample(struct apex_dc *ax_dc_ptr, double complex sequence_value, double complex *delta_value_ptr);
 
+/* Provide a dynamically-adjusted (double) window size for a particular duration, by a given time sequence. */
+struct dynamic_window_d;
+/* Provide a target duration, and a window size over the number of given sequence events. */
+void dynamic_window_d_init(struct dynamic_window_d *dw_d_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_value);
+/* Provide the next sequence value, and get an updated time window targeting the initialized duration. */
+double dynamic_window_d_sample(struct dynamic_window_d *dw_d_ptr, double sequence_value);
+
 #endif
