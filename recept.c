@@ -157,10 +157,10 @@ int apex_dc_sample(struct apex_dc *ax_dc_ptr, double complex sequence_value, dou
 	return 0;
 }
 
-void dynamic_window_d_init(struct dynamic_window_d *dw_d_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_value) {
+void dynamic_window_d_init(struct dynamic_window_d *dw_d_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration) {
 	dw_d_ptr->td = target_duration;
 	delta_d_init(&dw_d_ptr->s, has_prior, prior_value);
-	exponential_smoothing_d_init(&dw_d_ptr->ed, window_size, initial_value);
+	exponential_smoothing_d_init(&dw_d_ptr->ed, window_size, initial_duration);
 }
 double dynamic_window_d_sample(struct dynamic_window_d *dw_d_ptr, double sequence_value) {
 	int has_duration_since;
@@ -176,6 +176,27 @@ double dynamic_window_d_sample(struct dynamic_window_d *dw_d_ptr, double sequenc
 	}
 }
 
+void smooth_duration_d_init(struct smooth_duration_d *sd_d_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration, double initial_value) {
+	dynamic_window_d_init(&sd_d_ptr->dw, target_duration, window_size, has_prior, prior_value, initial_duration);
+	exponential_smoother_d_init(&sd_d_ptr->v, initial_value);
+}
+double smooth_duration_d_sample(struct smooth_duration_d *sd_d_ptr, double value, double sequence_value) {
+	double w;
+
+	w = dynamic_window_d_sample(&sd_d_ptr->dw, sequence_value);
+	return exponential_smoother_d_sample(&sd_d_ptr->v, value, w);
+}
+
+void smooth_duration_dc_init(struct smooth_duration_dc *sd_dc_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration, double complex initial_value) {
+	dynamic_window_d_init(&sd_dc_ptr->dw, target_duration, window_size, has_prior, prior_value, initial_duration);
+	exponential_smoother_dc_init(&sd_dc_ptr->v, initial_value);
+}
+double complex smooth_duration_dc_sample(struct smooth_duration_dc *sd_dc_ptr, double complex value, double sequence_value) {
+	double w;
+
+	w = dynamic_window_d_sample(&sd_dc_ptr->dw, sequence_value);
+	return exponential_smoother_dc_sample(&sd_dc_ptr->v, value, w);
+}
 
 #ifdef RECEPT_TEST
 

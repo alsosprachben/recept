@@ -63,8 +63,17 @@ int apex_dc_sample(struct apex_dc *ax_dc_ptr, double complex sequence_value, dou
 /* Provide a dynamically-adjusted (double) window size for a particular duration, by a given time sequence. */
 struct dynamic_window_d;
 /* Provide a target duration, and a window size over the number of given sequence events. */
-void dynamic_window_d_init(struct dynamic_window_d *dw_d_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_value);
+void dynamic_window_d_init(struct dynamic_window_d *dw_d_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration);
 /* Provide the next sequence value, and get an updated time window targeting the initialized duration. */
 double dynamic_window_d_sample(struct dynamic_window_d *dw_d_ptr, double sequence_value);
+
+/* a (double) expential smoother windowed by a (double) dynamic window */
+struct smooth_duration_d;
+void smooth_duration_d_init(struct smooth_duration_d *sd_d_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration, double initial_value);
+
+/* a (double complex) expential smoother windowed by a (double) dynamic window */
+struct smooth_duration_dc;
+void smooth_duration_dc_init(struct smooth_duration_dc *sd_dc_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration, double complex initial_value);
+
 
 #endif

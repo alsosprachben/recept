@@ -61,4 +61,13 @@ struct dynamic_window_d {
 	struct exponential_smoothing_d ed;
 };
 
+struct smooth_duration_d {
+	struct dynamic_window_d dw;
+	struct exponential_smoother_d v;
+};
+struct smooth_duration_dc {
+	struct dynamic_window_d dw;
+	struct exponential_smoother_dc v;
+};
+
 #endif
