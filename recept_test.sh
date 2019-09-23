@@ -13,7 +13,7 @@ if [ "${sync_delay}" ]
 then
 	true
 else
-	sync_delay=0.6
+	sync_delay=1.0
 fi
 
 enc="--buffer 735 -r 44100 -c 1 -b 32 -e signed-integer -t raw"
