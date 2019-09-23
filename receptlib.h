@@ -41,4 +41,13 @@ struct distribution_dc;
 void distribution_dc_init(struct distribution_dc *dist_dc_ptr, double complex initial_value);
 void distribution_dc_sample(struct distribution_dc *dist_dc_ptr, double complex value, double factor, double complex *ave_ptr, double complex *dev_ptr);
 
+/* Infinite Impulse Response (IIR) distribution, represented by exponentially smoothed average and deviation, (double) with pre-defined window size. */
+struct weighted_distribution_d;
+void weighted_distribution_d_init(struct weighted_distribution_d *wdist_d_ptr, double initial_value, double window_size);
+void weighted_distribution_d_sample(struct weighted_distribution_d *wdist_d_ptr, double value, double *ave_ptr, double *dev_ptr);
+/* Infinite Impulse Response (IIR) distribution, represented by exponentially smoothed average and deviation, (double complex) with pre-defined window size. */
+struct weighted_distribution_dc;
+void weighted_distribution_dc_init(struct weighted_distribution_dc *wdist_dc_ptr, double complex initial_value, double window_size);
+void weighted_distribution_dc_sample(struct weighted_distribution_dc *wdist_dc_ptr, double complex value, double complex *ave_ptr, double complex *dev_ptr);
+
 #endif

@@ -102,10 +102,27 @@ void distribution_dc_sample(struct distribution_dc *dist_dc_ptr, double complex 
 	*dev_ptr = dist_dc_ptr->dev.v;
 }
 
+void weighted_distribution_d_init(struct weighted_distribution_d *wdist_d_ptr, double initial_value, double window_size) {
+	distribution_d_init(&wdist_d_ptr->dist, initial_value);
+	wdist_d_ptr->w = window_size;
+}
+void weighted_distribution_d_sample(struct weighted_distribution_d *wdist_d_ptr, double value, double *ave_ptr, double *dev_ptr) {
+	distribution_d_sample(&wdist_d_ptr->dist, value, wdist_d_ptr->w, ave_ptr, dev_ptr);
+}
+
+void weighted_distribution_dc_init(struct weighted_distribution_dc *wdist_dc_ptr, double complex initial_value, double window_size) {
+	distribution_dc_init(&wdist_dc_ptr->dist, initial_value);
+	wdist_dc_ptr->w = window_size;
+}
+void weighted_distribution_dc_sample(struct weighted_distribution_dc *wdist_dc_ptr, double complex value, double complex *ave_ptr, double complex *dev_ptr) {
+	distribution_dc_sample(&wdist_dc_ptr->dist, value, wdist_dc_ptr->w, ave_ptr, dev_ptr);
+}
 
 
-
+#ifdef RECEPT_TEST
 
 int main() {
 	return 0;
 }
+
+#endif

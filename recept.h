@@ -37,4 +37,13 @@ struct distribution_dc {
 	struct exponential_smoother_dc dev;
 };
 
+struct weighted_distribution_d {
+	struct distribution_d dist;
+	double w;
+};
+struct weighted_distribution_dc {
+	struct distribution_dc dist;
+	double w;
+};
+
 #endif
