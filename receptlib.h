@@ -75,5 +75,14 @@ void smooth_duration_d_init(struct smooth_duration_d *sd_d_ptr, double target_du
 struct smooth_duration_dc;
 void smooth_duration_dc_init(struct smooth_duration_dc *sd_dc_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration, double complex initial_value);
 
+/* a (double) expential smoothed distribition windowed by a (double) dynamic window */
+struct smooth_duration_distribution_d;
+void smooth_duration_distribution_d_init(struct smooth_duration_distribution_d *sdd_d_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration, double initial_value);
+void smooth_duration_distribution_d_sample(struct smooth_duration_distribution_d *sdd_d_ptr, double value, double sequence_value, double *ave_ptr, double *dev_ptr);
+/* a (double complex) expential smoothed distribition windowed by a (double) dynamic window */
+struct smooth_duration_distribution_dc;
+void smooth_duration_distribution_dc_init(struct smooth_duration_distribution_dc *sdd_dc_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration, double complex initial_value);
+void smooth_duration_distribution_dc_sample(struct smooth_duration_distribution_dc *sdd_dc_ptr, double complex value, double sequence_value, double complex *ave_ptr, double complex *dev_ptr);
+
 
 #endif

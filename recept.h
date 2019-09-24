@@ -70,4 +70,14 @@ struct smooth_duration_dc {
 	struct exponential_smoother_dc v;
 };
 
+struct smooth_duration_distribution_d {
+	struct dynamic_window_d dw;
+	struct distribution_d v;
+};
+struct smooth_duration_distribution_dc {
+	struct dynamic_window_d dw;
+	struct distribution_dc v;
+};
+
+
 #endif

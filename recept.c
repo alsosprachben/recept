@@ -198,6 +198,29 @@ double complex smooth_duration_dc_sample(struct smooth_duration_dc *sd_dc_ptr, d
 	return exponential_smoother_dc_sample(&sd_dc_ptr->v, value, w);
 }
 
+void smooth_duration_distribution_d_init(struct smooth_duration_distribution_d *sdd_d_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration, double initial_value) {
+	dynamic_window_d_init(&sdd_d_ptr->dw, target_duration, window_size, has_prior, prior_value, initial_duration);
+	distribution_d_init(&sdd_d_ptr->v, initial_value);
+}
+void smooth_duration_distribution_d_sample(struct smooth_duration_distribution_d *sdd_d_ptr, double value, double sequence_value, double *ave_ptr, double *dev_ptr) {
+	double w;
+
+	w = dynamic_window_d_sample(&sdd_d_ptr->dw, sequence_value);
+	distribution_d_sample(&sdd_d_ptr->v, value, w, ave_ptr, dev_ptr);
+}
+
+void smooth_duration_distribution_dc_init(struct smooth_duration_distribution_dc *sdd_dc_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration, double complex initial_value) {
+	dynamic_window_d_init(&sdd_dc_ptr->dw, target_duration, window_size, has_prior, prior_value, initial_duration);
+	distribution_dc_init(&sdd_dc_ptr->v, initial_value);
+}
+void smooth_duration_distribution_dc_sample(struct smooth_duration_distribution_dc *sdd_dc_ptr, double complex value, double sequence_value, double complex *ave_ptr, double complex *dev_ptr) {
+	double w;
+
+	w = dynamic_window_d_sample(&sdd_dc_ptr->dw, sequence_value);
+	distribution_dc_sample(&sdd_dc_ptr->v, value, w, ave_ptr, dev_ptr);
+}
+
+
 #ifdef RECEPT_TEST
 
 int main() {
