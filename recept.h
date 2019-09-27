@@ -79,5 +79,11 @@ struct smooth_duration_distribution_dc {
 	struct distribution_dc v;
 };
 
+struct time_smoothing_d {
+	double period;
+	double phase;
+	struct exponential_smoother_dc v;
+	double wf;
+};
 
 #endif

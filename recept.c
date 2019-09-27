@@ -220,6 +220,16 @@ void smooth_duration_distribution_dc_sample(struct smooth_duration_distribution_
 	distribution_dc_sample(&sdd_dc_ptr->v, value, w, ave_ptr, dev_ptr);
 }
 
+void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, double period, double phase, double window_factor, double complex initial_value) {
+	ts_d_ptr->period = period;
+	ts_d_ptr->phase = phase;
+	exponential_smoother_dc_init(&ts_d_ptr->v, initial_value);
+	ts_d_ptr->wf = window_factor;
+}
+double complex time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, double complex value) {
+	return exponential_smoother_dc_sample(&ts_d_ptr->v, value, ts_d_ptr->wf);
+}
+
 
 #ifdef RECEPT_TEST
 
