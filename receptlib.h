@@ -87,6 +87,6 @@ void smooth_duration_distribution_dc_sample(struct smooth_duration_distribution_
 /* Infinite Impulse Response cosine transform */
 struct time_smoothing_d;
 void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, double period, double phase, double window_factor, double complex initial_value);
-double complex time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, double complex value);
+double complex time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, double time, double complex value);
 
 #endif

@@ -226,8 +226,8 @@ void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, double period, dou
 	exponential_smoother_dc_init(&ts_d_ptr->v, initial_value);
 	ts_d_ptr->wf = window_factor;
 }
-double complex time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, double complex value) {
-	return exponential_smoother_dc_sample(&ts_d_ptr->v, value, ts_d_ptr->wf);
+double complex time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, double time, double complex value) {
+	return exponential_smoother_dc_sample(&ts_d_ptr->v, value * rect1((time + ts_d_ptr->phase) / ts_d_ptr->period), ts_d_ptr->period * ts_d_ptr->wf);
 }
 
 
