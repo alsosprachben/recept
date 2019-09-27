@@ -220,14 +220,45 @@ void smooth_duration_distribution_dc_sample(struct smooth_duration_distribution_
 	distribution_dc_sample(&sdd_dc_ptr->v, value, w, ave_ptr, dev_ptr);
 }
 
-void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, double period, double phase, double window_factor, double complex initial_value) {
+void time_result_init(struct time_result *tr_ptr) {
+	tr_ptr->time_delta = 1.0;	
+	tr_ptr->time_value = 0.0;
+	tr_ptr->time_glissando = 0.0;
+}
+void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, struct time_result *tr_ptr, double period, double phase, double window_factor, double complex initial_value) {
 	ts_d_ptr->period = period;
 	ts_d_ptr->phase = phase;
 	exponential_smoother_dc_init(&ts_d_ptr->v, initial_value);
 	ts_d_ptr->wf = window_factor;
+	time_result_init(tr_ptr);
 }
-double complex time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, double time, double complex value) {
-	return exponential_smoother_dc_sample(&ts_d_ptr->v, value * rect1((time + ts_d_ptr->phase) / ts_d_ptr->period), ts_d_ptr->period * ts_d_ptr->wf);
+void time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, struct time_result *tr_ptr, double time, double complex value) {
+	tr_ptr->time_value = exponential_smoother_dc_sample(&ts_d_ptr->v, value * rect1((time + ts_d_ptr->phase) / ts_d_ptr->period), ts_d_ptr->period * ts_d_ptr->wf);
+}
+
+void dynamic_time_smoothing_d_init(struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double period, double phase, double window_factor, double complex initial_value, double initial_delta) {
+	time_smoothing_d_init(&dts_d_ptr->ts, tr_ptr, period, phase, window_factor, initial_value);
+	exponential_smoother_d_init(&dts_d_ptr->glissando, initial_delta);
+}
+void dynamic_time_smoothing_d_update_period(struct dynamic_time_smoothing_d *dts_d_ptr, double period) {
+	exponential_smoother_d_sample(&dts_d_ptr->glissando, period - dts_d_ptr->ts.period, period * dts_d_ptr->ts.wf);
+
+	dts_d_ptr->ts.phase = dts_d_ptr->ts.phase / dts_d_ptr->ts.period * period;
+	dts_d_ptr->ts.period = period;
+}
+void dynamic_time_smoothing_d_update_phase(struct dynamic_time_smoothing_d *dts_d_ptr, double phase) {
+	dts_d_ptr->ts.phase = phase;
+}
+void dynamic_time_smoothing_d_glissando_sample(struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double time, double complex value, double period) {
+	if (period > 0) {
+		dynamic_time_smoothing_d_update_period(dts_d_ptr, period);
+	}
+	tr_ptr->time_glissando = dts_d_ptr->glissando.v;
+
+	time_smoothing_d_sample(&dts_d_ptr->ts, tr_ptr, time, value);
+}
+void dynamic_time_smoothing_d_sample(struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double time, double complex value) {
+	dynamic_time_smoothing_d_glissando_sample(dts_d_ptr, tr_ptr, time, value, 0);
 }
 
 

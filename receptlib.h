@@ -84,9 +84,19 @@ struct smooth_duration_distribution_dc;
 void smooth_duration_distribution_dc_init(struct smooth_duration_distribution_dc *sdd_dc_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration, double complex initial_value);
 void smooth_duration_distribution_dc_sample(struct smooth_duration_distribution_dc *sdd_dc_ptr, double complex value, double sequence_value, double complex *ave_ptr, double complex *dev_ptr);
 
+struct time_result;
+ 
 /* Infinite Impulse Response cosine transform */
 struct time_smoothing_d;
-void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, double period, double phase, double window_factor, double complex initial_value);
-double complex time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, double time, double complex value);
+void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, struct time_result *tr_ptr, double period, double phase, double window_factor, double complex initial_value);
+void time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, struct time_result *tr_ptr, double time, double complex value);
+
+/* time smoothing, but with mutable period component, tracking period delta, or the "glissando receptor factor". */
+struct dynamic_time_smoothing_d;
+void dynamic_time_smoothing_d_init(            struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double period, double phase, double window_factor, double complex initial_value, double initial_delta);
+void dynamic_time_smoothing_d_update_period(   struct dynamic_time_smoothing_d *dts_d_ptr, double period);
+void dynamic_time_smoothing_d_glissando_sample(struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double time, double complex value, double period);
+void dynamic_time_smoothing_d_sample(          struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double time, double complex value);
+
 
 #endif
