@@ -79,12 +79,6 @@ struct smooth_duration_distribution_dc {
 	struct distribution_dc v;
 };
 
-struct time_result {
-	double         time_delta;     /* time since last observation */
-	double complex time_value;     /* complex period value        */
-	double         time_glissando; /* sensor period delta         */
-};
-
 struct time_smoothing_d {
 	double period;
 	double phase;
@@ -96,5 +90,17 @@ struct dynamic_time_smoothing_d {
 	struct time_smoothing_d ts;
 	struct exponential_smoother_d glissando;
 };
+
+struct monochord {
+	double source_period;
+	double target_period;
+	double ratio;
+
+	double period;
+	double offset;
+	double phi_offset;
+	double complex value;
+};
+
 
 #endif

@@ -2,6 +2,8 @@
 #include "bar.h"
 #include "tau.h"
 
+#include <math.h>
+
 double complex delta_dc(double complex cval, double complex prior_cval) {
 	if (prior_cval != 0.0) {
 		return cval / prior_cval;
@@ -259,6 +261,25 @@ void dynamic_time_smoothing_d_glissando_sample(struct dynamic_time_smoothing_d *
 }
 void dynamic_time_smoothing_d_sample(struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double time, double complex value) {
 	dynamic_time_smoothing_d_glissando_sample(dts_d_ptr, tr_ptr, time, value, 0);
+}
+
+void monochord_construct(struct monochord *mc_ptr) {
+	mc_ptr->period = mc_ptr->source_period * mc_ptr->ratio;
+	mc_ptr->offset = mc_ptr->target_period - mc_ptr->period;
+	mc_ptr->phi_offset = mc_ptr->offset / mc_ptr->target_period;
+	mc_ptr->value = rect1(mc_ptr->phi_offset);
+}
+
+void monochord_init(struct monochord *mc_ptr, double source_period, double target_period, double ratio) {
+	mc_ptr->source_period = source_period;
+	mc_ptr->target_period = target_period;
+	mc_ptr->ratio = ratio;
+	monochord_construct(mc_ptr);
+}
+
+void monochord_rotate(struct monochord *mc_ptr, struct monochord_result *mcr_ptr) {
+	mcr_ptr->cval *= mc_ptr->value;
+	mcr_ptr->phi = fmod(mcr_ptr->phi + mc_ptr->phi_offset + 0.5, 1) - 0.5;
 }
 
 
