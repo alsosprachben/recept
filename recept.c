@@ -263,6 +263,14 @@ void dynamic_time_smoothing_d_sample(struct dynamic_time_smoothing_d *dts_d_ptr,
 	dynamic_time_smoothing_d_glissando_sample(dts_d_ptr, tr_ptr, time, value, 0);
 }
 
+void percept_result_polar(struct percept_result *pr_ptr) {
+	pr_ptr->r   =         cabs(pr_ptr->cval);
+	pr_ptr->phi = rad2tau(carg(pr_ptr->cval));
+}
+void percept_result_rect(struct percept_result *pr_ptr) {
+	pr_ptr->cval = rect(pr_ptr->phi, pr_ptr->r);
+}
+
 void monochord_construct(struct monochord *mc_ptr) {
 	mc_ptr->period = mc_ptr->source_period * mc_ptr->ratio;
 	mc_ptr->offset = mc_ptr->target_period - mc_ptr->period;
@@ -277,11 +285,24 @@ void monochord_init(struct monochord *mc_ptr, double source_period, double targe
 	monochord_construct(mc_ptr);
 }
 
-void monochord_rotate(struct monochord *mc_ptr, struct monochord_result *mcr_ptr) {
-	mcr_ptr->cval *= mc_ptr->value;
-	mcr_ptr->phi = fmod(mcr_ptr->phi + mc_ptr->phi_offset + 0.5, 1) - 0.5;
+void monochord_rotate(struct monochord *mc_ptr, struct percept_result *pr_ptr) {
+	pr_ptr->cval *= mc_ptr->value;
+	pr_ptr->phi = fmod(pr_ptr->phi + mc_ptr->phi_offset + 0.5, 1) - 0.5;
 }
 
+void percept_result_dup_monochord(struct percept_result *pr_dup_ptr, struct percept_result *pr_ptr, struct monochord *mc_ptr) {
+	*pr_dup_ptr = *pr_ptr;
+	monochord_rotate(mc_ptr, pr_dup_ptr);
+}
+void percept_result_superimpose(struct percept_result *pr_target_ptr, struct percept_result *pr_source_ptr) {
+	pr_target_ptr->cval += pr_source_ptr->cval;
+	percept_result_polar(pr_target_ptr);
+}
+void period_percept_superimpose_from_percept(struct period_percept *pp_source_ptr, struct period_percept *pp_target_ptr, struct monochord *mc_ptr) {
+	struct percept_result mc_pr;
+	percept_result_dup_monochord(&mc_pr, &pp_source_ptr->value, mc_ptr);
+	percept_result_superimpose(&pp_target_ptr->value, &mc_pr);
+}
 
 #ifdef RECEPT_TEST
 
