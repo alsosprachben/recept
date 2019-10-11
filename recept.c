@@ -12,6 +12,8 @@ double complex delta_dc(double complex cval, double complex prior_cval) {
 	}
 }
 
+/* struct exponential_smoothing_d[c] */
+
 void exponential_smoother_d_init(struct exponential_smoother_d *es_d_ptr, double initial_value) {
 	es_d_ptr->v = initial_value;
 }
@@ -43,6 +45,8 @@ void exponential_smoothing_dc_init(struct exponential_smoothing_dc *esg_dc_ptr, 
 double exponential_smoothing_dc_sample(struct exponential_smoothing_dc *esg_dc_ptr, double complex value) {
 	return exponential_smoother_dc_sample(&esg_dc_ptr->v, value, esg_dc_ptr->w);
 }
+
+/* struct delta_d[c] */
 
 void delta_d_init(struct delta_d *d_d_ptr, int has_prior, double prior_sequence) {
 	d_d_ptr->has_prior = has_prior;
@@ -76,6 +80,8 @@ int delta_dc_sample(struct delta_dc *d_dc_ptr, double complex sequence_value, do
 	return has_value;
 }
 
+/* struct distribution_d[c] */
+
 void distribution_d_init(struct distribution_d *dist_d_ptr, double initial_value) {
 	exponential_smoother_d_init(&dist_d_ptr->ave, initial_value);
 	exponential_smoother_d_init(&dist_d_ptr->dev, initial_value);
@@ -104,6 +110,8 @@ void distribution_dc_sample(struct distribution_dc *dist_dc_ptr, double complex 
 	*dev_ptr = dist_dc_ptr->dev.v;
 }
 
+/* struct weighted_distribution_d[c] */
+
 void weighted_distribution_d_init(struct weighted_distribution_d *wdist_d_ptr, double initial_value, double window_size) {
 	distribution_d_init(&wdist_d_ptr->dist, initial_value);
 	wdist_d_ptr->w = window_size;
@@ -119,6 +127,8 @@ void weighted_distribution_dc_init(struct weighted_distribution_dc *wdist_dc_ptr
 void weighted_distribution_dc_sample(struct weighted_distribution_dc *wdist_dc_ptr, double complex value, double complex *ave_ptr, double complex *dev_ptr) {
 	distribution_dc_sample(&wdist_dc_ptr->dist, value, wdist_dc_ptr->w, ave_ptr, dev_ptr);
 }
+
+/* struct apex_d[c] */
 
 void apex_d_init(struct apex_d *ax_d_ptr, int has_prior, double prior_sequence) {
 	delta_d_init(&ax_d_ptr->delta, has_prior, prior_sequence);
@@ -139,6 +149,7 @@ int apex_d_sample(struct apex_d *ax_d_ptr, double sequence_value, double *delta_
 
 	return 0;
 }
+
 void apex_dc_init(struct apex_dc *ax_dc_ptr, int has_prior, double complex prior_sequence) {
 	delta_dc_init(&ax_dc_ptr->delta, has_prior, prior_sequence);
 	ax_dc_ptr->prior_is_positive = 1;
@@ -159,6 +170,8 @@ int apex_dc_sample(struct apex_dc *ax_dc_ptr, double complex sequence_value, dou
 	return 0;
 }
 
+/* struct dynamic_window_d */
+
 void dynamic_window_d_init(struct dynamic_window_d *dw_d_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration) {
 	dw_d_ptr->td = target_duration;
 	delta_d_init(&dw_d_ptr->s, has_prior, prior_value);
@@ -177,6 +190,8 @@ double dynamic_window_d_sample(struct dynamic_window_d *dw_d_ptr, double sequenc
 		return dw_d_ptr->td;
 	}
 }
+
+/* struct smooth_duration_d[c] */
 
 void smooth_duration_d_init(struct smooth_duration_d *sd_d_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration, double initial_value) {
 	dynamic_window_d_init(&sd_d_ptr->dw, target_duration, window_size, has_prior, prior_value, initial_duration);
@@ -200,6 +215,8 @@ double complex smooth_duration_dc_sample(struct smooth_duration_dc *sd_dc_ptr, d
 	return exponential_smoother_dc_sample(&sd_dc_ptr->v, value, w);
 }
 
+/* struct smooth_duration_distribution_d[c] */
+
 void smooth_duration_distribution_d_init(struct smooth_duration_distribution_d *sdd_d_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration, double initial_value) {
 	dynamic_window_d_init(&sdd_d_ptr->dw, target_duration, window_size, has_prior, prior_value, initial_duration);
 	distribution_d_init(&sdd_d_ptr->v, initial_value);
@@ -222,11 +239,16 @@ void smooth_duration_distribution_dc_sample(struct smooth_duration_distribution_
 	distribution_dc_sample(&sdd_dc_ptr->v, value, w, ave_ptr, dev_ptr);
 }
 
+/* struct time_result */
+
 void time_result_init(struct time_result *tr_ptr) {
 	tr_ptr->time_delta = 1.0;	
 	tr_ptr->time_value = 0.0;
 	tr_ptr->time_glissando = 0.0;
 }
+
+/* struct time_smoothing_d */
+
 void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, struct time_result *tr_ptr, double period, double phase, double window_factor, double complex initial_value) {
 	ts_d_ptr->period = period;
 	ts_d_ptr->phase = phase;
@@ -237,6 +259,8 @@ void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, struct time_result
 void time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, struct time_result *tr_ptr, double time, double complex value) {
 	tr_ptr->time_value = exponential_smoother_dc_sample(&ts_d_ptr->v, value * rect1((time + ts_d_ptr->phase) / ts_d_ptr->period), ts_d_ptr->period * ts_d_ptr->wf);
 }
+
+/* struct dynamic_time_smoothing_d */
 
 void dynamic_time_smoothing_d_init(struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double period, double phase, double window_factor, double complex initial_value, double initial_delta) {
 	time_smoothing_d_init(&dts_d_ptr->ts, tr_ptr, period, phase, window_factor, initial_value);
@@ -263,6 +287,8 @@ void dynamic_time_smoothing_d_sample(struct dynamic_time_smoothing_d *dts_d_ptr,
 	dynamic_time_smoothing_d_glissando_sample(dts_d_ptr, tr_ptr, time, value, 0);
 }
 
+/* percept_result */
+
 void percept_result_polar(struct percept_result *pr_ptr) {
 	pr_ptr->r   =         cabs(pr_ptr->cval);
 	pr_ptr->phi = rad2tau(carg(pr_ptr->cval));
@@ -270,6 +296,8 @@ void percept_result_polar(struct percept_result *pr_ptr) {
 void percept_result_rect(struct percept_result *pr_ptr) {
 	pr_ptr->cval = rect(pr_ptr->phi, pr_ptr->r);
 }
+
+/* struct monochord */
 
 void monochord_construct(struct monochord *mc_ptr) {
 	mc_ptr->period = mc_ptr->source_period * mc_ptr->ratio;
@@ -290,6 +318,8 @@ void monochord_rotate(struct monochord *mc_ptr, struct percept_result *pr_ptr) {
 	pr_ptr->phi = fmod(pr_ptr->phi + mc_ptr->phi_offset + 0.5, 1) - 0.5;
 }
 
+/* struct period_result */
+
 void percept_result_dup_monochord(struct percept_result *pr_dup_ptr, struct percept_result *pr_ptr, struct monochord *mc_ptr) {
 	*pr_dup_ptr = *pr_ptr;
 	monochord_rotate(mc_ptr, pr_dup_ptr);
@@ -298,10 +328,47 @@ void percept_result_superimpose(struct percept_result *pr_target_ptr, struct per
 	pr_target_ptr->cval += pr_source_ptr->cval;
 	percept_result_polar(pr_target_ptr);
 }
+
+/* struct period_percept */
+
+void period_percept_init(struct period_percept *pp_ptr, struct percept_field field, double timestamp, struct time_result time, struct percept_result value) {
+	pp_ptr->field = field;
+	pp_ptr->timestamp = timestamp;
+	pp_ptr->time = time;
+	pp_ptr->value = value;
+}
+
 void period_percept_superimpose_from_percept(struct period_percept *pp_source_ptr, struct period_percept *pp_target_ptr, struct monochord *mc_ptr) {
 	struct percept_result mc_pr;
 	percept_result_dup_monochord(&mc_pr, &pp_source_ptr->value, mc_ptr);
 	percept_result_superimpose(&pp_target_ptr->value, &mc_pr);
+}
+
+/* struct period_recept */
+
+void period_recept_init(struct period_recept *pr_ptr, struct period_percept *phase, struct period_percept *prior_phase) {
+	double phi_t;
+
+	pr_ptr->phase = phase;
+	pr_ptr->prior_phase = prior_phase;
+	pr_ptr->field.period        = (pr_ptr->phase->field.period        + pr_ptr->prior_phase->field.period)        / 2;
+	pr_ptr->field.period_factor = (pr_ptr->phase->field.period_factor + pr_ptr->prior_phase->field.period_factor) / 2;
+	pr_ptr->field.glissando     = (pr_ptr->phase->field.glissando     + pr_ptr->prior_phase->field.glissando)     / 2;
+
+	pr_ptr->frequency = 1.0 / pr_ptr->field.period;
+
+	pr_ptr->value.cval = delta_dc(pr_ptr->phase->value.cval, pr_ptr->prior_phase->value.cval);
+	percept_result_polar(&pr_ptr->value);
+	pr_ptr->duration = pr_ptr->phase->timestamp - pr_ptr->prior_phase->timestamp;
+
+	if (pr_ptr->duration > 0) {
+		phi_t = pr_ptr->value.phi / pr_ptr->duration;
+	} else {
+		phi_t = 0.0;
+	}
+
+	pr_ptr->instant_frequency = pr_ptr->frequency - phi_t;
+	pr_ptr->instant_period    = 1.0 / pr_ptr->instant_frequency;
 }
 
 #ifdef RECEPT_TEST

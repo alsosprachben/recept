@@ -122,12 +122,30 @@ struct percept_field {
 };
 struct period_percept {
 	struct percept_field  field;
+	double timestamp;
 	struct time_result    time;
 	struct percept_result value;
 };
 void percept_result_polar(struct percept_result *pr_ptr);
 void percept_result_rect(struct percept_result *pr_ptr);
 void percept_result_dup_monochord(struct percept_result *pr_dup_ptr, struct percept_result *pr_ptr, struct monochord *mc_ptr);
+
+void period_percept_init(struct period_percept *pp_ptr, struct percept_field field, double timestamp, struct time_result time, struct percept_result value);
 void period_percept_superimpose_from_percept(struct period_percept *pp_source_ptr, struct period_percept *pp_target_ptr, struct monochord *mc_ptr);
+
+struct period_recept {
+	struct percept_field   field;
+	struct period_percept *phase;
+	struct period_percept *prior_phase;
+
+	double frequency;
+	double instant_period;
+	double instant_frequency;
+	struct percept_result value;
+
+	double duration;
+	
+};
+void period_recept_init(struct period_recept *pr_ptr, struct period_percept *phase, struct period_percept *prior_phase);
 
 #endif
