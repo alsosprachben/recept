@@ -102,6 +102,7 @@ void dynamic_time_smoothing_d_update_period(   struct dynamic_time_smoothing_d *
 void dynamic_time_smoothing_d_glissando_sample(struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double time, double complex value, double period);
 void dynamic_time_smoothing_d_sample(          struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double time, double complex value);
 
+/* percept's periodic value (Z-transform, frequency domain value) */
 struct percept_result {
 	double complex cval;
 	double r;
@@ -109,30 +110,33 @@ struct percept_result {
 };
 void percept_result_polar(struct percept_result *pr_ptr);
 void percept_result_rect(struct percept_result *pr_ptr);
+struct monochord;
+void percept_result_dup_monochord(struct percept_result *pr_dup_ptr, struct percept_result *pr_ptr, struct monochord *mc_ptr);
 
-
+/* monochord digital up/down converter (rotates the spectrum, shifting the frequency/period) */
 struct monochord;
 void monochord_init(struct monochord *mc_ptr, double source_period, double target_period, double ratio);
 void monochord_rotate(struct monochord *mc_ptr, struct percept_result *pr_ptr);
 
+/* percept's receptive field */
 struct percept_field {
 	double period;
 	double period_factor;
 	double glissando;
 };
+
+/* Physical Percept: Representation of Periodic Value */
 struct period_percept {
 	struct percept_field  field;
 	double timestamp;
 	struct time_result    time;
 	struct percept_result value;
 };
-void percept_result_polar(struct percept_result *pr_ptr);
-void percept_result_rect(struct percept_result *pr_ptr);
-void percept_result_dup_monochord(struct percept_result *pr_dup_ptr, struct percept_result *pr_ptr, struct monochord *mc_ptr);
 
 void period_percept_init(struct period_percept *pp_ptr, struct percept_field field, double timestamp, struct time_result time, struct percept_result value);
 void period_percept_superimpose_from_percept(struct period_percept *pp_source_ptr, struct period_percept *pp_target_ptr, struct monochord *mc_ptr);
 
+/* Physiological Recept: Deduction of Periodic Value */
 struct period_recept {
 	struct percept_field   field;
 	struct period_percept *phase;
