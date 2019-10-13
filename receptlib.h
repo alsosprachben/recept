@@ -84,13 +84,13 @@ struct smooth_duration_distribution_dc;
 void smooth_duration_distribution_dc_init(struct smooth_duration_distribution_dc *sdd_dc_ptr, double target_duration, double window_size, int has_prior, double prior_value, double initial_duration, double complex initial_value);
 void smooth_duration_distribution_dc_sample(struct smooth_duration_distribution_dc *sdd_dc_ptr, double complex value, double sequence_value, double complex *ave_ptr, double complex *dev_ptr);
 
+/* Infinite Impulse Response cosine transform */
 struct time_result {
 	double         time_delta;     /* time since last observation */
 	double complex time_value;     /* complex period value        */
 	double         time_glissando; /* sensor period delta         */
 };
 
-/* Infinite Impulse Response cosine transform */
 struct time_smoothing_d;
 void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, struct time_result *tr_ptr, double period, double phase, double window_factor, double complex initial_value);
 void time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, struct time_result *tr_ptr, double time, double complex value);
@@ -102,14 +102,23 @@ void dynamic_time_smoothing_d_update_period(   struct dynamic_time_smoothing_d *
 void dynamic_time_smoothing_d_glissando_sample(struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double time, double complex value, double period);
 void dynamic_time_smoothing_d_sample(          struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double time, double complex value);
 
-/* percept's periodic value (Z-transform, frequency domain value) */
+/* percept's receptive field */
+struct percept_field {
+	double period;
+	double period_factor;
+	double glissando;
+};
+
+/* percept's periodic value (Z-transform, frequency domain value, representing the state of the receptive field) */
 struct percept_result {
 	double complex cval;
 	double r;
 	double phi;
 };
+
 void percept_result_polar(struct percept_result *pr_ptr);
 void percept_result_rect(struct percept_result *pr_ptr);
+
 struct monochord;
 void percept_result_dup_monochord(struct percept_result *pr_dup_ptr, struct percept_result *pr_ptr, struct monochord *mc_ptr);
 
@@ -117,13 +126,6 @@ void percept_result_dup_monochord(struct percept_result *pr_dup_ptr, struct perc
 struct monochord;
 void monochord_init(struct monochord *mc_ptr, double source_period, double target_period, double ratio);
 void monochord_rotate(struct monochord *mc_ptr, struct percept_result *pr_ptr);
-
-/* percept's receptive field */
-struct percept_field {
-	double period;
-	double period_factor;
-	double glissando;
-};
 
 /* Physical Percept: Representation of Periodic Value */
 struct period_percept;

@@ -102,5 +102,40 @@ struct monochord {
 	double complex value;
 };
 
+struct period_percept {
+	struct percept_field  field;
+	double timestamp;
+	struct time_result    time;
+	struct percept_result value;
+};
+struct period_recept {
+	struct percept_field   field;
+	struct period_percept *phase;
+	struct period_percept *prior_phase;
+
+	double frequency;
+	double instant_period;
+	double instant_frequency;
+	struct percept_result value;
+
+	double duration;
+};
+struct period_concept {
+	struct period_sensor *sensor_ptr;
+	struct percept_field  field;
+	double weight_factor;
+
+	struct period_percept *percept_ptr;
+	struct period_percept prior_percept;
+	int               has_prior_percept;
+
+	struct exponential_smoother_d avg_instant_period_state;
+	struct delta_d instant_period_delta_state;
+	struct exponential_smoother_d instant_period_stddev_state;
+};
+
+
+
+
 
 #endif

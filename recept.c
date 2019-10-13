@@ -330,13 +330,6 @@ void percept_result_superimpose(struct percept_result *pr_target_ptr, struct per
 }
 
 /* struct period_percept */
-struct period_percept {
-	struct percept_field  field;
-	double timestamp;
-	struct time_result    time;
-	struct percept_result value;
-};
-
 void period_percept_init(struct period_percept *pp_ptr, struct percept_field field, double timestamp, struct time_result time, struct percept_result value) {
 	pp_ptr->field = field;
 	pp_ptr->timestamp = timestamp;
@@ -351,19 +344,6 @@ void period_percept_superimpose_from_percept(struct period_percept *pp_source_pt
 }
 
 /* struct period_recept */
-struct period_recept {
-	struct percept_field   field;
-	struct period_percept *phase;
-	struct period_percept *prior_phase;
-
-	double frequency;
-	double instant_period;
-	double instant_frequency;
-	struct percept_result value;
-
-	double duration;
-};
-
 void period_recept_init(struct period_recept *pr_ptr, struct period_percept *phase, struct period_percept *prior_phase) {
 	double phi_t;
 
@@ -390,34 +370,24 @@ void period_recept_init(struct period_recept *pr_ptr, struct period_percept *pha
 }
 
 /* struct period_concept */
-struct period_concept {
-	struct period_sensor *sensor_ptr;
-	struct percept_field  field;
-	double weight_factor;
-
-	struct period_percept *percept_ptr;
-	struct period_percept *prior_percept_ptr;
-
-	struct exponential_smoother_d avg_instant_period_state;
-	struct delta_d instant_period_delta_state;
-	struct exponential_smoother_d instant_period_stddev_state;
-};
-
 void period_concept_init(struct period_concept *pc_ptr, struct period_sensor *sensor_ptr, struct percept_field field, double weight_factor) {
 	pc_ptr->sensor_ptr    = sensor_ptr;
 	pc_ptr->field         = field;
 	pc_ptr->weight_factor = weight_factor;
 
 	pc_ptr->percept_ptr       = 0;
-	pc_ptr->prior_percept_ptr = 0;
+	pc_ptr->prior_percept.field = field;
+	pc_ptr->prior_percept.timestamp = 0;
+	pc_ptr->prior_percept.time  = (struct time_result) {0, 0, 0};
+	pc_ptr->prior_percept.value = (struct percept_result) {0, 0, 0};
 }
 
 void period_concept_setup(struct period_concept *pc_ptr) {
-	pc_ptr->prior_percept_ptr = pc_ptr->percept_ptr;
+	pc_ptr->prior_percept = *pc_ptr->percept_ptr;
 
-	exponential_smoother_d_init(&pc_ptr->avg_instant_period_state, pc_ptr->prior_percept_ptr->field.period);
+	exponential_smoother_d_init(&pc_ptr->avg_instant_period_state, pc_ptr->percept_ptr->field.period);
 	delta_d_init(&pc_ptr->instant_period_delta_state, 0, 0);
-	exponential_smoother_d_init(&pc_ptr->instant_period_stddev_state, pc_ptr->prior_percept_ptr->field.period);
+	exponential_smoother_d_init(&pc_ptr->instant_period_stddev_state, pc_ptr->percept_ptr->field.period);
 }
 
 void period_concept_sample_recept(struct period_concept *pc_ptr) {
@@ -425,13 +395,14 @@ void period_concept_sample_recept(struct period_concept *pc_ptr) {
 }
 
 void period_concept_perceive(struct period_concept *pc_ptr) {
-	if (pc_ptr->prior_percept_ptr == 0) {
+	if ( ! pc_ptr->has_prior_percept) {
+		pc_ptr->has_prior_percept = 1;
 		period_concept_setup(pc_ptr);
 	}
 
 	period_concept_sample_recept(pc_ptr);
 
-	pc_ptr->prior_percept_ptr = pc_ptr->percept_ptr;
+	pc_ptr->prior_percept = *pc_ptr->percept_ptr;
 }
 
 void period_concept_sample_percept(struct period_concept *pc_ptr, struct period_percept *percept_ptr) {
