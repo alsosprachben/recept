@@ -419,13 +419,13 @@ class PeriodConcept:
 		self.weight_factor = weight_factor
 		self.prior_percept = None
 
-	def _init(self, percept):
+	def _init(self):
 		self.prior_percept = self.percept
 
-		self.avg_instant_period_state = ExponentialSmoother(percept.period)
+		self.avg_instant_period_state = ExponentialSmoother(self.percept.period)
 
 		self.instant_period_delta_state  = Delta()
-		self.instant_period_stddev_state = ExponentialSmoother(percept.period)
+		self.instant_period_stddev_state = ExponentialSmoother(self.percept.period)
 
 		#self.avg_instant_distance_state = ExponentialSmoother(0.0)
 
@@ -449,7 +449,7 @@ class PeriodConcept:
 
 	def perceive(self):
 		if self.prior_percept is None:
-			self._init(self.percept)
+			self._init()
 
 		self.sample_recept()
 		

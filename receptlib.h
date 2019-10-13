@@ -126,30 +126,17 @@ struct percept_field {
 };
 
 /* Physical Percept: Representation of Periodic Value */
-struct period_percept {
-	struct percept_field  field;
-	double timestamp;
-	struct time_result    time;
-	struct percept_result value;
-};
-
+struct period_percept;
 void period_percept_init(struct period_percept *pp_ptr, struct percept_field field, double timestamp, struct time_result time, struct percept_result value);
 void period_percept_superimpose_from_percept(struct period_percept *pp_source_ptr, struct period_percept *pp_target_ptr, struct monochord *mc_ptr);
 
 /* Physiological Recept: Deduction of Periodic Value */
-struct period_recept {
-	struct percept_field   field;
-	struct period_percept *phase;
-	struct period_percept *prior_phase;
-
-	double frequency;
-	double instant_period;
-	double instant_frequency;
-	struct percept_result value;
-
-	double duration;
-	
-};
+struct period_recept;
 void period_recept_init(struct period_recept *pr_ptr, struct period_percept *phase, struct period_percept *prior_phase);
+
+/* Psychological Concept: Persistence of Periodic Value */
+struct period_sensor;
+struct period_concept;
+void period_concept_init(struct period_concept *pc_ptr, struct period_sensor *sensor_ptr, struct percept_field field, double weight_factor);
 
 #endif
