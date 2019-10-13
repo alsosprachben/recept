@@ -129,8 +129,17 @@ struct period_concept {
 	struct period_percept prior_percept;
 	int               has_prior_percept;
 
+	struct period_recept recept;
+
+	double avg_instant_period;
+	double avg_instant_period_offset;
 	struct exponential_smoother_d avg_instant_period_state;
+
+	int    has_instant_period_delta;
+	double instant_period_delta;
 	struct delta_d instant_period_delta_state;
+
+	double instant_period_stddev;
 	struct exponential_smoother_d instant_period_stddev_state;
 };
 

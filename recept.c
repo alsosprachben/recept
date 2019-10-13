@@ -375,11 +375,8 @@ void period_concept_init(struct period_concept *pc_ptr, struct period_sensor *se
 	pc_ptr->field         = field;
 	pc_ptr->weight_factor = weight_factor;
 
-	pc_ptr->percept_ptr       = 0;
-	pc_ptr->prior_percept.field = field;
-	pc_ptr->prior_percept.timestamp = 0;
-	pc_ptr->prior_percept.time  = (struct time_result) {0, 0, 0};
-	pc_ptr->prior_percept.value = (struct percept_result) {0, 0, 0};
+	pc_ptr->has_prior_percept = 0;
+	pc_ptr->has_instant_period_delta = 0;
 }
 
 void period_concept_setup(struct period_concept *pc_ptr) {
@@ -390,8 +387,24 @@ void period_concept_setup(struct period_concept *pc_ptr) {
 	exponential_smoother_d_init(&pc_ptr->instant_period_stddev_state, pc_ptr->percept_ptr->field.period);
 }
 
+void period_concept_receive(struct period_concept *pc_ptr) {
+	/* average instantaneous period */
+	pc_ptr->avg_instant_period = exponential_smoother_d_sample(&pc_ptr->avg_instant_period_state, pc_ptr->recept.field.period, pc_ptr->recept.field.period * pc_ptr->weight_factor);
+	pc_ptr->avg_instant_period_offset = pc_ptr->avg_instant_period - pc_ptr->recept.field.period;
+
+	/* deviation of average */
+	pc_ptr->has_instant_period_delta = delta_d_sample(&pc_ptr->instant_period_delta_state, pc_ptr->avg_instant_period, &pc_ptr->instant_period_delta);
+	if ( ! pc_ptr->has_instant_period_delta) {
+		pc_ptr->instant_period_delta = pc_ptr->avg_instant_period;
+		pc_ptr->has_instant_period_delta = 1;
+	}
+	/* standard deviation of average (dis-convergence on an average instant period) */
+	pc_ptr->instant_period_stddev = exponential_smoother_d_sample(&pc_ptr->instant_period_stddev_state, fabs(pc_ptr->instant_period_delta), fabs(pc_ptr->recept.instant_period * pc_ptr->weight_factor));
+}
+
 void period_concept_sample_recept(struct period_concept *pc_ptr) {
-	
+	period_recept_init(&pc_ptr->recept, pc_ptr->percept_ptr, &pc_ptr->prior_percept);
+	period_concept_receive(pc_ptr);
 }
 
 void period_concept_perceive(struct period_concept *pc_ptr) {
