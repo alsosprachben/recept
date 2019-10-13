@@ -110,8 +110,6 @@ void bar_draw_unsigned(union bar_u *bar_ptr, char *buf, size_t buflen, double n,
 	}
 }
 void bar_draw_signed(union bar_u *bar_ptr, char *buf, size_t buflen, double n, double d) {
-	double bufpos;
-
 	if (d == 0 || buflen < 3) {
 		bar_draw_blank(bar_ptr, buf, buflen);
 		return;

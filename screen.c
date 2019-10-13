@@ -52,7 +52,6 @@ int screen_nprintf(struct screen *screen_ptr, int column, int row, size_t n, cha
 	va_list args;
 	char *s;
 	char terminator;
-	int i;
 	int fmt_n;
 
 	va_start(args, format);
