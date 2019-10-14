@@ -1,8 +1,9 @@
+#include <math.h>
+
 #include "recept.h"
 #include "bar.h"
 #include "tau.h"
 
-#include <math.h>
 
 double complex delta_dc(double complex cval, double complex prior_cval) {
 	if (prior_cval != 0.0) {
@@ -239,62 +240,64 @@ void smooth_duration_distribution_dc_sample(struct smooth_duration_distribution_
 	distribution_dc_sample(&sdd_dc_ptr->v, value, w, ave_ptr, dev_ptr);
 }
 
-/* struct time_result */
-
-void time_result_init(struct time_result *tr_ptr) {
-	tr_ptr->time_delta = 1.0;	
-	tr_ptr->time_value = 0.0;
-	tr_ptr->time_glissando = 0.0;
-}
-
 /* struct time_smoothing_d */
 
-void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, struct time_result *tr_ptr, double period, double phase, double window_factor, double complex initial_value) {
-	ts_d_ptr->period = period;
-	ts_d_ptr->phase = phase;
-	exponential_smoother_dc_init(&ts_d_ptr->v, initial_value);
-	ts_d_ptr->wf = window_factor;
-	time_result_init(tr_ptr);
+void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, struct receptive_field *field_ptr, struct receptive_value *value_ptr) {
+	ts_d_ptr->field_ptr = field_ptr;
+	ts_d_ptr->value_ptr = value_ptr;
+	exponential_smoother_dc_init(&ts_d_ptr->v, value_ptr->cval);
 }
-void time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, struct time_result *tr_ptr, double time, double complex value) {
-	tr_ptr->time_value = exponential_smoother_dc_sample(&ts_d_ptr->v, value * rect1((time + ts_d_ptr->phase) / ts_d_ptr->period), ts_d_ptr->period * ts_d_ptr->wf);
+void time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, double time, double complex value) {
+	ts_d_ptr->value_ptr->cval = exponential_smoother_dc_sample(&ts_d_ptr->v, value * rect1((time + ts_d_ptr->field_ptr->phase) / ts_d_ptr->field_ptr->period), ts_d_ptr->field_ptr->period * ts_d_ptr->field_ptr->period_factor);
+	receptive_value_polar(ts_d_ptr->value_ptr);
+	ts_d_ptr->value_ptr->timestamp = time;
 }
 
 /* struct dynamic_time_smoothing_d */
 
-void dynamic_time_smoothing_d_init(struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double period, double phase, double window_factor, double complex initial_value, double initial_delta) {
-	time_smoothing_d_init(&dts_d_ptr->ts, tr_ptr, period, phase, window_factor, initial_value);
-	exponential_smoother_d_init(&dts_d_ptr->glissando, initial_delta);
+void dynamic_time_smoothing_d_init(struct dynamic_time_smoothing_d *dts_d_ptr, struct receptive_field *field_ptr, struct receptive_value *value_ptr, double initial_glissando) {
+	time_smoothing_d_init(&dts_d_ptr->ts, field_ptr, value_ptr);
+	exponential_smoother_d_init(&dts_d_ptr->period_state,    field_ptr->period);
+	exponential_smoother_d_init(&dts_d_ptr->glissando_state, initial_glissando);
 }
 void dynamic_time_smoothing_d_update_period(struct dynamic_time_smoothing_d *dts_d_ptr, double period) {
-	exponential_smoother_d_sample(&dts_d_ptr->glissando, period - dts_d_ptr->ts.period, period * dts_d_ptr->ts.wf);
+	exponential_smoother_d_sample(&dts_d_ptr->period_state,    period,                                   period * dts_d_ptr->ts.field_ptr->period_factor);
+	exponential_smoother_d_sample(&dts_d_ptr->glissando_state, period - dts_d_ptr->ts.field_ptr->period, period * dts_d_ptr->ts.field_ptr->period_factor);
 
-	dts_d_ptr->ts.phase = dts_d_ptr->ts.phase / dts_d_ptr->ts.period * period;
-	dts_d_ptr->ts.period = period;
+	dts_d_ptr->ts.field_ptr->phase = dts_d_ptr->ts.field_ptr->phase / dts_d_ptr->ts.field_ptr->period * period;
+	dts_d_ptr->ts.field_ptr->period = period;
 }
 void dynamic_time_smoothing_d_update_phase(struct dynamic_time_smoothing_d *dts_d_ptr, double phase) {
-	dts_d_ptr->ts.phase = phase;
+	dts_d_ptr->ts.field_ptr->phase = phase;
 }
-void dynamic_time_smoothing_d_glissando_sample(struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double time, double complex value, double period) {
+void dynamic_time_smoothing_d_glissando_sample(struct dynamic_time_smoothing_d *dts_d_ptr, double time, double complex value, double period) {
 	if (period > 0) {
 		dynamic_time_smoothing_d_update_period(dts_d_ptr, period);
 	}
-	tr_ptr->time_glissando = dts_d_ptr->glissando.v;
-
-	time_smoothing_d_sample(&dts_d_ptr->ts, tr_ptr, time, value);
+	time_smoothing_d_sample(&dts_d_ptr->ts, time, value);
 }
-void dynamic_time_smoothing_d_sample(struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double time, double complex value) {
-	dynamic_time_smoothing_d_glissando_sample(dts_d_ptr, tr_ptr, time, value, 0);
+void dynamic_time_smoothing_d_sample(struct dynamic_time_smoothing_d *dts_d_ptr, double time, double complex value) {
+	dynamic_time_smoothing_d_glissando_sample(dts_d_ptr, time, value, 0);
+}
+void dynamic_time_smoothing_d_effective_field(struct dynamic_time_smoothing_d *dts_d_ptr, struct receptive_field *field_ptr) {
+	*field_ptr = *dts_d_ptr->ts.field_ptr;
+
+	field_ptr->period = dts_d_ptr->period_state.v;
+	field_ptr->glissando = dts_d_ptr->period_state.v;
 }
 
-/* percept_result */
+/* receptive_value */
 
-void percept_result_polar(struct percept_result *pr_ptr) {
-	pr_ptr->r   =         cabs(pr_ptr->cval);
-	pr_ptr->phi = rad2tau(carg(pr_ptr->cval));
+void receptive_value_polar(struct receptive_value *rv_ptr) {
+	rv_ptr->r   =         cabs(rv_ptr->cval);
+	rv_ptr->phi = rad2tau(carg(rv_ptr->cval));
 }
-void percept_result_rect(struct percept_result *pr_ptr) {
-	pr_ptr->cval = rect(pr_ptr->phi, pr_ptr->r);
+void receptive_value_rect(struct receptive_value *rv_ptr) {
+	rv_ptr->cval = rect(rv_ptr->phi, rv_ptr->r);
+}
+void receptive_value_init(struct receptive_value *rv_ptr, double complex cval) {
+	rv_ptr->cval = cval;
+	receptive_value_polar(rv_ptr);
 }
 
 /* struct monochord */
@@ -313,34 +316,32 @@ void monochord_init(struct monochord *mc_ptr, double source_period, double targe
 	monochord_construct(mc_ptr);
 }
 
-void monochord_rotate(struct monochord *mc_ptr, struct percept_result *pr_ptr) {
-	pr_ptr->cval *= mc_ptr->value;
-	pr_ptr->phi = fmod(pr_ptr->phi + mc_ptr->phi_offset + 0.5, 1) - 0.5;
+void monochord_rotate(struct monochord *mc_ptr, struct receptive_value *rv_ptr) {
+	rv_ptr->cval *= mc_ptr->value;
+	rv_ptr->phi = fmod(rv_ptr->phi + mc_ptr->phi_offset + 0.5, 1) - 0.5;
 }
 
 /* struct period_result */
 
-void percept_result_dup_monochord(struct percept_result *pr_dup_ptr, struct percept_result *pr_ptr, struct monochord *mc_ptr) {
-	*pr_dup_ptr = *pr_ptr;
-	monochord_rotate(mc_ptr, pr_dup_ptr);
+void receptive_value_dup_monochord(struct receptive_value *rv_dup_ptr, struct receptive_value *rv_ptr, struct monochord *mc_ptr) {
+	*rv_dup_ptr = *rv_ptr;
+	monochord_rotate(mc_ptr, rv_dup_ptr);
 }
-void percept_result_superimpose(struct percept_result *pr_target_ptr, struct percept_result *pr_source_ptr) {
-	pr_target_ptr->cval += pr_source_ptr->cval;
-	percept_result_polar(pr_target_ptr);
+void receptive_value_superimpose(struct receptive_value *rv_target_ptr, struct receptive_value *rv_source_ptr) {
+	rv_target_ptr->cval += rv_source_ptr->cval;
+	receptive_value_polar(rv_target_ptr);
 }
 
 /* struct period_percept */
-void period_percept_init(struct period_percept *pp_ptr, struct percept_field field, double timestamp, struct time_result time, struct percept_result value) {
-	pp_ptr->field = field;
-	pp_ptr->timestamp = timestamp;
-	pp_ptr->time = time;
-	pp_ptr->value = value;
+void period_percept_init(struct period_percept *pp_ptr, struct dynamic_time_smoothing_d *dts_d_ptr) {
+	dynamic_time_smoothing_d_effective_field(dts_d_ptr, &pp_ptr->field);
+	pp_ptr->value = *dts_d_ptr->ts.value_ptr;
 }
 
 void period_percept_superimpose_from_percept(struct period_percept *pp_source_ptr, struct period_percept *pp_target_ptr, struct monochord *mc_ptr) {
-	struct percept_result mc_pr;
-	percept_result_dup_monochord(&mc_pr, &pp_source_ptr->value, mc_ptr);
-	percept_result_superimpose(&pp_target_ptr->value, &mc_pr);
+	struct receptive_value mc_pr;
+	receptive_value_dup_monochord(&mc_pr, &pp_source_ptr->value, mc_ptr);
+	receptive_value_superimpose(&pp_target_ptr->value, &mc_pr);
 }
 
 /* struct period_recept */
@@ -349,14 +350,14 @@ void period_recept_init(struct period_recept *pr_ptr, struct period_percept *pha
 
 	pr_ptr->phase = phase;
 	pr_ptr->prior_phase = prior_phase;
+	pr_ptr->field = pr_ptr->phase->field;
 	pr_ptr->field.period        = (pr_ptr->phase->field.period        + pr_ptr->prior_phase->field.period)        / 2;
-	pr_ptr->field.period_factor = (pr_ptr->phase->field.period_factor + pr_ptr->prior_phase->field.period_factor) / 2;
 	pr_ptr->field.glissando     = (pr_ptr->phase->field.glissando     + pr_ptr->prior_phase->field.glissando)     / 2;
 
 	pr_ptr->frequency = 1.0 / pr_ptr->field.period;
 
 	pr_ptr->value.cval = delta_dc(pr_ptr->phase->value.cval, pr_ptr->prior_phase->value.cval);
-	percept_result_polar(&pr_ptr->value);
+	receptive_value_polar(&pr_ptr->value);
 	pr_ptr->duration = pr_ptr->phase->timestamp - pr_ptr->prior_phase->timestamp;
 
 	if (pr_ptr->duration > 0) {
@@ -370,57 +371,29 @@ void period_recept_init(struct period_recept *pr_ptr, struct period_percept *pha
 }
 
 /* struct period_concept */
-void period_concept_init(struct period_concept *pc_ptr, struct period_sensor *sensor_ptr, struct percept_field field, double weight_factor) {
-	pc_ptr->sensor_ptr    = sensor_ptr;
-	pc_ptr->field         = field;
-	pc_ptr->weight_factor = weight_factor;
-
-	pc_ptr->has_prior_percept = 0;
-	pc_ptr->has_instant_period_delta = 0;
+void period_concept_state_init(struct period_concept_state *pcs_ptr, struct receptive_field *field_ptr) { 
+	exponential_smoother_d_init(&pcs_ptr->avg_instant_period_state, field_ptr->period);
+	delta_d_init(&pcs_ptr->instant_period_delta_state, 0, 0);
+	exponential_smoother_d_init(&pcs_ptr->instant_period_stddev_state, field_ptr->period);
 }
 
-void period_concept_setup(struct period_concept *pc_ptr) {
-	pc_ptr->prior_percept = *pc_ptr->percept_ptr;
-
-	exponential_smoother_d_init(&pc_ptr->avg_instant_period_state, pc_ptr->percept_ptr->field.period);
-	delta_d_init(&pc_ptr->instant_period_delta_state, 0, 0);
-	exponential_smoother_d_init(&pc_ptr->instant_period_stddev_state, pc_ptr->percept_ptr->field.period);
-}
-
-void period_concept_receive(struct period_concept *pc_ptr) {
+void period_concept_init(struct period_concept *pc_ptr, struct period_concept_state *pcs_ptr, struct period_recept *recept_ptr) {
 	/* average instantaneous period */
-	pc_ptr->avg_instant_period = exponential_smoother_d_sample(&pc_ptr->avg_instant_period_state, pc_ptr->recept.field.period, pc_ptr->recept.field.period * pc_ptr->weight_factor);
-	pc_ptr->avg_instant_period_offset = pc_ptr->avg_instant_period - pc_ptr->recept.field.period;
+	pc_ptr->avg_instant_period = exponential_smoother_d_sample(&pcs_ptr->avg_instant_period_state, recept_ptr->field.period, recept_ptr->field.period * recept_ptr->field.period_factor);
+	pc_ptr->avg_instant_period_offset = pc_ptr->avg_instant_period - recept_ptr->field.period;
 
 	/* deviation of average */
-	pc_ptr->has_instant_period_delta = delta_d_sample(&pc_ptr->instant_period_delta_state, pc_ptr->avg_instant_period, &pc_ptr->instant_period_delta);
+	pc_ptr->has_instant_period_delta = delta_d_sample(&pcs_ptr->instant_period_delta_state, pc_ptr->avg_instant_period, &pc_ptr->instant_period_delta);
 	if ( ! pc_ptr->has_instant_period_delta) {
 		pc_ptr->instant_period_delta = pc_ptr->avg_instant_period;
 		pc_ptr->has_instant_period_delta = 1;
 	}
 	/* standard deviation of average (dis-convergence on an average instant period) */
-	pc_ptr->instant_period_stddev = exponential_smoother_d_sample(&pc_ptr->instant_period_stddev_state, fabs(pc_ptr->instant_period_delta), fabs(pc_ptr->recept.instant_period * pc_ptr->weight_factor));
+	pc_ptr->instant_period_stddev = exponential_smoother_d_sample(&pcs_ptr->instant_period_stddev_state, fabs(pc_ptr->instant_period_delta), fabs(recept_ptr->instant_period * recept_ptr->field.period_factor));
 }
 
-void period_concept_sample_recept(struct period_concept *pc_ptr) {
-	period_recept_init(&pc_ptr->recept, pc_ptr->percept_ptr, &pc_ptr->prior_percept);
-	period_concept_receive(pc_ptr);
-}
-
-void period_concept_perceive(struct period_concept *pc_ptr) {
-	if ( ! pc_ptr->has_prior_percept) {
-		pc_ptr->has_prior_percept = 1;
-		period_concept_setup(pc_ptr);
-	}
-
-	period_concept_sample_recept(pc_ptr);
-
-	pc_ptr->prior_percept = *pc_ptr->percept_ptr;
-}
-
-void period_concept_sample_percept(struct period_concept *pc_ptr, struct period_percept *percept_ptr) {
-	pc_ptr->percept_ptr = percept_ptr;
-	period_concept_perceive(pc_ptr);
+/* struct period sensor */
+void period_sensor_init(struct period_sensor *ps_ptr) {
 }
 
 #ifdef RECEPT_TEST

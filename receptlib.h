@@ -85,51 +85,51 @@ void smooth_duration_distribution_dc_init(struct smooth_duration_distribution_dc
 void smooth_duration_distribution_dc_sample(struct smooth_duration_distribution_dc *sdd_dc_ptr, double complex value, double sequence_value, double complex *ave_ptr, double complex *dev_ptr);
 
 /* Infinite Impulse Response cosine transform */
-struct time_result {
-	double         time_delta;     /* time since last observation */
-	double complex time_value;     /* complex period value        */
-	double         time_glissando; /* sensor period delta         */
-};
 
-struct time_smoothing_d;
-void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, struct time_result *tr_ptr, double period, double phase, double window_factor, double complex initial_value);
-void time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, struct time_result *tr_ptr, double time, double complex value);
-
-/* time smoothing, but with mutable period component, tracking period delta, or the "glissando receptor factor". */
-struct dynamic_time_smoothing_d;
-void dynamic_time_smoothing_d_init(            struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double period, double phase, double window_factor, double complex initial_value, double initial_delta);
-void dynamic_time_smoothing_d_update_period(   struct dynamic_time_smoothing_d *dts_d_ptr, double period);
-void dynamic_time_smoothing_d_glissando_sample(struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double time, double complex value, double period);
-void dynamic_time_smoothing_d_sample(          struct dynamic_time_smoothing_d *dts_d_ptr, struct time_result *tr_ptr, double time, double complex value);
-
-/* percept's receptive field */
-struct percept_field {
+/* receptive field */
+struct receptive_field {
 	double period;
+	double phase;
 	double period_factor;
+	double phase_factor;
 	double glissando;
 };
 
 /* percept's periodic value (Z-transform, frequency domain value, representing the state of the receptive field) */
-struct percept_result {
+struct receptive_value {
+	double timestamp;
 	double complex cval;
 	double r;
 	double phi;
 };
 
-void percept_result_polar(struct percept_result *pr_ptr);
-void percept_result_rect(struct percept_result *pr_ptr);
+void receptive_value_init(struct receptive_value *rv_ptr, double complex cval);
+void receptive_value_polar(struct receptive_value *rv_ptr);
+void receptive_value_rect(struct receptive_value *rv_ptr);
+
+struct time_smoothing_d;
+void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, struct receptive_field *field_ptr, struct receptive_value *value_ptr);
+void time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, double time, double complex value);
+
+/* time smoothing, but with mutable period component, tracking period delta, or the "glissando receptor factor". */
+struct dynamic_time_smoothing_d;
+void dynamic_time_smoothing_d_init(            struct dynamic_time_smoothing_d *dts_d_ptr, struct receptive_field *field_ptr, struct receptive_value *value_ptr, double initial_glissando);
+void dynamic_time_smoothing_d_update_period(   struct dynamic_time_smoothing_d *dts_d_ptr, double period);
+void dynamic_time_smoothing_d_update_phase(    struct dynamic_time_smoothing_d *dts_d_ptr, double phase);
+void dynamic_time_smoothing_d_glissando_sample(struct dynamic_time_smoothing_d *dts_d_ptr, double time, double complex value, double period);
+void dynamic_time_smoothing_d_sample(          struct dynamic_time_smoothing_d *dts_d_ptr, double time, double complex value);
+void dynamic_time_smoothing_d_effective_field( struct dynamic_time_smoothing_d *dts_d_ptr, struct receptive_field *field_ptr);
 
 struct monochord;
-void percept_result_dup_monochord(struct percept_result *pr_dup_ptr, struct percept_result *pr_ptr, struct monochord *mc_ptr);
+void receptive_value_dup_monochord(struct receptive_value *rv_dup_ptr, struct receptive_value *rv_ptr, struct monochord *mc_ptr);
 
 /* monochord digital up/down converter (rotates the spectrum, shifting the frequency/period) */
 struct monochord;
 void monochord_init(struct monochord *mc_ptr, double source_period, double target_period, double ratio);
-void monochord_rotate(struct monochord *mc_ptr, struct percept_result *pr_ptr);
+void monochord_rotate(struct monochord *mc_ptr, struct receptive_value *rv_ptr);
 
 /* Physical Percept: Representation of Periodic Value */
 struct period_percept;
-void period_percept_init(struct period_percept *pp_ptr, struct percept_field field, double timestamp, struct time_result time, struct percept_result value);
 void period_percept_superimpose_from_percept(struct period_percept *pp_source_ptr, struct period_percept *pp_target_ptr, struct monochord *mc_ptr);
 
 /* Physiological Recept: Deduction of Periodic Value */
@@ -137,8 +137,14 @@ struct period_recept;
 void period_recept_init(struct period_recept *pr_ptr, struct period_percept *phase, struct period_percept *prior_phase);
 
 /* Psychological Concept: Persistence of Periodic Value */
-struct period_sensor;
+/* IIR filter state (memory/persistence) */
+struct period_concept_state;
+void period_concept_state_init(struct period_concept_state *pcs_ptr, struct receptive_field *field_ptr);
+/* representation of the concept */
 struct period_concept;
-void period_concept_init(struct period_concept *pc_ptr, struct period_sensor *sensor_ptr, struct percept_field field, double weight_factor);
+void period_concept_init(struct period_concept *pc_ptr, struct period_concept_state *pcs_ptr, struct period_recept *recept_ptr);
 
+/* Sense Organ: holds all of the state, and drives the pathways */
+struct period_sensor;
+void period_sensor_init(struct period_sensor *ps_ptr);
 #endif

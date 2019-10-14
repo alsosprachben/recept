@@ -80,15 +80,15 @@ struct smooth_duration_distribution_dc {
 };
 
 struct time_smoothing_d {
-	double period;
-	double phase;
+	struct receptive_field *field_ptr;
+	struct receptive_value *value_ptr;
 	struct exponential_smoother_dc v;
-	double wf;
 };
 
 struct dynamic_time_smoothing_d {
 	struct time_smoothing_d ts;
-	struct exponential_smoother_d glissando;
+	struct exponential_smoother_d period_state;
+	struct exponential_smoother_d glissando_state;
 };
 
 struct monochord {
@@ -103,44 +103,46 @@ struct monochord {
 };
 
 struct period_percept {
-	struct percept_field  field;
 	double timestamp;
-	struct time_result    time;
-	struct percept_result value;
+	struct receptive_field field;
+	struct receptive_value value;
 };
 struct period_recept {
-	struct percept_field   field;
+	struct receptive_field field;
 	struct period_percept *phase;
 	struct period_percept *prior_phase;
 
 	double frequency;
 	double instant_period;
 	double instant_frequency;
-	struct percept_result value;
+	struct receptive_value value;
 
 	double duration;
 };
+struct period_concept_state {
+	struct exponential_smoother_d avg_instant_period_state;
+	struct delta_d                instant_period_delta_state;
+	struct exponential_smoother_d instant_period_stddev_state;
+};
 struct period_concept {
-	struct period_sensor *sensor_ptr;
-	struct percept_field  field;
-	double weight_factor;
-
-	struct period_percept *percept_ptr;
-	struct period_percept prior_percept;
-	int               has_prior_percept;
-
-	struct period_recept recept;
+	struct period_recept *recept_ptr;
 
 	double avg_instant_period;
 	double avg_instant_period_offset;
-	struct exponential_smoother_d avg_instant_period_state;
 
 	int    has_instant_period_delta;
 	double instant_period_delta;
-	struct delta_d instant_period_delta_state;
 
 	double instant_period_stddev;
-	struct exponential_smoother_d instant_period_stddev_state;
+};
+struct period_sensor {
+	struct receptive_field field;
+	struct period_percept percept;
+	struct period_percept prior_percept;
+	struct period_recept  recept;
+	struct period_concept concept;
+	struct period_concept_state concept_state;
+	struct dynamic_time_smoothing_d sensor_state;
 };
 
 
