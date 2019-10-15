@@ -408,11 +408,24 @@ struct receptive_field *get_period_sensor_receptor_field(struct period_sensor *p
 void period_sensor_init(struct period_sensor *ps_ptr) {
 	dynamic_time_smoothing_d_init(&ps_ptr->sensor_state, &ps_ptr->field, &ps_ptr->value, 0);
 	period_concept_state_init(&ps_ptr->concept_state, &ps_ptr->field);
+	ps_ptr->has_prior_percept = 0;
 }
 
 void period_sensor_sample(struct period_sensor *ps_ptr, double time, double value) {
+	if (ps_ptr->has_prior_percept) {
+		ps_ptr->prior_percept = ps_ptr->percept;
+	}
 	dynamic_time_smoothing_d_sample(&ps_ptr->sensor_state, time, value);
 	period_percept_init(&ps_ptr->percept, &ps_ptr->sensor_state);
+	if ( ! ps_ptr->has_prior_percept) {
+		/* when no prior, make prior the same as current */
+		ps_ptr->prior_percept = ps_ptr->percept;
+		ps_ptr->has_prior_percept = 1;
+	}
+
+	period_recept_init(&ps_ptr->recept, &ps_ptr->percept, &ps_ptr->prior_percept);
+
+	period_concept_init(&ps_ptr->concept, &ps_ptr->concept_state, &ps_ptr->recept);
 }
 
 #ifdef RECEPT_TEST
