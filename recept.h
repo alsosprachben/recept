@@ -137,12 +137,14 @@ struct period_concept {
 };
 struct period_sensor {
 	struct receptive_field field;
+	struct receptive_value value;
+	struct dynamic_time_smoothing_d sensor_state;
+
 	struct period_percept percept;
 	struct period_percept prior_percept;
 	struct period_recept  recept;
 	struct period_concept concept;
 	struct period_concept_state concept_state;
-	struct dynamic_time_smoothing_d sensor_state;
 };
 
 

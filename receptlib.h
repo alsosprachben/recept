@@ -109,15 +109,15 @@ void receptive_value_rect(struct receptive_value *rv_ptr);
 
 struct time_smoothing_d;
 void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, struct receptive_field *field_ptr, struct receptive_value *value_ptr);
-void time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, double time, double complex value);
+void time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, double time, double value);
 
 /* time smoothing, but with mutable period component, tracking period delta, or the "glissando receptor factor". */
 struct dynamic_time_smoothing_d;
 void dynamic_time_smoothing_d_init(            struct dynamic_time_smoothing_d *dts_d_ptr, struct receptive_field *field_ptr, struct receptive_value *value_ptr, double initial_glissando);
 void dynamic_time_smoothing_d_update_period(   struct dynamic_time_smoothing_d *dts_d_ptr, double period);
 void dynamic_time_smoothing_d_update_phase(    struct dynamic_time_smoothing_d *dts_d_ptr, double phase);
-void dynamic_time_smoothing_d_glissando_sample(struct dynamic_time_smoothing_d *dts_d_ptr, double time, double complex value, double period);
-void dynamic_time_smoothing_d_sample(          struct dynamic_time_smoothing_d *dts_d_ptr, double time, double complex value);
+void dynamic_time_smoothing_d_glissando_sample(struct dynamic_time_smoothing_d *dts_d_ptr, double time, double value, double period);
+void dynamic_time_smoothing_d_sample(          struct dynamic_time_smoothing_d *dts_d_ptr, double time, double value);
 void dynamic_time_smoothing_d_effective_field( struct dynamic_time_smoothing_d *dts_d_ptr, struct receptive_field *field_ptr);
 
 struct monochord;

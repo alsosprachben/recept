@@ -247,8 +247,8 @@ void time_smoothing_d_init(struct time_smoothing_d *ts_d_ptr, struct receptive_f
 	ts_d_ptr->value_ptr = value_ptr;
 	exponential_smoother_dc_init(&ts_d_ptr->v, value_ptr->cval);
 }
-void time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, double time, double complex value) {
-	ts_d_ptr->value_ptr->cval = exponential_smoother_dc_sample(&ts_d_ptr->v, value * rect1((time + ts_d_ptr->field_ptr->phase) / ts_d_ptr->field_ptr->period), ts_d_ptr->field_ptr->period * ts_d_ptr->field_ptr->period_factor);
+void time_smoothing_d_sample(struct time_smoothing_d *ts_d_ptr, double time, double value) {
+	ts_d_ptr->value_ptr->cval = exponential_smoother_dc_sample(&ts_d_ptr->v, rect1((time + ts_d_ptr->field_ptr->phase) / ts_d_ptr->field_ptr->period) * value, ts_d_ptr->field_ptr->period * ts_d_ptr->field_ptr->period_factor);
 	receptive_value_polar(ts_d_ptr->value_ptr);
 	ts_d_ptr->value_ptr->timestamp = time;
 }
@@ -270,13 +270,13 @@ void dynamic_time_smoothing_d_update_period(struct dynamic_time_smoothing_d *dts
 void dynamic_time_smoothing_d_update_phase(struct dynamic_time_smoothing_d *dts_d_ptr, double phase) {
 	dts_d_ptr->ts.field_ptr->phase = phase;
 }
-void dynamic_time_smoothing_d_glissando_sample(struct dynamic_time_smoothing_d *dts_d_ptr, double time, double complex value, double period) {
+void dynamic_time_smoothing_d_glissando_sample(struct dynamic_time_smoothing_d *dts_d_ptr, double time, double value, double period) {
 	if (period > 0) {
 		dynamic_time_smoothing_d_update_period(dts_d_ptr, period);
 	}
 	time_smoothing_d_sample(&dts_d_ptr->ts, time, value);
 }
-void dynamic_time_smoothing_d_sample(struct dynamic_time_smoothing_d *dts_d_ptr, double time, double complex value) {
+void dynamic_time_smoothing_d_sample(struct dynamic_time_smoothing_d *dts_d_ptr, double time, double value) {
 	dynamic_time_smoothing_d_glissando_sample(dts_d_ptr, time, value, 0);
 }
 void dynamic_time_smoothing_d_effective_field(struct dynamic_time_smoothing_d *dts_d_ptr, struct receptive_field *field_ptr) {
@@ -284,6 +284,15 @@ void dynamic_time_smoothing_d_effective_field(struct dynamic_time_smoothing_d *d
 
 	field_ptr->period = dts_d_ptr->period_state.v;
 	field_ptr->glissando = dts_d_ptr->period_state.v;
+}
+
+/* receptive_field */
+void receptive_field_init(struct receptive_field *field_ptr) {
+	field_ptr->period = 0;
+	field_ptr->phase = 0;
+	field_ptr->period_factor = 0;
+	field_ptr->phase_factor = 0;
+	field_ptr->glissando = 0;
 }
 
 /* receptive_value */
@@ -393,7 +402,17 @@ void period_concept_init(struct period_concept *pc_ptr, struct period_concept_st
 }
 
 /* struct period sensor */
+struct receptive_field *get_period_sensor_receptor_field(struct period_sensor *ps_ptr) {
+	return &ps_ptr->field;
+}
 void period_sensor_init(struct period_sensor *ps_ptr) {
+	dynamic_time_smoothing_d_init(&ps_ptr->sensor_state, &ps_ptr->field, &ps_ptr->value, 0);
+	period_concept_state_init(&ps_ptr->concept_state, &ps_ptr->field);
+}
+
+void period_sensor_sample(struct period_sensor *ps_ptr, double time, double value) {
+	dynamic_time_smoothing_d_sample(&ps_ptr->sensor_state, time, value);
+	period_percept_init(&ps_ptr->percept, &ps_ptr->sensor_state);
 }
 
 #ifdef RECEPT_TEST
