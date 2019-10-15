@@ -141,6 +141,7 @@ struct period_sensor {
 	struct dynamic_time_smoothing_d sensor_state;
 
 	struct period_percept percept;
+	int                   has_prior_percept;
 	struct period_percept prior_percept;
 	struct period_recept  recept;
 	struct period_concept concept;
