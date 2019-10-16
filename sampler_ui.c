@@ -1,29 +1,10 @@
-#include <stdio.h>
-#include <errno.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <math.h>
-
 #include "screen.h"
 #include "bar.h"
 #include "sampler.h"
+#include "sampler_ui.h"
 
-struct sampler_ui {
-	/* input parameters */
-	int columns;
-	int rows;
-	int fps;
-	int fd;
-	int sample_rate;
-
-	/* state */
-	double efps;
-	int mod;
-	int frame;
-	struct screen screen;
-	struct filesampler sampler;
-};
+#include <math.h>
+#include <errno.h>
 
 struct screen *sampler_ui_get_screen(struct sampler_ui *sui_ptr) {
 	return &sui_ptr->screen;
@@ -45,13 +26,11 @@ int sampler_ui_init(struct sampler_ui *sui_ptr) {
 
 	rc = screen_init(&sui_ptr->screen, sui_ptr->columns, sui_ptr->rows);
 	if (rc == -1) {
-		perror("screen_init");
 		return -1;
 	}
 
 	rc = filesampler_init(&sui_ptr->sampler, sui_ptr->fd, sui_ptr->sample_rate, 16, sui_ptr->rows);
 	if (rc == -1) {
-		perror("filesampler_init");
 		return -1;
 	}
 
@@ -61,12 +40,17 @@ int sampler_ui_deinit(struct sampler_ui *sui_ptr) {
 	screen_deinit(&sui_ptr->screen);
 	if (sui_ptr->screen.buf != NULL) {
 		errno = EINVAL;
-		perror("screen_deinit");
 		return -1;
 	}
 
 	return 0;
 }
+
+#ifdef SAMPLER_UI_TEST
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <fcntl.h>
 
 int main(int argc, char *argv[]) {
 	int rc;
@@ -142,6 +126,7 @@ int main(int argc, char *argv[]) {
 
 	rc = sampler_ui_init(&sampler_ui);
 	if (rc == -1) {
+		perror("sampler_ui_init");
 		return -1;
 	}
 
@@ -180,9 +165,11 @@ int main(int argc, char *argv[]) {
 
 	rc = sampler_ui_deinit(&sampler_ui);
 	if (rc == -1) {
+		perror("sampler_ui_deinit");
 		return -1;
 	}
 
 	return 0;
 }
 
+#endif
