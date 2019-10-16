@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	bar_rows = calloc(sampler_ui.rows, sizeof (bar_rows));
+	bar_rows = calloc(sampler_ui_get_rows(&sampler_ui), sizeof (bar_rows));
 	if (bar_rows == NULL) {
 		perror("calloc");
 		return -1;
