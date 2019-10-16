@@ -21,6 +21,9 @@ int sampler_ui_get_fps(struct sampler_ui *sui_ptr) {
 int sampler_ui_get_sample_rate(struct sampler_ui *sui_ptr) {
 	return sui_ptr->sample_rate;
 }
+int sampler_ui_get_sample_depth(struct sampler_ui *sui_ptr) {
+	return sui_ptr->sample_depth;
+}
 int sampler_ui_get_fd(struct sampler_ui *sui_ptr) {
 	return sui_ptr->fd;
 }
@@ -49,11 +52,12 @@ int sampler_ui_frame_next(struct sampler_ui *sui_ptr) {
 	return 1;
 }
 
-void sampler_ui_config(struct sampler_ui *sui_ptr, int columns, int rows, int fps, int sample_rate, int fd) {
+void sampler_ui_config(struct sampler_ui *sui_ptr, int columns, int rows, int fps, int sample_rate, int sample_depth, int fd) {
 	sui_ptr->columns = columns;
 	sui_ptr->rows = rows;
 	sui_ptr->fps = fps;
 	sui_ptr->sample_rate = sample_rate;
+	sui_ptr->sample_depth = sample_depth;
 	sui_ptr->fd = fd;
 }
 
@@ -93,9 +97,10 @@ int sampler_ui_getopts(struct sampler_ui *sui_ptr, int argc, char *argv[]) {
 
 	/* defaults */
 	sui_ptr->sample_rate = 44100;
+	sui_ptr->sample_depth = 16;
 	sui_ptr->fps = 60;
 
-	while ((c = getopt(argc, argv, "c:l:r:f:d:p:")) != -1) {
+	while ((c = getopt(argc, argv, "c:l:r:b:f:d:p:")) != -1) {
 		switch (c) {
 			case 'c':
 				rc = sscanf(optarg, "%i", &sui_ptr->columns);
@@ -114,6 +119,13 @@ int sampler_ui_getopts(struct sampler_ui *sui_ptr, int argc, char *argv[]) {
 				break;
 			case 'r':
 				rc = sscanf(optarg, "%i", &sui_ptr->sample_rate);
+				if (rc != 1) {
+					errno = EINVAL;
+					return -1;
+				}
+				break;
+			case 'b':
+				rc = sscanf(optarg, "%i", &sui_ptr->sample_depth);
 				if (rc != 1) {
 					errno = EINVAL;
 					return -1;
@@ -193,7 +205,7 @@ int main(int argc, char *argv[]) {
 			}
 
 			if (sampler_ui_frame_ready(&sampler_ui)) {
-				bar_set(&bar_rows[row], sample, 1L << 15);
+				bar_set(&bar_rows[row], sample, 1L << (sampler_ui_get_sample_depth(&sampler_ui) - 1));
 			}
 		}
 
