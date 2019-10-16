@@ -6,8 +6,8 @@ struct sampler_ui {
 	int columns;
 	int rows;
 	int fps;
-	int fd;
 	int sample_rate;
+	int fd;
 
 	/* state */
 	double efps;
@@ -17,11 +17,13 @@ struct sampler_ui {
 	struct filesampler sampler;
 };
 
-struct screen *sampler_ui_get_screen(struct sampler_ui *sui_ptr);
-int sampler_ui_draw(struct sampler_ui *sui_ptr);
-int sampler_ui_frame_ready(struct sampler_ui *sui_ptr);
+void sampler_ui_config(struct sampler_ui *sui_ptr, int columns, int rows, int fps, int sample_rate, int fd);
+int sampler_ui_getopts(struct sampler_ui *sui_ptr, int argc, char *argv[]);
 int sampler_ui_init(struct sampler_ui *sui_ptr);
 int sampler_ui_deinit(struct sampler_ui *sui_ptr);
 
+struct screen *sampler_ui_get_screen(struct sampler_ui *sui_ptr);
+int sampler_ui_draw(struct sampler_ui *sui_ptr);
+int sampler_ui_frame_ready(struct sampler_ui *sui_ptr);
 
 #endif

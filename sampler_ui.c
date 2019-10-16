@@ -5,6 +5,9 @@
 
 #include <math.h>
 #include <errno.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <fcntl.h>
 
 struct screen *sampler_ui_get_screen(struct sampler_ui *sui_ptr) {
 	return &sui_ptr->screen;
@@ -14,6 +17,14 @@ int sampler_ui_draw(struct sampler_ui *sui_ptr) {
 }
 int sampler_ui_frame_ready(struct sampler_ui *sui_ptr) {
 	return sui_ptr->frame % sui_ptr->mod == 0;
+}
+
+void sampler_ui_config(struct sampler_ui *sui_ptr, int columns, int rows, int fps, int sample_rate, int fd) {
+	sui_ptr->columns = columns;
+	sui_ptr->rows = rows;
+	sui_ptr->fps = fps;
+	sui_ptr->sample_rate = sample_rate;
+	sui_ptr->fd = fd;
 }
 
 int sampler_ui_init(struct sampler_ui *sui_ptr) {
@@ -46,15 +57,71 @@ int sampler_ui_deinit(struct sampler_ui *sui_ptr) {
 	return 0;
 }
 
+int sampler_ui_getopts(struct sampler_ui *sui_ptr, int argc, char *argv[]) {
+	int rc;
+	int c;
+
+	/* defaults */
+	sui_ptr->sample_rate = 44100;
+	sui_ptr->fps = 60;
+
+	while ((c = getopt(argc, argv, "c:l:r:f:d:p:")) != -1) {
+		switch (c) {
+			case 'c':
+				rc = sscanf(optarg, "%i", &sui_ptr->columns);
+				if (rc != 1) {
+					errno = EINVAL;
+					return -1;
+				}
+				break;
+			case 'l':
+				rc = sscanf(optarg, "%i", &sui_ptr->rows);
+				if (rc != 1) {
+					errno = EINVAL;
+					return -1;
+				}
+				sui_ptr->rows--; /* leave a row for hte cursor at the bottom of the screen */
+				break;
+			case 'r':
+				rc = sscanf(optarg, "%i", &sui_ptr->sample_rate);
+				if (rc != 1) {
+					errno = EINVAL;
+					return -1;
+				}
+				break;
+			case 'f':
+				rc = sscanf(optarg, "%i", &sui_ptr->fps);
+				if (rc != 1) {
+					errno = EINVAL;
+					return -1;
+				}
+				break;
+			case 'd':
+				rc = sscanf(optarg, "%i", &sui_ptr->fd);
+				if (rc != 1) {
+					errno = EINVAL;
+					return -1;
+				}
+				break;
+			case 'p':
+				rc = open(optarg, O_RDONLY);
+				if (rc == -1) {
+					return -1;
+				}
+				sui_ptr->fd = rc;
+				break;
+		}
+	}
+
+	return optind;
+}
+
 #ifdef SAMPLER_UI_TEST
-#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <fcntl.h>
 
 int main(int argc, char *argv[]) {
 	int rc;
-	int lines;
 
 	struct sampler_ui sampler_ui;
 	int16_t sample;
@@ -62,67 +129,13 @@ int main(int argc, char *argv[]) {
 	char *rowbuf;
 	union bar_u *bar_rows;
 
-	if (argc < 3) {
-		perror("please specify arguments: $COLUMNS $LINES $sample_rate $fps");
-		return -1;
-	}
-
-	rc = sscanf(argv[1], "%i", &sampler_ui.columns);
-	if (rc == 1) {
-	} else if (rc == -1) {
-		perror("sscanf");
-		return -1;
-	} else {
-		perror("expecting integer columns as the first argument");
-		return -1;
-	}
-	
-	rc = sscanf(argv[2], "%i", &lines);
-	if (rc == 1) {
-	} else if (rc == -1) {
-		perror("sscanf");
-		return -1;
-	} else {
-		perror("expecting integer rows as the second argument");
-		return -1;
-	}
-
-	sampler_ui.rows = lines - 1; /* leave a row for the cursor at the bottom of the screen */
-
-	if (argc < 4) {
-		sampler_ui.sample_rate = 44100;
-	} else {
-		rc = sscanf(argv[3], "%i", &sampler_ui.sample_rate);
-		if (rc == 1) {
-		} else if (rc == -1) {
-			perror("sscanf");
-			return -1;
-		} else {
-			perror("expecting integer sample rate as the third argument");
-			return -1;
-		}
-	}
-
-	if (argc < 5) {
-		sampler_ui.fps = 60;
-	} else {
-		rc = sscanf(argv[4], "%i", &sampler_ui.fps);
-		if (rc == 1) {
-		} else if (rc == -1) {
-			perror("sscanf");
-			return -1;
-		} else {
-			perror("expecting integer frame rate as the forth argument");
-			return -1;
-		}
-	}
-
-	rc = open("input.sock", O_RDONLY);
+	rc = sampler_ui_getopts(&sampler_ui, argc, argv);
 	if (rc == -1) {
-		perror("open");
+		perror("sampler_ui_getopts");
 		return -1;
 	}
-	sampler_ui.fd = rc;
+	argc -= rc;
+	argv += rc;
 
 	rc = sampler_ui_init(&sampler_ui);
 	if (rc == -1) {
