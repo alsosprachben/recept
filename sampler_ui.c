@@ -44,6 +44,10 @@ struct screen *sampler_ui_get_screen(struct sampler_ui *sui_ptr) {
 int sampler_ui_frame_ready(struct sampler_ui *sui_ptr) {
 	return sui_ptr->frame % sui_ptr->mod == 0;
 }
+int sampler_ui_frame_next(struct sampler_ui *sui_ptr) {
+	sui_ptr->frame++;
+	return 1;
+}
 
 void sampler_ui_config(struct sampler_ui *sui_ptr, int columns, int rows, int fps, int sample_rate, int fd) {
 	sui_ptr->columns = columns;
@@ -178,7 +182,7 @@ int main(int argc, char *argv[]) {
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 0, row);
 		bar_init_buf(&bar_rows[row], bar_signed, bar_log, rowbuf, sampler_ui.columns);
 	}
-	for (;;) {
+	do {
 		for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
 			char *sample_ptr;
 			sample_ptr = (char *) &sample;
@@ -205,9 +209,7 @@ int main(int argc, char *argv[]) {
 			);
 			screen_draw(sampler_ui_get_screen(&sampler_ui));
 		}
-
-		sampler_ui.frame++;
-	}
+	} while (sampler_ui_frame_next(&sampler_ui));
 
 	rc = sampler_ui_deinit(&sampler_ui);
 	if (rc == -1) {
