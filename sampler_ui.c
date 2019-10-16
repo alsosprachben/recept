@@ -19,6 +19,10 @@ int sampler_ui_frame_ready(struct sampler_ui *sui_ptr) {
 	return sui_ptr->frame % sui_ptr->mod == 0;
 }
 
+int sampler_ui_demand_next(struct sampler_ui *sui_ptr, char **sample_ptr) {
+	return filesampler_demand_next(&sui_ptr->sampler, sample_ptr);
+}
+
 void sampler_ui_config(struct sampler_ui *sui_ptr, int columns, int rows, int fps, int sample_rate, int fd) {
 	sui_ptr->columns = columns;
 	sui_ptr->rows = rows;
@@ -156,9 +160,9 @@ int main(int argc, char *argv[]) {
 		for (row = 0; row < sampler_ui.rows; row++) {
 			char *sample_ptr;
 			sample_ptr = (char *) &sample;
-			rc = filesampler_demand_next(&sampler_ui.sampler, &sample_ptr);
+			rc = sampler_ui_demand_next(&sampler_ui, &sample_ptr);
 			if (rc == -1) {
-				perror("filesampler_demand_next");
+				perror("sampler_ui_demand_next");
 				return -1;
 			}
 

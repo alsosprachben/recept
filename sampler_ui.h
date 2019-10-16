@@ -19,6 +19,7 @@ struct sampler_ui {
 
 void sampler_ui_config(struct sampler_ui *sui_ptr, int columns, int rows, int fps, int sample_rate, int fd);
 int sampler_ui_getopts(struct sampler_ui *sui_ptr, int argc, char *argv[]);
+int sampler_ui_demand_next(struct sampler_ui *sui_ptr, char **sample_ptr);
 int sampler_ui_init(struct sampler_ui *sui_ptr);
 int sampler_ui_deinit(struct sampler_ui *sui_ptr);
 
