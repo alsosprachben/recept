@@ -194,7 +194,12 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (sampler_ui_frame_ready(&sampler_ui)) {
-			screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0, 0, 20, '\0', "%i %i %i %i", sampler_ui.sample_rate, sampler_ui.fps, sampler_ui.frame, sampler_ui.mod);
+			screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0, 0, 20, '\0', "%i %i %i %i",
+				sampler_ui_get_sample_rate(&sampler_ui),
+				sampler_ui_get_fps(&sampler_ui),
+				sampler_ui_get_frame(&sampler_ui),
+				sampler_ui_get_mod(&sampler_ui)
+			);
 			screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0, 1, 20, '\0', "Effective FPS: %f", sampler_ui.efps);
 			screen_draw(sampler_ui_get_screen(&sampler_ui));
 		}
