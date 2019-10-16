@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
 	}
 	for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 0, row);
-		bar_init_buf(&bar_rows[row], bar_signed, bar_log, rowbuf, sampler_ui.columns);
+		bar_init_buf(&bar_rows[row], bar_signed, bar_log, rowbuf, sampler_ui_get_columns(&sampler_ui));
 	}
 	do {
 		for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
