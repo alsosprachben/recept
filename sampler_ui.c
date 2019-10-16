@@ -200,7 +200,9 @@ int main(int argc, char *argv[]) {
 				sampler_ui_get_frame(&sampler_ui),
 				sampler_ui_get_mod(&sampler_ui)
 			);
-			screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0, 1, 20, '\0', "Effective FPS: %f", sampler_ui.efps);
+			screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0, 1, 20, '\0', "Effective FPS: %f",
+				sampler_ui_get_efps(&sampler_ui)
+			);
 			screen_draw(sampler_ui_get_screen(&sampler_ui));
 		}
 
