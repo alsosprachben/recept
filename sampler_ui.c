@@ -9,18 +9,40 @@
 #include <stdio.h>
 #include <fcntl.h>
 
+int sampler_ui_get_columns(struct sampler_ui *sui_ptr) {
+	return sui_ptr->columns;
+}
+int sampler_ui_get_rows(struct sampler_ui *sui_ptr) {
+	return sui_ptr->rows;
+}
+int sampler_ui_get_fps(struct sampler_ui *sui_ptr) {
+	return sui_ptr->fps;
+}
+int sampler_ui_get_sample_rate(struct sampler_ui *sui_ptr) {
+	return sui_ptr->sample_rate;
+}
+int sampler_ui_get_fd(struct sampler_ui *sui_ptr) {
+	return sui_ptr->fd;
+}
+
+double sampler_ui_get_efps(struct sampler_ui *sui_ptr) {
+	return sui_ptr->efps;
+}
+int sampler_ui_get_mod(struct sampler_ui *sui_ptr) {
+	return sui_ptr->mod;
+}
+int sampler_ui_get_frame(struct sampler_ui *sui_ptr) {
+	return sui_ptr->frame;
+}
+struct filesampler *sampler_ui_get_sampler(struct sampler_ui *sui_ptr) {
+	return &sui_ptr->sampler;
+}
 struct screen *sampler_ui_get_screen(struct sampler_ui *sui_ptr) {
 	return &sui_ptr->screen;
 }
-int sampler_ui_draw(struct sampler_ui *sui_ptr) {
-	return screen_draw(&sui_ptr->screen);
-}
+
 int sampler_ui_frame_ready(struct sampler_ui *sui_ptr) {
 	return sui_ptr->frame % sui_ptr->mod == 0;
-}
-
-int sampler_ui_demand_next(struct sampler_ui *sui_ptr, char **sample_ptr) {
-	return filesampler_demand_next(&sui_ptr->sampler, sample_ptr);
 }
 
 void sampler_ui_config(struct sampler_ui *sui_ptr, int columns, int rows, int fps, int sample_rate, int fd) {
@@ -152,15 +174,15 @@ int main(int argc, char *argv[]) {
 		perror("calloc");
 		return -1;
 	}
-	for (row = 0; row < sampler_ui.rows; row++) {
+	for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 0, row);
 		bar_init_buf(&bar_rows[row], bar_signed, bar_log, rowbuf, sampler_ui.columns);
 	}
 	for (;;) {
-		for (row = 0; row < sampler_ui.rows; row++) {
+		for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
 			char *sample_ptr;
 			sample_ptr = (char *) &sample;
-			rc = sampler_ui_demand_next(&sampler_ui, &sample_ptr);
+			rc = filesampler_demand_next(sampler_ui_get_sampler(&sampler_ui), &sample_ptr);
 			if (rc == -1) {
 				perror("sampler_ui_demand_next");
 				return -1;
@@ -174,7 +196,7 @@ int main(int argc, char *argv[]) {
 		if (sampler_ui_frame_ready(&sampler_ui)) {
 			screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0, 0, 20, '\0', "%i %i %i %i", sampler_ui.sample_rate, sampler_ui.fps, sampler_ui.frame, sampler_ui.mod);
 			screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0, 1, 20, '\0', "Effective FPS: %f", sampler_ui.efps);
-			sampler_ui_draw(&sampler_ui);
+			screen_draw(sampler_ui_get_screen(&sampler_ui));
 		}
 
 		sampler_ui.frame++;
