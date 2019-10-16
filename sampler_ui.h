@@ -35,5 +35,6 @@ struct filesampler *sampler_ui_get_sampler(struct sampler_ui *sui_ptr);
 struct screen *sampler_ui_get_screen(struct sampler_ui *sui_ptr);
 
 int sampler_ui_frame_ready(struct sampler_ui *sui_ptr);
+int sampler_ui_frame_next(struct sampler_ui *sui_ptr);
 
 #endif
