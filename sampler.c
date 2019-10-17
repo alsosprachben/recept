@@ -15,8 +15,8 @@ int filesampler_init(struct filesampler *sampler_ptr, int fileno, size_t sample_
 		errno = ENOMEM;
 		return -1;
 	}
-	sampler_ptr->buf_consume_cursor = 0;
-	sampler_ptr->buf_produce_cursor = 0;
+	sampler_ptr->buf_consume_cursor = 0; /* prior     is buffered file data (consumed from supply file) */
+	sampler_ptr->buf_produce_cursor = 0; /* posterior is buffered file data (produced to demand reader) */
 	sampler_ptr->hit_eof = 0;
 
 	return 0;
@@ -32,20 +32,20 @@ int filesampler_read(struct filesampler *sampler_ptr) {
 	ssize_t available;
 	ssize_t received;
 
-	available = sampler_ptr->buf_size - sampler_ptr->buf_produce_cursor;
+	available = sampler_ptr->buf_size - sampler_ptr->buf_consume_cursor;
 
 	if (available < 0) {
 		errno = EFAULT;
 		return -1;
 	} else if (available != 0) {
-		received = read(sampler_ptr->fileno, sampler_ptr->buf + sampler_ptr->buf_consume_cursor, sampler_ptr->buf_size - sampler_ptr->buf_consume_cursor);
+		received = read(sampler_ptr->fileno, sampler_ptr->buf + sampler_ptr->buf_consume_cursor, available);
 		if (received == -1) {
 			return -1;
 		} else if (received == 0) {
 			sampler_ptr->hit_eof = 1;
 			return 0;
 		} else {
-			sampler_ptr->buf_produce_cursor += received;
+			sampler_ptr->buf_consume_cursor += received;
 		}
 	}
 
@@ -54,13 +54,12 @@ int filesampler_read(struct filesampler *sampler_ptr) {
 int filesampler_supply(struct filesampler *sampler_ptr) {
 	ssize_t available;
 
-	available = sampler_ptr->buf_produce_cursor - sampler_ptr->buf_consume_cursor;
-	if (available == 0) {
+	if (sampler_ptr->buf_produce_cursor == sampler_ptr->buf_consume_cursor) {
 		sampler_ptr->buf_consume_cursor = 0;
 		sampler_ptr->buf_produce_cursor = 0;
 	}
 
-	available = sampler_ptr->buf_produce_cursor - sampler_ptr->buf_consume_cursor;
+	available = sampler_ptr->buf_consume_cursor - sampler_ptr->buf_produce_cursor;
 	if (available < sampler_ptr->sample_size) {
 		return filesampler_read(sampler_ptr);
 	}
@@ -81,13 +80,13 @@ int filesampler_demand_next(struct filesampler *sampler_ptr, char **sample_ptr) 
 		return -1;
 	}
 
-	available = sampler_ptr->buf_produce_cursor - sampler_ptr->buf_consume_cursor;
+	available = sampler_ptr->buf_consume_cursor - sampler_ptr->buf_produce_cursor;
 
 	if (available >= sampler_ptr->sample_size) {
 		for (i = 0; i < sampler_ptr->sample_size; i++) {
-			(*sample_ptr)[i] = *(sampler_ptr->buf + sampler_ptr->buf_consume_cursor + i);
+			(*sample_ptr)[i] = sampler_ptr->buf[sampler_ptr->buf_produce_cursor + i];
 		}
-		sampler_ptr->buf_consume_cursor += sampler_ptr->sample_size;
+		sampler_ptr->buf_produce_cursor += sampler_ptr->sample_size;
 		return 1;
 	}
 
@@ -193,7 +192,7 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	bar_rows = calloc(rows, sizeof (bar_rows));
+	bar_rows = calloc(rows, sizeof (*bar_rows));
 	if (bar_rows == NULL) {
 		perror("calloc");
 		return -1;

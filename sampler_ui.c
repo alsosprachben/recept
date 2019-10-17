@@ -74,7 +74,7 @@ int sampler_ui_init(struct sampler_ui *sui_ptr) {
 		return -1;
 	}
 
-	rc = filesampler_init(&sui_ptr->sampler, sui_ptr->fd, sui_ptr->sample_rate, 16, sui_ptr->rows);
+	rc = filesampler_init(&sui_ptr->sampler, sui_ptr->fd, sui_ptr->sample_rate, 16, sui_ptr->sample_rate / sui_ptr->fps);
 	if (rc == -1) {
 		return -1;
 	}
@@ -199,11 +199,13 @@ int main(int argc, char *argv[]) {
 		for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
 			char *sample_ptr;
 			sample_ptr = (char *) &sample;
-			rc = filesampler_demand_next(sampler_ui_get_sampler(&sampler_ui), &sample_ptr);
-			if (rc == -1) {
-				perror("sampler_ui_demand_next");
-				return -1;
-			}
+			do {
+				rc = filesampler_demand_next(sampler_ui_get_sampler(&sampler_ui), &sample_ptr);
+				if (rc == -1) {
+					perror("sampler_ui_demand_next");
+					return -1;
+				}
+			} while (rc == 0);
 
 			if (sampler_ui_frame_ready(&sampler_ui)) {
 				bar_set(&bar_rows[row], sample, 1L << (sampler_ui_get_sample_depth(&sampler_ui) - 1));
