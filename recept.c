@@ -505,14 +505,16 @@ int main(int argc, char *argv[]) {
 		for (i = 0; i < sampler_ui_get_rows(&sampler_ui) * sampler_ui_get_mod(&sampler_ui); i++) {
 			char *sample_ptr;
 			sample_ptr = (char *) &sample;
-			rc = filesampler_demand_next(sampler_ui_get_sampler(&sampler_ui), &sample_ptr);
-			if (rc == -1) {
-				perror("sampler_ui_demand_next");
-				return -1;
-			}
+			do {
+				rc = filesampler_demand_next(sampler_ui_get_sampler(&sampler_ui), &sample_ptr);
+				if (rc == -1) {
+					perror("sampler_ui_demand_next");
+					return -1;
+				}
+			} while (rc == 0);
 
 			for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
-				period_sensor_sample(&sensors[row], (double) (sample_i), 100.0 * ((double) sample) / (1L << (sampler_ui_get_sample_depth(&sampler_ui) - 1)));
+				period_sensor_sample(&sensors[row], (double) (sample_i), 10000.0 * ((double) sample) / (1L << (sampler_ui_get_sample_depth(&sampler_ui) - 1)));
 			}
 
 			sample_i++;
@@ -524,7 +526,7 @@ int main(int argc, char *argv[]) {
 			concept_ptr = period_sensor_get_concept(&sensors[row]);
 
 			bar_set(&phase_rows[row], concept_ptr->recept_ptr->phase->value.phi, 0.5);
-			bar_set(&bar_rows[row],   concept_ptr->recept_ptr->phase->value.r,   1.0);
+			bar_set(&bar_rows[row],   concept_ptr->recept_ptr->phase->value.r,   concept_ptr->recept_ptr->field.period);
 		}
 
 		screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0, 0, 20, '\0', "time: %f",
