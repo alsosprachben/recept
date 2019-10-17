@@ -71,13 +71,21 @@ void bar_scale(union bar_u *bar_ptr, double *n_ptr, double *d_ptr) {
 	switch (bar_ptr->barvar.bar_head.bar_unit) {
 		case bar_linear:
 			break;
-		case bar_log:
+		case bar_logp1:
 			if (*n_ptr < 0) {
 				*n_ptr = -log(1.0 - *n_ptr);
 			} else {
 				*n_ptr =  log(1.0 + *n_ptr);
 			}
 			*d_ptr = log(1.0 + *d_ptr);
+			break;
+		case bar_log:
+			if (*n_ptr <= 0.0) {
+				*n_ptr = 0.0;
+			} else {
+				*n_ptr = log(*n_ptr);
+			}
+			*d_ptr = log(*d_ptr);
 			break;
 	}
 }
