@@ -454,8 +454,9 @@ int main(int argc, char *argv[]) {
 	int sample_i = 0;
 	char *rowbuf;
 	union bar_u *bar_rows;
+	union bar_u *phase_rows;
 	struct period_sensor *sensors;
-	double step = 20.0;
+	double step = 50.0;
 
 	rc = sampler_ui_getopts(&sampler_ui, argc, argv);
 	if (rc == -1) {
@@ -476,10 +477,19 @@ int main(int argc, char *argv[]) {
 		perror("calloc");
 		return -1;
 	}
+	phase_rows = calloc(sampler_ui_get_rows(&sampler_ui), sizeof (*phase_rows));
+	if (phase_rows == NULL) {
+		perror("calloc");
+		return -1;
+	}
 	sensors = calloc(sampler_ui_get_rows(&sampler_ui), sizeof (*sensors));
 	for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 0, row);
-		bar_init_buf(&bar_rows[row], bar_positive, bar_log, rowbuf, sampler_ui_get_columns(&sampler_ui));
+		bar_init_buf(&phase_rows[row], bar_signed, bar_linear, rowbuf, 20);
+
+		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20, row);
+		bar_init_buf(&bar_rows[row], bar_positive, bar_log, rowbuf, sampler_ui_get_columns(&sampler_ui) - 20);
+
 		period_sensor_get_receptive_field(&sensors[row])->period = ((double) sampler_ui_get_sample_rate(&sampler_ui)) /  (step * row);
 		period_sensor_get_receptive_field(&sensors[row])->period_factor = 1.0
 			/ period_sensor_get_receptive_field(&sensors[row])->period
@@ -487,7 +497,7 @@ int main(int argc, char *argv[]) {
 			/ step
 			;
 		period_sensor_get_receptive_field(&sensors[row])->phase = 0.0;
-		period_sensor_get_receptive_field(&sensors[row])->phase_factor = 2.0;
+		period_sensor_get_receptive_field(&sensors[row])->phase_factor = 44100.0 / 20;
 		period_sensor_get_receptive_value(&sensors[row])->cval = 0.0;
 		period_sensor_init(&sensors[row]);
 	}
@@ -513,7 +523,8 @@ int main(int argc, char *argv[]) {
 
 			concept_ptr = period_sensor_get_concept(&sensors[row]);
 
-			bar_set(&bar_rows[row], concept_ptr->recept_ptr->phase->value.r, 1.0);
+			bar_set(&phase_rows[row], concept_ptr->recept_ptr->phase->value.phi, 0.5);
+			bar_set(&bar_rows[row],   concept_ptr->recept_ptr->phase->value.r,   1.0);
 		}
 
 		screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0, 0, 20, '\0', "time: %f",
