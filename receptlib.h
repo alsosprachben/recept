@@ -146,5 +146,9 @@ void period_concept_init(struct period_concept *pc_ptr, struct period_concept_st
 
 /* Sense Organ: holds all of the state, and drives the pathways */
 struct period_sensor;
+struct receptive_field *period_sensor_get_receptive_field(struct period_sensor *ps_ptr);
+struct receptive_value *period_sensor_get_receptive_value(struct period_sensor *ps_ptr);
+struct period_concept *period_sensor_get_concept(struct period_sensor *ps_ptr);
 void period_sensor_init(struct period_sensor *ps_ptr);
+void period_sensor_sample(struct period_sensor *ps_ptr, double time, double value);
 #endif

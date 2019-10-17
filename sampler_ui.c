@@ -161,6 +161,7 @@ int sampler_ui_getopts(struct sampler_ui *sui_ptr, int argc, char *argv[]) {
 #ifdef SAMPLER_UI_TEST
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 int main(int argc, char *argv[]) {
 	int rc;
@@ -185,7 +186,7 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	bar_rows = calloc(sampler_ui_get_rows(&sampler_ui), sizeof (bar_rows));
+	bar_rows = calloc(sampler_ui_get_rows(&sampler_ui), sizeof (*bar_rows));
 	if (bar_rows == NULL) {
 		perror("calloc");
 		return -1;

@@ -1,6 +1,9 @@
 #ifndef SAMPLER_UI_H
 #define SAMPLER_UI_H
 
+#include "sampler.h"
+#include "screen.h"
+
 struct sampler_ui {
 	/* input parameters */
 	int columns;

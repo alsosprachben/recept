@@ -23,12 +23,12 @@ double exponential_smoother_d_sample(struct exponential_smoother_d *es_d_ptr, do
 	return es_d_ptr->v;
 }
 
-void exponential_smoother_dc_init(struct exponential_smoother_dc *es_d_ptr, double complex initial_value) {
-	es_d_ptr->v = initial_value;
+void exponential_smoother_dc_init(struct exponential_smoother_dc *es_dc_ptr, double complex initial_value) {
+	es_dc_ptr->v = initial_value;
 }
-double complex exponential_smoother_dc_sample(struct exponential_smoother_dc *es_d_ptr, double complex value, double factor) {
-	es_d_ptr->v += (value - es_d_ptr->v) / factor;
-	return es_d_ptr->v;
+double complex exponential_smoother_dc_sample(struct exponential_smoother_dc *es_dc_ptr, double complex value, double factor) {
+	es_dc_ptr->v += (value - es_dc_ptr->v) / factor;
+	return es_dc_ptr->v;
 }
 
 void exponential_smoothing_d_init(struct exponential_smoothing_d *esg_d_ptr, double window_size, double initial_value) {
@@ -387,8 +387,10 @@ void period_concept_state_init(struct period_concept_state *pcs_ptr, struct rece
 }
 
 void period_concept_init(struct period_concept *pc_ptr, struct period_concept_state *pcs_ptr, struct period_recept *recept_ptr) {
+	pc_ptr->recept_ptr = recept_ptr;
+
 	/* average instantaneous period */
-	pc_ptr->avg_instant_period = exponential_smoother_d_sample(&pcs_ptr->avg_instant_period_state, recept_ptr->field.period, recept_ptr->field.period * recept_ptr->field.period_factor);
+	pc_ptr->avg_instant_period = exponential_smoother_d_sample(&pcs_ptr->avg_instant_period_state, recept_ptr->field.period, recept_ptr->field.period * recept_ptr->field.phase_factor);
 	pc_ptr->avg_instant_period_offset = pc_ptr->avg_instant_period - recept_ptr->field.period;
 
 	/* deviation of average */
@@ -398,12 +400,18 @@ void period_concept_init(struct period_concept *pc_ptr, struct period_concept_st
 		pc_ptr->has_instant_period_delta = 1;
 	}
 	/* standard deviation of average (dis-convergence on an average instant period) */
-	pc_ptr->instant_period_stddev = exponential_smoother_d_sample(&pcs_ptr->instant_period_stddev_state, fabs(pc_ptr->instant_period_delta), fabs(recept_ptr->instant_period * recept_ptr->field.period_factor));
+	pc_ptr->instant_period_stddev = exponential_smoother_d_sample(&pcs_ptr->instant_period_stddev_state, fabs(pc_ptr->instant_period_delta), fabs(recept_ptr->instant_period * recept_ptr->field.phase_factor));
 }
 
 /* struct period sensor */
-struct receptive_field *get_period_sensor_receptor_field(struct period_sensor *ps_ptr) {
+struct receptive_field *period_sensor_get_receptive_field(struct period_sensor *ps_ptr) {
 	return &ps_ptr->field;
+}
+struct receptive_value *period_sensor_get_receptive_value(struct period_sensor *ps_ptr) {
+	return &ps_ptr->value;
+}
+struct period_concept *period_sensor_get_concept(struct period_sensor *ps_ptr) {
+	return &ps_ptr->concept;
 }
 void period_sensor_init(struct period_sensor *ps_ptr) {
 	dynamic_time_smoothing_d_init(&ps_ptr->sensor_state, &ps_ptr->field, &ps_ptr->value, 0);
@@ -429,8 +437,93 @@ void period_sensor_sample(struct period_sensor *ps_ptr, double time, double valu
 }
 
 #ifdef RECEPT_TEST
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
 
-int main() {
+#include "bar.h"
+#include "sampler_ui.h"
+
+int main(int argc, char *argv[]) {
+	int rc;
+
+	struct sampler_ui sampler_ui;
+	int16_t sample;
+	int row;
+	int i = 0;
+	int sample_i = 0;
+	char *rowbuf;
+	union bar_u *bar_rows;
+	struct period_sensor *sensors;
+	double step = 50.0;
+
+	rc = sampler_ui_getopts(&sampler_ui, argc, argv);
+	if (rc == -1) {
+		perror("sampler_ui_getopts");
+		return -1;
+	}
+	argc -= rc;
+	argv += rc;
+
+	rc = sampler_ui_init(&sampler_ui);
+	if (rc == -1) {
+		perror("sampler_ui_init");
+		return -1;
+	}
+
+	bar_rows = calloc(sampler_ui_get_rows(&sampler_ui), sizeof (*bar_rows));
+	if (bar_rows == NULL) {
+		perror("calloc");
+		return -1;
+	}
+	sensors = calloc(sampler_ui_get_rows(&sampler_ui), sizeof (*sensors));
+	for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
+		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 0, row);
+		bar_init_buf(&bar_rows[row], bar_positive, bar_log, rowbuf, sampler_ui_get_columns(&sampler_ui));
+		period_sensor_get_receptive_field(&sensors[row])->period = ((double) sampler_ui_get_sample_rate(&sampler_ui)) /  (step * row);
+		period_sensor_get_receptive_field(&sensors[row])->period_factor = 1.0;
+		period_sensor_get_receptive_field(&sensors[row])->phase = 0.0;
+		period_sensor_get_receptive_field(&sensors[row])->phase_factor = 2.0;
+		period_sensor_get_receptive_value(&sensors[row])->cval = 0.0;
+		period_sensor_init(&sensors[row]);
+	}
+	for (;;) {
+		for (i = 0; i < sampler_ui_get_rows(&sampler_ui) * sampler_ui_get_mod(&sampler_ui); i++) {
+			char *sample_ptr;
+			sample_ptr = (char *) &sample;
+			rc = filesampler_demand_next(sampler_ui_get_sampler(&sampler_ui), &sample_ptr);
+			if (rc == -1) {
+				perror("sampler_ui_demand_next");
+				return -1;
+			}
+
+			for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
+				period_sensor_sample(&sensors[row], (double) (sample_i), 100.0 * ((double) sample) / (1L << (sampler_ui_get_sample_depth(&sampler_ui) - 1)));
+			}
+
+			sample_i++;
+		}
+
+		for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
+			struct period_concept *concept_ptr;
+
+			concept_ptr = period_sensor_get_concept(&sensors[row]);
+
+			bar_set(&bar_rows[row], concept_ptr->recept_ptr->phase->value.r, 1.0);
+		}
+
+		screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0, 0, 20, '\0', "time: %f",
+			((double) (sample_i)) / sampler_ui_get_sample_rate(&sampler_ui)
+		);
+		screen_draw(sampler_ui_get_screen(&sampler_ui));
+	}
+
+	rc = sampler_ui_deinit(&sampler_ui);
+	if (rc == -1) {
+		perror("sampler_ui_deinit");
+		return -1;
+	}
+
 	return 0;
 }
 
