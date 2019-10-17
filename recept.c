@@ -455,7 +455,7 @@ int main(int argc, char *argv[]) {
 	char *rowbuf;
 	union bar_u *bar_rows;
 	struct period_sensor *sensors;
-	double step = 50.0;
+	double step = 20.0;
 
 	rc = sampler_ui_getopts(&sampler_ui, argc, argv);
 	if (rc == -1) {
@@ -481,7 +481,11 @@ int main(int argc, char *argv[]) {
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 0, row);
 		bar_init_buf(&bar_rows[row], bar_positive, bar_log, rowbuf, sampler_ui_get_columns(&sampler_ui));
 		period_sensor_get_receptive_field(&sensors[row])->period = ((double) sampler_ui_get_sample_rate(&sampler_ui)) /  (step * row);
-		period_sensor_get_receptive_field(&sensors[row])->period_factor = 1.0;
+		period_sensor_get_receptive_field(&sensors[row])->period_factor = 1.0
+			/ period_sensor_get_receptive_field(&sensors[row])->period
+			* ((double) sampler_ui_get_sample_rate(&sampler_ui))
+			/ step
+			;
 		period_sensor_get_receptive_field(&sensors[row])->phase = 0.0;
 		period_sensor_get_receptive_field(&sensors[row])->phase_factor = 2.0;
 		period_sensor_get_receptive_value(&sensors[row])->cval = 0.0;
