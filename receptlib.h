@@ -151,4 +151,14 @@ struct receptive_value *period_sensor_get_receptive_value(struct period_sensor *
 struct period_concept *period_sensor_get_concept(struct period_sensor *ps_ptr);
 void period_sensor_init(struct period_sensor *ps_ptr);
 void period_sensor_sample(struct period_sensor *ps_ptr, double time, double value);
+void period_sensor_update_period(struct period_sensor *ps_ptr, double period);
+void period_sensor_update_phase(struct period_sensor *ps_ptr, double phase);
+void period_sensor_update_from_concept(struct period_sensor *ps_ptr, struct period_concept *pc_ptr);
+
+struct lifecycle;
+void lifecycle_init(struct lifecycle *lc_ptr, double max_r);
+double lifecycle_sample(struct lifecycle *lc_ptr, double complex cval);
+
+
+
 #endif

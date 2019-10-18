@@ -436,6 +436,49 @@ void period_sensor_sample(struct period_sensor *ps_ptr, double time, double valu
 	period_concept_init(&ps_ptr->concept, &ps_ptr->concept_state, &ps_ptr->recept);
 }
 
+void period_sensor_update_period(struct period_sensor *ps_ptr, double period) {
+	ps_ptr->field.period = period;
+	dynamic_time_smoothing_d_update_period(&ps_ptr->sensor_state, period);
+}
+void period_sensor_update_phase(struct period_sensor *ps_ptr, double phase) {
+	ps_ptr->field.phase = phase;
+	dynamic_time_smoothing_d_update_phase(&ps_ptr->sensor_state, phase);
+}
+void period_sensor_update_from_concept(struct period_sensor *ps_ptr, struct period_concept *pc_ptr) {
+	if (pc_ptr->avg_instant_period > 2.0) {
+		period_sensor_update_period(ps_ptr, pc_ptr->avg_instant_period);
+	}
+}
+
+/* Scale-Space Event Lifecycle Sensors */
+
+void lifecycle_init(struct lifecycle *lc_ptr, double max_r) {
+	lc_ptr->max_r = max_r;
+	lc_ptr->F = 0.0;
+	lc_ptr->r = 0.0;
+	lc_ptr->phi = 0.0;
+	lc_ptr->cycle = 0;
+	lc_ptr->lifecycle = 0.0;
+}
+double lifecycle_sample(struct lifecycle *lc_ptr, double complex cval) {
+	double prev_phi;
+
+	lc_ptr->cval = cval;
+	lc_ptr->F = creal(cval) - cimag(cval);
+	prev_phi = lc_ptr->phi;
+	lc_ptr->r   =         cabs(lc_ptr->cval);
+	lc_ptr->phi = rad2tau(carg(lc_ptr->cval));
+	if (        lc_ptr->phi - prev_phi >  0.5) {
+		lc_ptr->cycle--;
+	}  else if (lc_ptr->phi - prev_phi < -0.5) {
+		lc_ptr->cycle++;
+	}
+
+	lc_ptr->lifecycle = lc_ptr->cycle + lc_ptr->phi;
+
+	return lc_ptr->lifecycle;
+}
+
 #ifdef RECEPT_TEST
 #include <stdint.h>
 #include <stdlib.h>

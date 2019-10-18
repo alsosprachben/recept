@@ -148,6 +148,18 @@ struct period_sensor {
 	struct period_concept_state concept_state;
 };
 
+/* Complex Lifecycle/Frequency */
+struct lifecycle {
+	double max_r;
+	double F; /* Free Energy, where cval.real is negative entropy, and cval.imag is negative energy. */
+	double r;
+	double phi;
+	int    cycle;
+	double lifecycle;
+
+	double complex cval;
+};
+
 
 
 
