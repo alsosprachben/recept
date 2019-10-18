@@ -160,6 +160,30 @@ struct lifecycle {
 	double complex cval;
 };
 
+struct lifecycle_derive {
+	struct lifecycle lc;
+	double response_factor;
+	struct exponential_smoother_d d_avg_state;
+	struct exponential_smoother_d dd_avg_state;
+	
+	double d;
+	double dd;
+	double complex cval;
+
+	double d_avg;
+	double dd_avg;
+	double complex cval_avg;
+};
+
+struct lifecycle_iter {
+	struct lifecycle lc;
+	struct delta_d d_state;
+	struct delta_d dd_state;
+
+	double d;
+	double dd;
+	double complex cval;
+};
 
 
 

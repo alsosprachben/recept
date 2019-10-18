@@ -452,6 +452,7 @@ void period_sensor_update_from_concept(struct period_sensor *ps_ptr, struct peri
 
 /* Scale-Space Event Lifecycle Sensors */
 
+/* struct lifecycle */
 void lifecycle_init(struct lifecycle *lc_ptr, double max_r) {
 	lc_ptr->max_r = max_r;
 	lc_ptr->F = 0.0;
@@ -477,6 +478,67 @@ double lifecycle_sample(struct lifecycle *lc_ptr, double complex cval) {
 	lc_ptr->lifecycle = lc_ptr->cycle + lc_ptr->phi;
 
 	return lc_ptr->lifecycle;
+}
+
+/* struct livecycle_derive (struct livecycle) */
+void lifecycle_derive_init(struct lifecycle_derive *lcd_ptr, double max_r, double response_factor) {
+	lifecycle_init(&lcd_ptr->lc, max_r);
+	exponential_smoother_d_init(&lcd_ptr->d_avg_state, 0.0);
+	exponential_smoother_d_init(&lcd_ptr->dd_avg_state, 0.0);
+	/* direct samples */
+	lcd_ptr->d    = 0.0;
+	lcd_ptr->dd   = 0.0;
+	lcd_ptr->cval = CMPLX(0.0, 0.0);
+	/* avg samples */
+	lcd_ptr->d_avg    = 0.0;
+	lcd_ptr->dd_avg   = 0.0;
+	lcd_ptr->cval_avg = CMPLX(0.0, 0.0);
+}
+
+void lifecycle_derive_derive(struct lifecycle_derive *lcd_ptr, double v1, double v2, double v3) {
+	double d1, d2; /* edges of v1, v2, v3 - original sequence */
+	double dd;     /* edges of   d1, d2   - first  derivative */
+	               /*              dd     - second derivative */
+
+	d1 = v2 - v1;
+	d2 = v3 - v2;
+	dd = d2 - d1;
+
+	lcd_ptr->d  = d1;
+	lcd_ptr->dd = dd;
+}
+
+double lifecycle_derive_sample_direct(struct lifecycle_derive *lcd_ptr, double v1, double v2, double v3) {
+	lifecycle_derive_derive(lcd_ptr, v1, v2, v3);
+	lcd_ptr->cval = CMPLX(lcd_ptr->d, lcd_ptr->dd);
+	return lifecycle_sample(&lcd_ptr->lc, lcd_ptr->cval);
+}
+
+double lifecycle_derive_sample_avg(struct lifecycle_derive *lcd_ptr, double v1, double v2, double v3) {
+	lifecycle_derive_derive(lcd_ptr, v1, v2, v3);
+
+	lcd_ptr->d_avg  = exponential_smoother_d_sample(&lcd_ptr->d_avg_state,  lcd_ptr->d,  lcd_ptr->response_factor);
+	lcd_ptr->dd_avg = exponential_smoother_d_sample(&lcd_ptr->dd_avg_state, lcd_ptr->dd, lcd_ptr->response_factor);
+
+	lcd_ptr->cval_avg = CMPLX(lcd_ptr->d_avg, lcd_ptr->dd_avg);
+	return lifecycle_sample(&lcd_ptr->lc, lcd_ptr->cval_avg);
+}
+
+/* struct livecycle_iter (struct livecycle) */
+void lifecycle_iter_init(struct lifecycle_iter *lci_ptr, double max_r) {
+	lifecycle_init(&lci_ptr->lc, max_r);
+	delta_d_init(&lci_ptr->d_state, 0, 0.0);
+	delta_d_init(&lci_ptr->dd_state, 0, 0.0);
+	lci_ptr->d    = 0.0;
+	lci_ptr->dd   = 0.0;
+	lci_ptr->cval = CMPLX(0.0, 0.0);
+}
+
+double lifecycle_iter_sample(struct lifecycle_iter *lci_ptr, double value) {
+	(void) delta_d_sample(&lci_ptr->d_state,  value,      &lci_ptr->d);
+	(void) delta_d_sample(&lci_ptr->dd_state, lci_ptr->d, &lci_ptr->dd);
+	lci_ptr->cval = CMPLX(lci_ptr->d, lci_ptr->dd);
+	return lifecycle_sample(&lci_ptr->lc, lci_ptr->cval);
 }
 
 #ifdef RECEPT_TEST

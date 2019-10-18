@@ -159,6 +159,13 @@ struct lifecycle;
 void lifecycle_init(struct lifecycle *lc_ptr, double max_r);
 double lifecycle_sample(struct lifecycle *lc_ptr, double complex cval);
 
+struct lifecycle_derive;
+void lifecycle_derive_init(struct lifecycle_derive *lcd_ptr, double max_r, double response_factor);
+double lifecycle_derive_sample_direct(struct lifecycle_derive *lcd_ptr, double v1, double v2, double v3);
+double lifecycle_derive_sample_avg(struct lifecycle_derive *lcd_ptr, double v1, double v2, double v3);
 
+struct lifecycle_iter;
+void lifecycle_iter_init(struct lifecycle_iter *lci_ptr, double max_r);
+double lifecycle_iter_sample(struct lifecycle_iter *lci_ptr, double value);
 
 #endif
