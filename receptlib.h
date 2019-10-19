@@ -155,6 +155,7 @@ void period_sensor_update_period(struct period_sensor *ps_ptr, double period);
 void period_sensor_update_phase(struct period_sensor *ps_ptr, double phase);
 void period_sensor_update_from_concept(struct period_sensor *ps_ptr, struct period_concept *pc_ptr);
 
+/* Complex Lifecycle/Frequency */
 struct lifecycle;
 void lifecycle_init(struct lifecycle *lc_ptr, double max_r);
 double lifecycle_sample(struct lifecycle *lc_ptr, double complex cval);
@@ -167,5 +168,15 @@ double lifecycle_derive_sample_avg(struct lifecycle_derive *lcd_ptr, double v1, 
 struct lifecycle_iter;
 void lifecycle_iter_init(struct lifecycle_iter *lci_ptr, double max_r);
 double lifecycle_iter_sample(struct lifecycle_iter *lci_ptr, double value);
+
+/* Period Scale-Space */
+struct period_scale_space_sensor;
+unsigned int period_scale_space_sensor_monochord_max(struct period_scale_space_sensor *sss_ptr);
+struct receptive_field *period_scale_space_sensor_get_receptive_field(struct period_scale_space_sensor *sss_ptr);
+void period_scale_space_sensor_set_response_period(struct period_scale_space_sensor *sss_ptr, double response_period);
+void period_scale_space_sensor_set_scale_factor(struct period_scale_space_sensor *sss_ptr, double scale_factor);
+void period_scale_space_sensor_init(struct period_scale_space_sensor *sss_ptr);
+void period_scale_space_sensor_sample_sensor(struct period_scale_space_sensor *sss_ptr, double time, double value);
+void period_scale_space_sensor_sample_lifecycle(struct period_scale_space_sensor *sss_ptr);
 
 #endif

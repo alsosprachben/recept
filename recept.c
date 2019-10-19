@@ -541,6 +541,53 @@ double lifecycle_iter_sample(struct lifecycle_iter *lci_ptr, double value) {
 	return lifecycle_sample(&lci_ptr->lc, lci_ptr->cval);
 }
 
+/* Period Scale-Space */
+unsigned int period_scale_space_sensor_monochord_max(struct period_scale_space_sensor *sss_ptr) {
+	return sizeof (sss_ptr->monochords) / sizeof (sss_ptr->monochords[0]);
+}
+struct receptive_field *period_scale_space_sensor_get_receptive_field(struct period_scale_space_sensor *sss_ptr) {
+	return &sss_ptr->field;
+}
+void period_scale_space_sensor_set_response_period(struct period_scale_space_sensor *sss_ptr, double response_period) {
+	sss_ptr->response_period = response_period;
+}
+void period_scale_space_sensor_set_scale_factor(struct period_scale_space_sensor *sss_ptr, double scale_factor) {
+	sss_ptr->scale_factor = scale_factor;
+}
+void period_scale_space_sensor_init(struct period_scale_space_sensor *sss_ptr) {
+	struct receptive_field *field_ptr;
+	struct receptive_value *value_ptr;
+	int i;
+
+	for (i = 0; i < 3; i++) {	
+		field_ptr = period_sensor_get_receptive_field(&sss_ptr->period_sensors[i]);
+		*field_ptr = sss_ptr->field;
+		field_ptr->period_factor *= pow(sss_ptr->scale_factor, -1 - i);
+		value_ptr = period_sensor_get_receptive_value(&sss_ptr->period_sensors[i]);
+		value_ptr->cval = CMPLX(0.0, 0.0);
+		period_sensor_init(&sss_ptr->period_sensors[i]);
+	}
+
+	lifecycle_derive_init(&sss_ptr->period_lifecycle, sss_ptr->field.period, sss_ptr->response_period);
+	lifecycle_iter_init(  &sss_ptr->beat_lifecycle,   sss_ptr->field.period);
+
+	sss_ptr->monochord_count = 0;
+}
+
+void period_scale_space_sensor_sample_sensor(struct period_scale_space_sensor *sss_ptr, double time, double value) {
+	period_sensor_sample(&sss_ptr->period_sensors[0], time, value);
+	period_sensor_sample(&sss_ptr->period_sensors[1], time, value);
+	period_sensor_sample(&sss_ptr->period_sensors[2], time, value);
+}
+
+void period_scale_space_sensor_sample_lifecycle(struct period_scale_space_sensor *sss_ptr) {
+	lifecycle_derive_sample_avg(&sss_ptr->period_lifecycle,
+		sss_ptr->period_sensors[0].percept.value.r, 
+		sss_ptr->period_sensors[1].percept.value.r, 
+		sss_ptr->period_sensors[2].percept.value.r);
+	lifecycle_iter_sample(&sss_ptr->beat_lifecycle, sss_ptr->period_lifecycle.lc.lifecycle);
+}
+
 #ifdef RECEPT_TEST
 #include <stdint.h>
 #include <stdlib.h>
@@ -561,7 +608,7 @@ int main(int argc, char *argv[]) {
 	union bar_u *bar_rows;
 	union bar_u *phase_rows;
 	struct period_sensor *sensors;
-	double step = 200.0;
+	double step = 918.0;
 
 	rc = sampler_ui_getopts(&sampler_ui, argc, argv);
 	if (rc == -1) {
@@ -603,7 +650,7 @@ int main(int argc, char *argv[]) {
 			;
 		period_sensor_get_receptive_field(&sensors[row])->phase = 0.0;
 		period_sensor_get_receptive_field(&sensors[row])->phase_factor = 44100.0 / 20;
-		period_sensor_get_receptive_value(&sensors[row])->cval = 0.0;
+		period_sensor_get_receptive_value(&sensors[row])->cval = CMPLX(0.0, 0.0);
 		period_sensor_init(&sensors[row]);
 	}
 	for (;;) {

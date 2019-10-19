@@ -148,7 +148,6 @@ struct period_sensor {
 	struct period_concept_state concept_state;
 };
 
-/* Complex Lifecycle/Frequency */
 struct lifecycle {
 	double max_r;
 	double F; /* Free Energy, where cval.real is negative entropy, and cval.imag is negative energy. */
@@ -183,6 +182,20 @@ struct lifecycle_iter {
 	double d;
 	double dd;
 	double complex cval;
+};
+
+struct period_scale_space_sensor {
+	struct receptive_field field;
+	double response_period;
+	double scale_factor;
+
+	struct period_sensor period_sensors[3];
+
+	struct lifecycle_derive period_lifecycle;
+	struct lifecycle_iter   beat_lifecycle;
+
+	struct monochord monochords[256];
+	unsigned int     monochord_count;
 };
 
 
