@@ -419,6 +419,11 @@ void period_sensor_init(struct period_sensor *ps_ptr) {
 	ps_ptr->has_prior_percept = 0;
 }
 
+void period_sensor_receive(struct period_sensor *ps_ptr) {
+	period_recept_init(&ps_ptr->recept, &ps_ptr->percept, &ps_ptr->prior_percept);
+	period_concept_init(&ps_ptr->concept, &ps_ptr->concept_state, &ps_ptr->recept);
+}
+
 void period_sensor_sample(struct period_sensor *ps_ptr, double time, double value) {
 	if (ps_ptr->has_prior_percept) {
 		ps_ptr->prior_percept = ps_ptr->percept;
@@ -431,9 +436,7 @@ void period_sensor_sample(struct period_sensor *ps_ptr, double time, double valu
 		ps_ptr->has_prior_percept = 1;
 	}
 
-	period_recept_init(&ps_ptr->recept, &ps_ptr->percept, &ps_ptr->prior_percept);
-
-	period_concept_init(&ps_ptr->concept, &ps_ptr->concept_state, &ps_ptr->recept);
+	period_sensor_receive(ps_ptr);
 }
 
 void period_sensor_update_period(struct period_sensor *ps_ptr, double period) {
@@ -588,6 +591,21 @@ void period_scale_space_sensor_sample_lifecycle(struct period_scale_space_sensor
 	lifecycle_iter_sample(&sss_ptr->beat_lifecycle, sss_ptr->period_lifecycle.lc.lifecycle);
 }
 
+void period_scale_space_sensor_init_monochord(struct period_scale_space_sensor *sss_ptr, struct monochord *mc_ptr, struct period_percept *pp_ptr, double monochord_ratio) {
+	monochord_init(mc_ptr, sss_ptr->field.period, pp_ptr->field.period, monochord_ratio);
+}
+
+void period_scale_space_sensor_superimpose_monochord_on(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *other_sss_ptr, struct monochord *mc_ptr) {
+	period_percept_superimpose_from_percept(&sss_ptr->period_sensors[0].percept, &other_sss_ptr->period_sensors[0].percept, mc_ptr);
+	period_percept_superimpose_from_percept(&sss_ptr->period_sensors[1].percept, &other_sss_ptr->period_sensors[1].percept, mc_ptr);
+	period_percept_superimpose_from_percept(&sss_ptr->period_sensors[2].percept, &other_sss_ptr->period_sensors[2].percept, mc_ptr);
+	
+	period_sensor_receive(&other_sss_ptr->period_sensors[0]);
+	period_sensor_receive(&other_sss_ptr->period_sensors[1]);
+	period_sensor_receive(&other_sss_ptr->period_sensors[2]);
+}
+
+
 #ifdef RECEPT_TEST
 #include <stdint.h>
 #include <stdlib.h>
@@ -608,7 +626,7 @@ int main(int argc, char *argv[]) {
 	union bar_u *bar_rows;
 	union bar_u *phase_rows;
 	struct period_sensor *sensors;
-	double step = 918.0;
+	double step = 173; /* 918.0; */
 
 	rc = sampler_ui_getopts(&sampler_ui, argc, argv);
 	if (rc == -1) {

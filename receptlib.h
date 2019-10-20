@@ -150,6 +150,7 @@ struct receptive_field *period_sensor_get_receptive_field(struct period_sensor *
 struct receptive_value *period_sensor_get_receptive_value(struct period_sensor *ps_ptr);
 struct period_concept *period_sensor_get_concept(struct period_sensor *ps_ptr);
 void period_sensor_init(struct period_sensor *ps_ptr);
+void period_sensor_receive(struct period_sensor *ps_ptr);
 void period_sensor_sample(struct period_sensor *ps_ptr, double time, double value);
 void period_sensor_update_period(struct period_sensor *ps_ptr, double period);
 void period_sensor_update_phase(struct period_sensor *ps_ptr, double phase);
@@ -178,5 +179,7 @@ void period_scale_space_sensor_set_scale_factor(struct period_scale_space_sensor
 void period_scale_space_sensor_init(struct period_scale_space_sensor *sss_ptr);
 void period_scale_space_sensor_sample_sensor(struct period_scale_space_sensor *sss_ptr, double time, double value);
 void period_scale_space_sensor_sample_lifecycle(struct period_scale_space_sensor *sss_ptr);
+void period_scale_space_sensor_init_monochord(struct period_scale_space_sensor *sss_ptr, struct monochord *mc_ptr, struct period_percept *pp_ptr, double monochord_ratio);
+void period_scale_space_sensor_superimpose_monochord_on(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *other_sss_ptr, struct monochord *mc_ptr);
 
 #endif
