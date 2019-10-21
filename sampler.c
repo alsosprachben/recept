@@ -7,6 +7,8 @@
 int filesampler_init(struct filesampler *sampler_ptr, int fileno, size_t sample_rate, size_t bit_depth, size_t chunk_size) {
 	sampler_ptr->fileno = fileno;
 	sampler_ptr->sample_rate = sample_rate;
+	sampler_ptr->sample_depth = bit_depth;
+	sampler_ptr->sample_range = ((size_t) 1) << (bit_depth - 1);
 	sampler_ptr->sample_size = bit_depth >> 3; /* bits to bytes */
 	sampler_ptr->chunk_size = chunk_size;
 	sampler_ptr->buf_size = sampler_ptr->sample_size * chunk_size;
@@ -21,6 +23,10 @@ int filesampler_init(struct filesampler *sampler_ptr, int fileno, size_t sample_
 
 	return 0;
 }
+unsigned int filesampler_get_sample_size(struct filesampler *sampler_ptr) {
+	return sampler_ptr->sample_size;
+}
+
 void filesampler_deinit(struct filesampler *sampler_ptr) {
 	if (sampler_ptr->buf != NULL) {
 		free(sampler_ptr->buf);
@@ -70,10 +76,10 @@ int filesampler_supply(struct filesampler *sampler_ptr) {
 /*
  * iterator that returns the next byte
  */
-int filesampler_demand_next(struct filesampler *sampler_ptr, char **sample_ptr) {
+int filesampler_demand_next(struct filesampler *sampler_ptr, double *sample_ptr) {
+	double sample;
 	ssize_t received;
 	ssize_t available;
-	int i;
 
 	received = filesampler_supply(sampler_ptr);
 	if (received == -1) {
@@ -83,8 +89,24 @@ int filesampler_demand_next(struct filesampler *sampler_ptr, char **sample_ptr) 
 	available = sampler_ptr->buf_consume_cursor - sampler_ptr->buf_produce_cursor;
 
 	if (available >= sampler_ptr->sample_size) {
-		for (i = 0; i < sampler_ptr->sample_size; i++) {
-			(*sample_ptr)[i] = sampler_ptr->buf[sampler_ptr->buf_produce_cursor + i];
+		switch (sampler_ptr->sample_size) {
+			case 1:
+				sample = *((int8_t *) (sampler_ptr->buf + sampler_ptr->buf_produce_cursor));
+				sample /= sampler_ptr->sample_range;
+				*sample_ptr = sample;
+				break;
+			case 2:
+				sample = *((int16_t *) (sampler_ptr->buf + sampler_ptr->buf_produce_cursor));
+				sample /= sampler_ptr->sample_range;
+				*sample_ptr = sample;
+				break;
+			case 4:
+				sample = *((int32_t *) (sampler_ptr->buf + sampler_ptr->buf_produce_cursor));
+				sample /= sampler_ptr->sample_range;
+				*sample_ptr = sample;
+				break;
+			default:
+				return -1;
 		}
 		sampler_ptr->buf_produce_cursor += sampler_ptr->sample_size;
 		return 1;
@@ -117,7 +139,7 @@ int main(int argc, char *argv[]) {
 	int frame;
 	struct screen screen;
 	struct filesampler sampler;
-	int16_t sample;
+	double sample;
 	int row;
 	char *rowbuf;
 	union bar_u *bar_rows;
@@ -203,16 +225,14 @@ int main(int argc, char *argv[]) {
 	}
 	for (;;) {
 		for (row = 0; row < rows; row++) {
-			char *sample_ptr;
-			sample_ptr = (char *) &sample;
-			rc = filesampler_demand_next(&sampler, &sample_ptr);
+			rc = filesampler_demand_next(&sampler, &sample);
 			if (rc == -1) {
 				perror("filesampler_demand_next");
 				return -1;
 			}
 
 			if (frame % mod == 0) {
-				bar_set(&bar_rows[row], sample, 1L << 15);
+				bar_set(&bar_rows[row], sample, 1.0);
 			}
 		}
 

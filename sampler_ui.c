@@ -74,7 +74,7 @@ int sampler_ui_init(struct sampler_ui *sui_ptr) {
 		return -1;
 	}
 
-	rc = filesampler_init(&sui_ptr->sampler, sui_ptr->fd, sui_ptr->sample_rate, 16, sui_ptr->sample_rate / sui_ptr->fps);
+	rc = filesampler_init(&sui_ptr->sampler, sui_ptr->fd, sui_ptr->sample_rate, sui_ptr->sample_depth, sui_ptr->sample_rate / sui_ptr->fps);
 	if (rc == -1) {
 		return -1;
 	}
@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
 	int rc;
 
 	struct sampler_ui sampler_ui;
-	int16_t sample;
+	double sample;
 	int row;
 	char *rowbuf;
 	union bar_u *bar_rows;
@@ -193,14 +193,12 @@ int main(int argc, char *argv[]) {
 	}
 	for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 0, row);
-		bar_init_buf(&bar_rows[row], bar_signed, bar_log, rowbuf, sampler_ui_get_columns(&sampler_ui));
+		bar_init_buf(&bar_rows[row], bar_signed, bar_logp1, rowbuf, sampler_ui_get_columns(&sampler_ui));
 	}
 	do {
 		for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
-			char *sample_ptr;
-			sample_ptr = (char *) &sample;
 			do {
-				rc = filesampler_demand_next(sampler_ui_get_sampler(&sampler_ui), &sample_ptr);
+				rc = filesampler_demand_next(sampler_ui_get_sampler(&sampler_ui), &sample);
 				if (rc == -1) {
 					perror("sampler_ui_demand_next");
 					return -1;
@@ -208,16 +206,17 @@ int main(int argc, char *argv[]) {
 			} while (rc == 0);
 
 			if (sampler_ui_frame_ready(&sampler_ui)) {
-				bar_set(&bar_rows[row], sample, 1L << (sampler_ui_get_sample_depth(&sampler_ui) - 1));
+				bar_set(&bar_rows[row], sample, 1.0);
 			}
 		}
 
 		if (sampler_ui_frame_ready(&sampler_ui)) {
-			screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0, 0, 20, '\0', "%i %i %i %i",
+			screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0, 0, 20, '\0', "%i %i %i %i %f",
 				sampler_ui_get_sample_rate(&sampler_ui),
 				sampler_ui_get_fps(&sampler_ui),
 				sampler_ui_get_frame(&sampler_ui),
-				sampler_ui_get_mod(&sampler_ui)
+				sampler_ui_get_mod(&sampler_ui),
+				sample
 			);
 			screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0, 1, 20, '\0', "Effective FPS: %f",
 				sampler_ui_get_efps(&sampler_ui)

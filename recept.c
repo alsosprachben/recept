@@ -618,9 +618,9 @@ int main(int argc, char *argv[]) {
 	int rc;
 
 	struct sampler_ui sampler_ui;
-	int16_t sample;
 	int row;
 	int i = 0;
+	double dsample;
 	int sample_i = 0;
 	char *rowbuf;
 	union bar_u *bar_rows;
@@ -673,10 +673,8 @@ int main(int argc, char *argv[]) {
 	}
 	for (;;) {
 		for (i = 0; i < sampler_ui_get_rows(&sampler_ui) * sampler_ui_get_mod(&sampler_ui); i++) {
-			char *sample_ptr;
-			sample_ptr = (char *) &sample;
 			do {
-				rc = filesampler_demand_next(sampler_ui_get_sampler(&sampler_ui), &sample_ptr);
+				rc = filesampler_demand_next(sampler_ui_get_sampler(&sampler_ui), &dsample);
 				if (rc == -1) {
 					perror("sampler_ui_demand_next");
 					return -1;
@@ -684,7 +682,7 @@ int main(int argc, char *argv[]) {
 			} while (rc == 0);
 
 			for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
-				period_sensor_sample(&sensors[row], (double) (sample_i), 10000.0 * ((double) sample) / (1L << (sampler_ui_get_sample_depth(&sampler_ui) - 1)));
+				period_sensor_sample(&sensors[row], (double) (sample_i), dsample * 1000);
 			}
 
 			sample_i++;
