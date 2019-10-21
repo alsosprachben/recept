@@ -342,9 +342,10 @@ void receptive_value_superimpose(struct receptive_value *rv_target_ptr, struct r
 }
 
 /* struct period_percept */
-void period_percept_init(struct period_percept *pp_ptr, struct dynamic_time_smoothing_d *dts_d_ptr) {
+void period_percept_init(struct period_percept *pp_ptr, struct dynamic_time_smoothing_d *dts_d_ptr, double time) {
 	dynamic_time_smoothing_d_effective_field(dts_d_ptr, &pp_ptr->field);
 	pp_ptr->value = *dts_d_ptr->ts.value_ptr;
+	pp_ptr->timestamp = time;
 }
 
 void period_percept_superimpose_from_percept(struct period_percept *pp_source_ptr, struct period_percept *pp_target_ptr, struct monochord *mc_ptr) {
@@ -390,7 +391,7 @@ void period_concept_init(struct period_concept *pc_ptr, struct period_concept_st
 	pc_ptr->recept_ptr = recept_ptr;
 
 	/* average instantaneous period */
-	pc_ptr->avg_instant_period = exponential_smoother_d_sample(&pcs_ptr->avg_instant_period_state, recept_ptr->field.period, recept_ptr->field.period * recept_ptr->field.phase_factor);
+	pc_ptr->avg_instant_period = exponential_smoother_d_sample(&pcs_ptr->avg_instant_period_state, recept_ptr->instant_period, recept_ptr->field.period * recept_ptr->field.phase_factor);
 	pc_ptr->avg_instant_period_offset = pc_ptr->avg_instant_period - recept_ptr->field.period;
 
 	/* deviation of average */
@@ -429,7 +430,7 @@ void period_sensor_sample(struct period_sensor *ps_ptr, double time, double valu
 		ps_ptr->prior_percept = ps_ptr->percept;
 	}
 	dynamic_time_smoothing_d_sample(&ps_ptr->sensor_state, time, value);
-	period_percept_init(&ps_ptr->percept, &ps_ptr->sensor_state);
+	period_percept_init(&ps_ptr->percept, &ps_ptr->sensor_state, time);
 	if ( ! ps_ptr->has_prior_percept) {
 		/* when no prior, make prior the same as current */
 		ps_ptr->prior_percept = ps_ptr->percept;
@@ -605,6 +606,59 @@ void period_scale_space_sensor_superimpose_monochord_on(struct period_scale_spac
 	period_sensor_receive(&other_sss_ptr->period_sensors[2]);
 }
 
+int midi_note(double sample_rate, double period, double A4, double *n_ptr) {
+	static double n_A4 = 69;
+	double Hz;
+
+	/*
+	f = 440 * (2 ^ (n/12)
+	f / 440 = (2 ^ (n/12)
+	log(f / 440) / log(2)  = n/12
+	12 * (log(f / 440 ) / log(2)) = n
+	*/
+
+	if (period <= 0.0) {
+		*n_ptr = 0.0;
+		return -1;
+	}
+
+	Hz = sample_rate / period;
+	*n_ptr = 12.0 * (log(Hz / A4) / M_LN2) + n_A4;
+
+	return 0;
+}
+
+#define NOTE_FMT "%2i%s%3.0f"
+int note(double sample_rate, double period, double A4, int *octave_ptr, char **note_name_ptr, double *cents_ptr) {
+	int rc;
+	static char *notes[] = {"B#/C ", "C#/Db", "D /D ", "D#/Eb", "E /Fb", "E#/F ", "F#/Gb", "G /G ", "G#/Ab", "A /A ", "A#/Bb", "B /Cb"};
+	double n;
+	int note;
+	int octave;
+	int octave_note;
+	double cents;
+
+	rc = midi_note(sample_rate, period, A4, &n);
+	if (rc == -1) {
+		return -1;
+	}
+
+	note = floor(n + 0.5);
+
+	octave = note / 12 - 1;
+	octave_note = note % 12;
+	cents = 100.0 * (fmod(n + 0.5, 1.0) - 0.5);
+
+	if (octave_note < 0 || octave_note > 11) {
+		return -1;
+	}
+
+	*octave_ptr    = octave;
+	*note_name_ptr = notes[octave_note];
+	*cents_ptr     = cents;
+
+	return 0;
+}
 
 #ifdef RECEPT_TEST
 #include <stdint.h>
@@ -655,10 +709,10 @@ int main(int argc, char *argv[]) {
 	sensors = calloc(sampler_ui_get_rows(&sampler_ui), sizeof (*sensors));
 	for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 0, row);
-		bar_init_buf(&phase_rows[row], bar_signed, bar_linear, rowbuf, 20);
+		bar_init_buf(&phase_rows[row], bar_signed, bar_linear, rowbuf, 18);
 
-		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20, row);
-		bar_init_buf(&bar_rows[row], bar_positive, bar_log, rowbuf, sampler_ui_get_columns(&sampler_ui) - 20);
+		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 30, row);
+		bar_init_buf(&bar_rows[row], bar_positive, bar_log, rowbuf, sampler_ui_get_columns(&sampler_ui) - 30);
 
 		period_sensor_get_receptive_field(&sensors[row])->period = ((double) sampler_ui_get_sample_rate(&sampler_ui)) /  (step * (row + 1));
 		period_sensor_get_receptive_field(&sensors[row])->period_factor = 1.0
@@ -689,10 +743,18 @@ int main(int argc, char *argv[]) {
 		}
 
 		for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
+			int rc;
 			struct period_concept *concept_ptr;
+			int octave;
+			char *note_name;
+			double cents;
 
 			concept_ptr = period_sensor_get_concept(&sensors[row]);
 
+			rc = note(sampler_ui_get_sample_rate(&sampler_ui), concept_ptr->avg_instant_period, 440.0, &octave, &note_name, &cents);
+			if (rc == 0) {
+				screen_nprintf(sampler_ui_get_screen(&sampler_ui), 19, row, 11, '\0', NOTE_FMT, octave, note_name, cents);
+			}
 			bar_set(&phase_rows[row], concept_ptr->recept_ptr->phase->value.phi, 0.5);
 			bar_set(&bar_rows[row],   concept_ptr->recept_ptr->phase->value.r,   concept_ptr->recept_ptr->field.period);
 		}

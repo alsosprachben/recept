@@ -130,6 +130,7 @@ void monochord_rotate(struct monochord *mc_ptr, struct receptive_value *rv_ptr);
 
 /* Physical Percept: Representation of Periodic Value */
 struct period_percept;
+void period_percept_init(struct period_percept *pp_ptr, struct dynamic_time_smoothing_d *dts_d_ptr, double time);
 void period_percept_superimpose_from_percept(struct period_percept *pp_source_ptr, struct period_percept *pp_target_ptr, struct monochord *mc_ptr);
 
 /* Physiological Recept: Deduction of Periodic Value */
