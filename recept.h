@@ -102,39 +102,12 @@ struct monochord {
 	double complex value;
 };
 
-struct period_percept {
-	double timestamp;
-	struct receptive_field field;
-	struct receptive_value value;
-};
-struct period_recept {
-	struct receptive_field field;
-	struct period_percept *phase;
-	struct period_percept *prior_phase;
-
-	double frequency;
-	double instant_period;
-	double instant_frequency;
-	struct receptive_value value;
-
-	double duration;
-};
 struct period_concept_state {
 	struct exponential_smoother_d avg_instant_period_state;
 	struct delta_d                instant_period_delta_state;
 	struct exponential_smoother_d instant_period_stddev_state;
 };
-struct period_concept {
-	struct period_recept *recept_ptr;
 
-	double avg_instant_period;
-	double avg_instant_period_offset;
-
-	int    has_instant_period_delta;
-	double instant_period_delta;
-
-	double instant_period_stddev;
-};
 struct period_sensor {
 	struct receptive_field field;
 	struct receptive_value value;
@@ -146,17 +119,6 @@ struct period_sensor {
 	struct period_recept  recept;
 	struct period_concept concept;
 	struct period_concept_state concept_state;
-};
-
-struct lifecycle {
-	double max_r;
-	double F; /* Free Energy, where cval.real is negative entropy, and cval.imag is negative energy. */
-	double r;
-	double phi;
-	int    cycle;
-	double lifecycle;
-
-	double complex cval;
 };
 
 struct lifecycle_derive {
@@ -184,6 +146,7 @@ struct lifecycle_iter {
 	double complex cval;
 };
 
+struct period_scale_space_sensor;
 struct period_scale_space_sensor {
 	struct receptive_field field;
 	double response_period;
@@ -194,7 +157,10 @@ struct period_scale_space_sensor {
 	struct lifecycle_derive period_lifecycle;
 	struct lifecycle_iter   beat_lifecycle;
 
-	struct monochord monochords[256];
+	struct monochord_entry {
+		struct period_scale_space_sensor *source_sss_ptr;
+		struct monochord       monochord;
+	} monochords[256];
 	unsigned int     monochord_count;
 };
 

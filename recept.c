@@ -584,6 +584,13 @@ void period_scale_space_sensor_sample_sensor(struct period_scale_space_sensor *s
 	period_sensor_sample(&sss_ptr->period_sensors[2], time, value);
 }
 
+void period_scale_space_sensor_sample_monochords(struct period_scale_space_sensor *sss_ptr) {
+	int i;
+	for (i = 0; i < sss_ptr->monochord_count; i++) {
+		period_scale_space_sensor_superimpose_monochord_on(sss_ptr->monochords[i].source_sss_ptr, sss_ptr, &sss_ptr->monochords[i].monochord);
+	}
+}
+
 void period_scale_space_sensor_sample_lifecycle(struct period_scale_space_sensor *sss_ptr) {
 	lifecycle_derive_sample_avg(&sss_ptr->period_lifecycle,
 		sss_ptr->period_sensors[0].percept.value.r, 
@@ -592,18 +599,37 @@ void period_scale_space_sensor_sample_lifecycle(struct period_scale_space_sensor
 	lifecycle_iter_sample(&sss_ptr->beat_lifecycle, sss_ptr->period_lifecycle.lc.lifecycle);
 }
 
-void period_scale_space_sensor_init_monochord(struct period_scale_space_sensor *sss_ptr, struct monochord *mc_ptr, struct period_percept *pp_ptr, double monochord_ratio) {
-	monochord_init(mc_ptr, sss_ptr->field.period, pp_ptr->field.period, monochord_ratio);
+void period_scale_space_sensor_values(struct period_scale_space_sensor *sss_ptr, struct period_concept *concept_ptr, struct lifecycle *period_lifecycle_ptr, struct lifecycle *beat_lifecycle_ptr) {
+	concept_ptr          = &sss_ptr->period_sensors[0].concept;
+	period_lifecycle_ptr = &sss_ptr->period_lifecycle.lc;
+	beat_lifecycle_ptr   = &sss_ptr->beat_lifecycle.lc;
 }
 
-void period_scale_space_sensor_superimpose_monochord_on(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *other_sss_ptr, struct monochord *mc_ptr) {
-	period_percept_superimpose_from_percept(&sss_ptr->period_sensors[0].percept, &other_sss_ptr->period_sensors[0].percept, mc_ptr);
-	period_percept_superimpose_from_percept(&sss_ptr->period_sensors[1].percept, &other_sss_ptr->period_sensors[1].percept, mc_ptr);
-	period_percept_superimpose_from_percept(&sss_ptr->period_sensors[2].percept, &other_sss_ptr->period_sensors[2].percept, mc_ptr);
+void period_scale_space_sensor_samples(struct period_scale_space_sensor *sss_ptr, struct period_concept *concept_ptr, struct lifecycle *period_lifecycle_ptr, struct lifecycle *beat_lifecycle_ptr, double time, double value) {
+	period_scale_space_sensor_sample_sensor(sss_ptr, time, value);
+	period_scale_space_sensor_sample_monochords(sss_ptr);
+	period_scale_space_sensor_sample_lifecycle(sss_ptr);
+	period_scale_space_sensor_values(sss_ptr, concept_ptr, period_lifecycle_ptr, beat_lifecycle_ptr);
+}
+
+void period_scale_space_sensor_init_monochord(struct period_scale_space_sensor *sss_ptr, struct monochord *mc_ptr, struct period_scale_space_sensor *target_sss_ptr, double monochord_ratio) {
+	monochord_init(mc_ptr, sss_ptr->field.period, target_sss_ptr->field.period, monochord_ratio);
+}
+
+void period_scale_space_sensor_superimpose_monochord_on(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *target_sss_ptr, struct monochord *mc_ptr) {
+	period_percept_superimpose_from_percept(&sss_ptr->period_sensors[0].percept, &target_sss_ptr->period_sensors[0].percept, mc_ptr);
+	period_percept_superimpose_from_percept(&sss_ptr->period_sensors[1].percept, &target_sss_ptr->period_sensors[1].percept, mc_ptr);
+	period_percept_superimpose_from_percept(&sss_ptr->period_sensors[2].percept, &target_sss_ptr->period_sensors[2].percept, mc_ptr);
 	
-	period_sensor_receive(&other_sss_ptr->period_sensors[0]);
-	period_sensor_receive(&other_sss_ptr->period_sensors[1]);
-	period_sensor_receive(&other_sss_ptr->period_sensors[2]);
+	period_sensor_receive(&target_sss_ptr->period_sensors[0]);
+	period_sensor_receive(&target_sss_ptr->period_sensors[1]);
+	period_sensor_receive(&target_sss_ptr->period_sensors[2]);
+}
+
+void period_scale_space_sensor_add_monochord(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *source_sss_ptr, double monochord_ratio) {
+	sss_ptr->monochords[sss_ptr->monochord_count].source_sss_ptr = source_sss_ptr;
+	period_scale_space_sensor_init_monochord(sss_ptr, &sss_ptr->monochords[sss_ptr->monochord_count].monochord, sss_ptr, monochord_ratio);
+	sss_ptr->monochord_count++;
 }
 
 int midi_note(double sample_rate, double period, double A4, double *n_ptr) {
@@ -680,7 +706,7 @@ int main(int argc, char *argv[]) {
 	union bar_u *bar_rows;
 	union bar_u *phase_rows;
 	struct period_sensor *sensors;
-	double step = 173; /* 918.0; */
+	double step = 20; /*173;*/ /* 918.0; */
 
 	rc = sampler_ui_getopts(&sampler_ui, argc, argv);
 	if (rc == -1) {
@@ -709,10 +735,10 @@ int main(int argc, char *argv[]) {
 	sensors = calloc(sampler_ui_get_rows(&sampler_ui), sizeof (*sensors));
 	for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 0, row);
-		bar_init_buf(&phase_rows[row], bar_signed, bar_linear, rowbuf, 18);
+		bar_init_buf(&phase_rows[row], bar_signed, bar_linear, rowbuf, 20);
 
-		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 30, row);
-		bar_init_buf(&bar_rows[row], bar_positive, bar_log, rowbuf, sampler_ui_get_columns(&sampler_ui) - 30);
+		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11, row);
+		bar_init_buf(&bar_rows[row], bar_positive, bar_log, rowbuf, sampler_ui_get_columns(&sampler_ui) - (20 + 11 + 11));
 
 		period_sensor_get_receptive_field(&sensors[row])->period = ((double) sampler_ui_get_sample_rate(&sampler_ui)) /  (step * (row + 1));
 		period_sensor_get_receptive_field(&sensors[row])->period_factor = 1.0
@@ -721,7 +747,7 @@ int main(int argc, char *argv[]) {
 			/ step
 			;
 		period_sensor_get_receptive_field(&sensors[row])->phase = 0.0;
-		period_sensor_get_receptive_field(&sensors[row])->phase_factor = 44100.0 / 20;
+		period_sensor_get_receptive_field(&sensors[row])->phase_factor = 44100.0 / 1000;
 		period_sensor_get_receptive_value(&sensors[row])->cval = CMPLX(0.0, 0.0);
 		period_sensor_init(&sensors[row]);
 	}
@@ -751,9 +777,13 @@ int main(int argc, char *argv[]) {
 
 			concept_ptr = period_sensor_get_concept(&sensors[row]);
 
+			rc = note(sampler_ui_get_sample_rate(&sampler_ui), concept_ptr->recept_ptr->field.period, 440.0, &octave, &note_name, &cents);
+			if (rc == 0) {
+				screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20, row, 11, '\0', NOTE_FMT, octave, note_name, cents);
+			}
 			rc = note(sampler_ui_get_sample_rate(&sampler_ui), concept_ptr->avg_instant_period, 440.0, &octave, &note_name, &cents);
 			if (rc == 0) {
-				screen_nprintf(sampler_ui_get_screen(&sampler_ui), 19, row, 11, '\0', NOTE_FMT, octave, note_name, cents);
+				screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11, row, 11, '\0', NOTE_FMT, octave, note_name, cents);
 			}
 			bar_set(&phase_rows[row], concept_ptr->recept_ptr->phase->value.phi, 0.5);
 			bar_set(&bar_rows[row],   concept_ptr->recept_ptr->phase->value.r,   concept_ptr->recept_ptr->field.period);

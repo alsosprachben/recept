@@ -128,13 +128,29 @@ struct monochord;
 void monochord_init(struct monochord *mc_ptr, double source_period, double target_period, double ratio);
 void monochord_rotate(struct monochord *mc_ptr, struct receptive_value *rv_ptr);
 
+/* Helmholtz sensory layers */
 /* Physical Percept: Representation of Periodic Value */
-struct period_percept;
+struct period_percept {
+	double timestamp;
+	struct receptive_field field;
+	struct receptive_value value;
+};
 void period_percept_init(struct period_percept *pp_ptr, struct dynamic_time_smoothing_d *dts_d_ptr, double time);
 void period_percept_superimpose_from_percept(struct period_percept *pp_source_ptr, struct period_percept *pp_target_ptr, struct monochord *mc_ptr);
 
 /* Physiological Recept: Deduction of Periodic Value */
-struct period_recept;
+struct period_recept {
+	struct receptive_field field;
+	struct period_percept *phase;
+	struct period_percept *prior_phase;
+
+	double frequency;
+	double instant_period;
+	double instant_frequency;
+	struct receptive_value value;
+
+	double duration;
+};
 void period_recept_init(struct period_recept *pr_ptr, struct period_percept *phase, struct period_percept *prior_phase);
 
 /* Psychological Concept: Persistence of Periodic Value */
@@ -142,7 +158,17 @@ void period_recept_init(struct period_recept *pr_ptr, struct period_percept *pha
 struct period_concept_state;
 void period_concept_state_init(struct period_concept_state *pcs_ptr, struct receptive_field *field_ptr);
 /* representation of the concept */
-struct period_concept;
+struct period_concept {
+	struct period_recept *recept_ptr;
+
+	double avg_instant_period;
+	double avg_instant_period_offset;
+
+	int    has_instant_period_delta;
+	double instant_period_delta;
+
+	double instant_period_stddev;
+};
 void period_concept_init(struct period_concept *pc_ptr, struct period_concept_state *pcs_ptr, struct period_recept *recept_ptr);
 
 /* Sense Organ: holds all of the state, and drives the pathways */
@@ -158,6 +184,17 @@ void period_sensor_update_phase(struct period_sensor *ps_ptr, double phase);
 void period_sensor_update_from_concept(struct period_sensor *ps_ptr, struct period_concept *pc_ptr);
 
 /* Complex Lifecycle/Frequency */
+struct lifecycle {
+	double max_r;
+	double F; /* Free Energy, where cval.real is negative entropy, and cval.imag is negative energy. */
+	double r;
+	double phi;
+	int    cycle;
+	double lifecycle;
+
+	double complex cval;
+};
+
 struct lifecycle;
 void lifecycle_init(struct lifecycle *lc_ptr, double max_r);
 double lifecycle_sample(struct lifecycle *lc_ptr, double complex cval);
@@ -179,8 +216,12 @@ void period_scale_space_sensor_set_response_period(struct period_scale_space_sen
 void period_scale_space_sensor_set_scale_factor(struct period_scale_space_sensor *sss_ptr, double scale_factor);
 void period_scale_space_sensor_init(struct period_scale_space_sensor *sss_ptr);
 void period_scale_space_sensor_sample_sensor(struct period_scale_space_sensor *sss_ptr, double time, double value);
+void period_scale_space_sensor_sample_monochords(struct period_scale_space_sensor *sss_ptr);
 void period_scale_space_sensor_sample_lifecycle(struct period_scale_space_sensor *sss_ptr);
-void period_scale_space_sensor_init_monochord(struct period_scale_space_sensor *sss_ptr, struct monochord *mc_ptr, struct period_percept *pp_ptr, double monochord_ratio);
-void period_scale_space_sensor_superimpose_monochord_on(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *other_sss_ptr, struct monochord *mc_ptr);
+void period_scale_space_sensor_values(struct period_scale_space_sensor *sss_ptr, struct period_concept *concept_ptr, struct lifecycle *period_lifecycle_ptr, struct lifecycle *beat_lifecycle_ptr);
+void period_scale_space_sensor_samples(struct period_scale_space_sensor *sss_ptr, struct period_concept *concept_ptr, struct lifecycle *period_lifecycle_ptr, struct lifecycle *beat_lifecycle_ptr, double time, double value);
+void period_scale_space_sensor_init_monochord(struct period_scale_space_sensor *sss_ptr, struct monochord *mc_ptr, struct period_scale_space_sensor *target_sss_ptr, double monochord_ratio);
+void period_scale_space_sensor_superimpose_monochord_on(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *target_sss_ptr, struct monochord *mc_ptr);
+void period_scale_space_sensor_add_monochord(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *source_sss_ptr, double monochord_ratio);
 
 #endif
