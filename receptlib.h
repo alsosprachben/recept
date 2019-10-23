@@ -231,8 +231,11 @@ void period_scale_space_sensor_superimpose_monochord_on(struct period_scale_spac
 int  period_scale_space_sensor_add_monochord(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *source_sss_ptr, double monochord_ratio);
 
 struct period_array;
-void period_array_init(struct period_array *pa_ptr, double response_period, double octave_bandwidth, double scale_factor, double period_factor, double phase_factor);
+struct receptive_field *period_array_get_receptive_field(struct period_array *pa_ptr);
+void period_array_init(struct period_array *pa_ptr, double response_period, double octave_bandwidth, double scale_factor);
 unsigned int period_array_period_sensor_max(struct period_array *pa_ptr);
+unsigned int period_array_period_sensor_count(struct period_array *pa_ptr);
+struct scale_space_entry *period_array_get_entries(struct period_array *pa_ptr);
 int period_array_add_period_sensor(struct period_array *pa_ptr, double period, double bandwidth_factor);
 int period_array_add_monochord(struct period_array *pa_ptr, int source_sss_descriptor, int target_sss_descriptor, double monochord_ratio);
 void period_array_sample(struct period_array *pa_ptr, double time, double value);

@@ -175,9 +175,8 @@ struct period_array {
 	struct scale_space_entry {
 		struct period_scale_space_sensor sensor;
 		struct scale_space_value         value;
-	} scale_space_entries[1024];
+	} scale_space_entries[127];
 
-	struct period_scale_space_sensor scale_space_sensors[1024];
 	unsigned int scale_space_sensor_count;
 
 	

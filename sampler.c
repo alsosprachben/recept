@@ -11,6 +11,7 @@ int filesampler_init(struct filesampler *sampler_ptr, int fileno, size_t sample_
 	sampler_ptr->sample_range = ((size_t) 1) << (bit_depth - 1);
 	sampler_ptr->sample_size = bit_depth >> 3; /* bits to bytes */
 	sampler_ptr->chunk_size = chunk_size;
+	
 	sampler_ptr->buf_size = sampler_ptr->sample_size * chunk_size;
 	sampler_ptr->buf = malloc(sampler_ptr->buf_size);
 	if (sampler_ptr->buf == NULL) {
@@ -19,6 +20,9 @@ int filesampler_init(struct filesampler *sampler_ptr, int fileno, size_t sample_
 	}
 	sampler_ptr->buf_consume_cursor = 0; /* prior     is buffered file data (consumed from supply file) */
 	sampler_ptr->buf_produce_cursor = 0; /* posterior is buffered file data (produced to demand reader) */
+	sampler_ptr->buf_produced = 0;
+	sampler_ptr->chunk_drawn = 0;
+
 	sampler_ptr->hit_eof = 0;
 
 	return 0;
@@ -73,6 +77,22 @@ int filesampler_supply(struct filesampler *sampler_ptr) {
 	return 0;
 }
 
+void filesampler_mark_draw(struct filesampler *sampler_ptr) {
+	sampler_ptr->chunk_drawn = sampler_ptr->buf_produced / sampler_ptr->buf_size;
+}
+int filesampler_check_draw(struct filesampler *sampler_ptr) {
+	return sampler_ptr->chunk_drawn < sampler_ptr->buf_produced / sampler_ptr->buf_size;
+}
+size_t filesampler_get_sample_count(struct filesampler *sampler_ptr) {
+	return sampler_ptr->buf_produced / sampler_ptr->sample_size;
+}
+double filesampler_get_sample_time(struct filesampler *sampler_ptr) {
+	double dsample;
+
+	dsample = filesampler_get_sample_count(sampler_ptr);
+	return dsample / sampler_ptr->sample_rate;
+}
+
 /*
  * iterator that returns the next byte
  */
@@ -109,6 +129,8 @@ int filesampler_demand_next(struct filesampler *sampler_ptr, double *sample_ptr)
 				return -1;
 		}
 		sampler_ptr->buf_produce_cursor += sampler_ptr->sample_size;
+		sampler_ptr->buf_produced += sampler_ptr->sample_size;
+		
 		return 1;
 	}
 

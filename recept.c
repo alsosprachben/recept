@@ -366,6 +366,7 @@ void period_recept_init(struct period_recept *pr_ptr, struct period_percept *pha
 
 	pr_ptr->frequency = 1.0 / pr_ptr->field.period;
 
+	pr_ptr->value.timestamp = pr_ptr->phase->value.timestamp;
 	pr_ptr->value.cval = delta_dc(pr_ptr->phase->value.cval, pr_ptr->prior_phase->value.cval);
 	receptive_value_polar(&pr_ptr->value);
 	pr_ptr->duration = pr_ptr->phase->timestamp - pr_ptr->prior_phase->timestamp;
@@ -487,6 +488,8 @@ double lifecycle_sample(struct lifecycle *lc_ptr, double complex cval) {
 /* struct livecycle_derive (struct livecycle) */
 void lifecycle_derive_init(struct lifecycle_derive *lcd_ptr, double max_r, double response_factor) {
 	lifecycle_init(&lcd_ptr->lc, max_r);
+	lcd_ptr->response_factor = response_factor;
+
 	exponential_smoother_d_init(&lcd_ptr->d_avg_state, 0.0);
 	exponential_smoother_d_init(&lcd_ptr->dd_avg_state, 0.0);
 	/* direct samples */
@@ -639,9 +642,11 @@ int period_scale_space_sensor_add_monochord(struct period_scale_space_sensor *ss
 }
 
 /* Sensor Arrays */
-void period_array_init(struct period_array *pa_ptr, double response_period, double octave_bandwidth, double scale_factor, double period_factor, double phase_factor) {
-	pa_ptr->field.period_factor = period_factor;
-	pa_ptr->field.phase_factor = phase_factor;
+struct receptive_field *period_array_get_receptive_field(struct period_array *pa_ptr) {
+	return &pa_ptr->field;
+}
+
+void period_array_init(struct period_array *pa_ptr, double response_period, double octave_bandwidth, double scale_factor) {
 	pa_ptr->response_period = response_period;
 	pa_ptr->scale_factor = scale_factor;
 	pa_ptr->octave_bandwidth = octave_bandwidth;
@@ -650,9 +655,14 @@ void period_array_init(struct period_array *pa_ptr, double response_period, doub
 }
 
 unsigned int period_array_period_sensor_max(struct period_array *pa_ptr) {
-	return sizeof (pa_ptr->scale_space_sensors) / sizeof (pa_ptr->scale_space_sensors[0]);
+	return sizeof (pa_ptr->scale_space_entries) / sizeof (pa_ptr->scale_space_entries[0]);
 }
-
+unsigned int period_array_period_sensor_count(struct period_array *pa_ptr) {
+	return pa_ptr->scale_space_sensor_count;
+}
+struct scale_space_entry *period_array_get_entries(struct period_array *pa_ptr) {
+	return pa_ptr->scale_space_entries;
+}
 int period_array_add_period_sensor(struct period_array *pa_ptr, double period, double bandwidth_factor) {
 	struct period_scale_space_sensor *sss_ptr;
 	struct receptive_field *field_ptr;
@@ -661,11 +671,12 @@ int period_array_add_period_sensor(struct period_array *pa_ptr, double period, d
 		return -1;
 	}
 
-	sss_ptr = &pa_ptr->scale_space_sensors[pa_ptr->scale_space_sensor_count];
+	sss_ptr = &pa_ptr->scale_space_entries[pa_ptr->scale_space_sensor_count].sensor;
 
 	field_ptr = period_scale_space_sensor_get_receptive_field(sss_ptr);
 	*field_ptr = pa_ptr->field;
 	field_ptr->period = period;
+	field_ptr->period_factor = bandwidth_factor;
 	period_scale_space_sensor_set_response_period(sss_ptr, pa_ptr->response_period);
 	period_scale_space_sensor_set_scale_factor(   sss_ptr, pa_ptr->scale_factor);
 	period_scale_space_sensor_init(sss_ptr);
@@ -673,8 +684,22 @@ int period_array_add_period_sensor(struct period_array *pa_ptr, double period, d
 	return pa_ptr->scale_space_sensor_count++;
 }
 
+int period_array_populate(struct period_array *pa_ptr, double octaves) {
+	int rc;
+	int n;
+
+	for (n = - pa_ptr->octave_bandwidth * octaves; n <= 0; n++) {
+		rc = period_array_add_period_sensor(pa_ptr, pa_ptr->field.period * pow(2, n / pa_ptr->octave_bandwidth), 1.0);
+		if (rc == -1) {
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 int period_array_add_monochord(struct period_array *pa_ptr, int source_sss_descriptor, int target_sss_descriptor, double monochord_ratio) {
-	return period_scale_space_sensor_add_monochord(&pa_ptr->scale_space_sensors[target_sss_descriptor], &pa_ptr->scale_space_sensors[source_sss_descriptor], monochord_ratio);
+	return period_scale_space_sensor_add_monochord(&pa_ptr->scale_space_entries[target_sss_descriptor].sensor, &pa_ptr->scale_space_entries[source_sss_descriptor].sensor, monochord_ratio);
 }
 
 void period_array_sample(struct period_array *pa_ptr, double time, double value) {
@@ -784,14 +809,17 @@ int main(int argc, char *argv[]) {
 
 	struct sampler_ui sampler_ui;
 	int row;
-	int i = 0;
-	double dsample;
-	int sample_i = 0;
+	int rows;
+	double sample_value;
+	double sample_time;
+	int    sample_count;
 	char *rowbuf;
 	union bar_u *bar_rows;
 	union bar_u *phase_rows;
-	struct period_sensor *sensors;
-	double step = 20; /*173;*/ /* 918.0; */
+	struct receptive_field *field_ptr;
+	struct period_array array;
+	struct scale_space_entry *scale_space_entries;
+	struct scale_space_entry *entry_ptr;
 
 	rc = sampler_ui_getopts(&sampler_ui, argc, argv);
 	if (rc == -1) {
@@ -807,77 +835,81 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	bar_rows = calloc(sampler_ui_get_rows(&sampler_ui), sizeof (*bar_rows));
+	rows = sampler_ui_get_rows(&sampler_ui);
+
+	bar_rows = calloc(rows, sizeof (*bar_rows));
 	if (bar_rows == NULL) {
 		perror("calloc");
 		return -1;
 	}
-	phase_rows = calloc(sampler_ui_get_rows(&sampler_ui), sizeof (*phase_rows));
+	phase_rows = calloc(rows, sizeof (*phase_rows));
 	if (phase_rows == NULL) {
 		perror("calloc");
 		return -1;
 	}
-	sensors = calloc(sampler_ui_get_rows(&sampler_ui), sizeof (*sensors));
-	for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
+
+	field_ptr = period_array_get_receptive_field(&array);
+	field_ptr->period = 110.0;
+	field_ptr->phase = 0.0;
+	field_ptr->phase_factor = 1.0;
+	period_array_init(&array, 44100.0 / 1000, 12, 1.75);
+	rc = period_array_populate(&array, 3);
+	scale_space_entries = period_array_get_entries(&array);
+	for (row = 0; row < period_array_period_sensor_count(&array); row++) {
+		entry_ptr = &scale_space_entries[row];
+
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 0, row);
 		bar_init_buf(&phase_rows[row], bar_signed, bar_linear, rowbuf, 20);
 
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11, row);
-		bar_init_buf(&bar_rows[row], bar_positive, bar_log, rowbuf, sampler_ui_get_columns(&sampler_ui) - (20 + 11 + 11));
+		bar_init_buf(&bar_rows[row], bar_signed, bar_log, rowbuf, sampler_ui_get_columns(&sampler_ui) - (20 + 11 + 11));
 
-		period_sensor_get_receptive_field(&sensors[row])->period = ((double) sampler_ui_get_sample_rate(&sampler_ui)) /  (step * (row + 1));
-		period_sensor_get_receptive_field(&sensors[row])->period_factor = 1.0
-			/ period_sensor_get_receptive_field(&sensors[row])->period
-			* ((double) sampler_ui_get_sample_rate(&sampler_ui))
-			/ step
-			;
-		period_sensor_get_receptive_field(&sensors[row])->phase = 0.0;
-		period_sensor_get_receptive_field(&sensors[row])->phase_factor = 44100.0 / 1000;
-		period_sensor_get_receptive_value(&sensors[row])->cval = CMPLX(0.0, 0.0);
-		period_sensor_init(&sensors[row]);
 	}
 	for (;;) {
-		for (i = 0; i < sampler_ui_get_rows(&sampler_ui) * sampler_ui_get_mod(&sampler_ui); i++) {
-			do {
-				rc = filesampler_demand_next(sampler_ui_get_sampler(&sampler_ui), &dsample);
-				if (rc == -1) {
-					perror("sampler_ui_demand_next");
-					return -1;
+		do {
+			rc = filesampler_demand_next(sampler_ui_get_sampler(&sampler_ui), &sample_value);
+			if (rc == -1) {
+				perror("sampler_ui_demand_next");
+				return -1;
+			}
+			sample_time  = filesampler_get_sample_time( sampler_ui_get_sampler(&sampler_ui));
+			sample_count = filesampler_get_sample_count(sampler_ui_get_sampler(&sampler_ui));
+		} while (rc == 0);
+
+		period_array_sample(&array, (double) sample_count, sample_value * 1000);
+
+		if (filesampler_check_draw(sampler_ui_get_sampler(&sampler_ui))) {
+			filesampler_mark_draw(sampler_ui_get_sampler(&sampler_ui));
+
+			for (row = 0; row < period_array_period_sensor_count(&array); row++) {
+				entry_ptr = &scale_space_entries[row];
+				int rc;
+				struct period_concept *concept_ptr;
+				int octave;
+				char *note_name;
+				double cents;
+
+				concept_ptr = entry_ptr->value.concept_ptr;
+
+				rc = note(sampler_ui_get_sample_rate(&sampler_ui), concept_ptr->recept_ptr->field.period, 440.0, &octave, &note_name, &cents);
+				if (rc == 0) {
+					screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20, row, 11, '\0', NOTE_FMT, octave, note_name, cents);
 				}
-			} while (rc == 0);
-
-			for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
-				period_sensor_sample(&sensors[row], (double) (sample_i), dsample * 1000);
+				rc = note(sampler_ui_get_sample_rate(&sampler_ui), concept_ptr->avg_instant_period, 440.0, &octave, &note_name, &cents);
+				if (rc == 0) {
+					screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11, row, 11, '\0', NOTE_FMT, octave, note_name, cents);
+				}
+				/*
+				bar_set(&phase_rows[row], concept_ptr->recept_ptr->phase->value.phi, 0.5);
+				bar_set(&bar_rows[row],   concept_ptr->recept_ptr->phase->value.r,   concept_ptr->recept_ptr->field.period);
+				*/
+				bar_set(&phase_rows[row], entry_ptr->value.period_lifecycle_ptr->phi, 0.5);
+				bar_set(&bar_rows[row],   entry_ptr->value.period_lifecycle_ptr->F,   concept_ptr->recept_ptr->field.period);
 			}
 
-			sample_i++;
+			screen_nprintf(sampler_ui_get_screen(&sampler_ui), sampler_ui_get_columns(&sampler_ui) - 20, 0, 20, '\0', "time: %f", sample_time);
+			screen_draw(sampler_ui_get_screen(&sampler_ui));
 		}
-
-		for (row = 0; row < sampler_ui_get_rows(&sampler_ui); row++) {
-			int rc;
-			struct period_concept *concept_ptr;
-			int octave;
-			char *note_name;
-			double cents;
-
-			concept_ptr = period_sensor_get_concept(&sensors[row]);
-
-			rc = note(sampler_ui_get_sample_rate(&sampler_ui), concept_ptr->recept_ptr->field.period, 440.0, &octave, &note_name, &cents);
-			if (rc == 0) {
-				screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20, row, 11, '\0', NOTE_FMT, octave, note_name, cents);
-			}
-			rc = note(sampler_ui_get_sample_rate(&sampler_ui), concept_ptr->avg_instant_period, 440.0, &octave, &note_name, &cents);
-			if (rc == 0) {
-				screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11, row, 11, '\0', NOTE_FMT, octave, note_name, cents);
-			}
-			bar_set(&phase_rows[row], concept_ptr->recept_ptr->phase->value.phi, 0.5);
-			bar_set(&bar_rows[row],   concept_ptr->recept_ptr->phase->value.r,   concept_ptr->recept_ptr->field.period);
-		}
-
-		screen_nprintf(sampler_ui_get_screen(&sampler_ui), sampler_ui_get_columns(&sampler_ui) - 20, 0, 20, '\0', "time: %f",
-			((double) (sample_i)) / sampler_ui_get_sample_rate(&sampler_ui)
-		);
-		screen_draw(sampler_ui_get_screen(&sampler_ui));
 	}
 
 	rc = sampler_ui_deinit(&sampler_ui);

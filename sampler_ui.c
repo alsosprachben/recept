@@ -66,8 +66,8 @@ int sampler_ui_init(struct sampler_ui *sui_ptr) {
 
 	sui_ptr->frame = 0;
 
-	sui_ptr->mod = (int) (floor(((double) sui_ptr->sample_rate) / sui_ptr->rows / sui_ptr->fps));
-	sui_ptr->efps = ((double) sui_ptr->sample_rate) / sui_ptr->rows / sui_ptr->mod;
+	sui_ptr->mod = (int) (floor(((double) sui_ptr->sample_rate) / sui_ptr->fps));
+	sui_ptr->efps = ((double) sui_ptr->sample_rate) / sui_ptr->mod;
 
 	rc = screen_init(&sui_ptr->screen, sui_ptr->columns, sui_ptr->rows);
 	if (rc == -1) {
