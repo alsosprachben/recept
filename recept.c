@@ -599,17 +599,17 @@ void period_scale_space_sensor_sample_lifecycle(struct period_scale_space_sensor
 	lifecycle_iter_sample(&sss_ptr->beat_lifecycle, sss_ptr->period_lifecycle.lc.lifecycle);
 }
 
-void period_scale_space_sensor_values(struct period_scale_space_sensor *sss_ptr, struct period_concept *concept_ptr, struct lifecycle *period_lifecycle_ptr, struct lifecycle *beat_lifecycle_ptr) {
-	concept_ptr          = &sss_ptr->period_sensors[0].concept;
-	period_lifecycle_ptr = &sss_ptr->period_lifecycle.lc;
-	beat_lifecycle_ptr   = &sss_ptr->beat_lifecycle.lc;
+void period_scale_space_sensor_values(struct period_scale_space_sensor *sss_ptr, struct scale_space_value *ss_value) {
+	ss_value->concept_ptr          = &sss_ptr->period_sensors[0].concept;
+	ss_value->period_lifecycle_ptr = &sss_ptr->period_lifecycle.lc;
+	ss_value->beat_lifecycle_ptr   = &sss_ptr->beat_lifecycle.lc;
 }
 
-void period_scale_space_sensor_samples(struct period_scale_space_sensor *sss_ptr, struct period_concept *concept_ptr, struct lifecycle *period_lifecycle_ptr, struct lifecycle *beat_lifecycle_ptr, double time, double value) {
+void period_scale_space_sensor_sample(struct period_scale_space_sensor *sss_ptr, struct scale_space_value *ss_value, double time, double value) {
 	period_scale_space_sensor_sample_sensor(sss_ptr, time, value);
 	period_scale_space_sensor_sample_monochords(sss_ptr);
 	period_scale_space_sensor_sample_lifecycle(sss_ptr);
-	period_scale_space_sensor_values(sss_ptr, concept_ptr, period_lifecycle_ptr, beat_lifecycle_ptr);
+	period_scale_space_sensor_values(sss_ptr, ss_value);
 }
 
 void period_scale_space_sensor_init_monochord(struct period_scale_space_sensor *sss_ptr, struct monochord *mc_ptr, struct period_scale_space_sensor *target_sss_ptr, double monochord_ratio) {
@@ -626,10 +626,95 @@ void period_scale_space_sensor_superimpose_monochord_on(struct period_scale_spac
 	period_sensor_receive(&target_sss_ptr->period_sensors[2]);
 }
 
-void period_scale_space_sensor_add_monochord(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *source_sss_ptr, double monochord_ratio) {
+int period_scale_space_sensor_add_monochord(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *source_sss_ptr, double monochord_ratio) {
+	if (sss_ptr->monochord_count == period_scale_space_sensor_monochord_max(sss_ptr)) {
+		return -1;
+	}
+
 	sss_ptr->monochords[sss_ptr->monochord_count].source_sss_ptr = source_sss_ptr;
 	period_scale_space_sensor_init_monochord(sss_ptr, &sss_ptr->monochords[sss_ptr->monochord_count].monochord, sss_ptr, monochord_ratio);
 	sss_ptr->monochord_count++;
+
+	return 0;
+}
+
+/* Sensor Arrays */
+void period_array_init(struct period_array *pa_ptr, double response_period, double octave_bandwidth, double scale_factor, double period_factor, double phase_factor) {
+	pa_ptr->field.period_factor = period_factor;
+	pa_ptr->field.phase_factor = phase_factor;
+	pa_ptr->response_period = response_period;
+	pa_ptr->scale_factor = scale_factor;
+	pa_ptr->octave_bandwidth = octave_bandwidth;
+	pa_ptr->period_bandwidth = 1.0 / (pow(2.0, 1.0 / pa_ptr->octave_bandwidth) - 1);
+	pa_ptr->scale_space_sensor_count = 0;
+}
+
+unsigned int period_array_period_sensor_max(struct period_array *pa_ptr) {
+	return sizeof (pa_ptr->scale_space_sensors) / sizeof (pa_ptr->scale_space_sensors[0]);
+}
+
+int period_array_add_period_sensor(struct period_array *pa_ptr, double period, double bandwidth_factor) {
+	struct period_scale_space_sensor *sss_ptr;
+	struct receptive_field *field_ptr;
+
+	if (pa_ptr->scale_space_sensor_count == period_array_period_sensor_max(pa_ptr)) {
+		return -1;
+	}
+
+	sss_ptr = &pa_ptr->scale_space_sensors[pa_ptr->scale_space_sensor_count];
+
+	field_ptr = period_scale_space_sensor_get_receptive_field(sss_ptr);
+	*field_ptr = pa_ptr->field;
+	field_ptr->period = period;
+	period_scale_space_sensor_set_response_period(sss_ptr, pa_ptr->response_period);
+	period_scale_space_sensor_set_scale_factor(   sss_ptr, pa_ptr->scale_factor);
+	period_scale_space_sensor_init(sss_ptr);
+
+	return pa_ptr->scale_space_sensor_count++;
+}
+
+int period_array_add_monochord(struct period_array *pa_ptr, int source_sss_descriptor, int target_sss_descriptor, double monochord_ratio) {
+	return period_scale_space_sensor_add_monochord(&pa_ptr->scale_space_sensors[target_sss_descriptor], &pa_ptr->scale_space_sensors[source_sss_descriptor], monochord_ratio);
+}
+
+void period_array_sample(struct period_array *pa_ptr, double time, double value) {
+	int i;
+
+	for (i = 0; i < pa_ptr->scale_space_sensor_count; i++) {
+		period_scale_space_sensor_sample(&pa_ptr->scale_space_entries[i].sensor, &pa_ptr->scale_space_entries[i].value, time, value);
+	}
+}
+
+void period_array_sample_sensor(struct period_array *pa_ptr, double time, double value) {
+	int i;
+
+	for (i = 0; i < pa_ptr->scale_space_sensor_count; i++) {
+		period_scale_space_sensor_sample_sensor(&pa_ptr->scale_space_entries[i].sensor, time, value);
+	}
+}
+
+void period_array_sample_lifecycle(struct period_array *pa_ptr) {
+	int i;
+
+	for (i = 0; i < pa_ptr->scale_space_sensor_count; i++) {
+		period_scale_space_sensor_sample_lifecycle(&pa_ptr->scale_space_entries[i].sensor);
+	}
+}
+
+void period_array_sample_monochords(struct period_array *pa_ptr) {
+	int i;
+
+	for (i = 0; i < pa_ptr->scale_space_sensor_count; i++) {
+		period_scale_space_sensor_sample_monochords(&pa_ptr->scale_space_entries[i].sensor);
+	}
+}
+
+void period_array_values(struct period_array *pa_ptr) {
+	int i;
+
+	for (i = 0; i < pa_ptr->scale_space_sensor_count; i++) {
+		period_scale_space_sensor_values(&pa_ptr->scale_space_entries[i].sensor, &pa_ptr->scale_space_entries[i].value);
+	}
 }
 
 int midi_note(double sample_rate, double period, double A4, double *n_ptr) {

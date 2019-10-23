@@ -164,6 +164,25 @@ struct period_scale_space_sensor {
 	unsigned int     monochord_count;
 };
 
+struct period_array {
+	struct receptive_field field;
+	double response_period;
+	double scale_factor;
+
+	double octave_bandwidth;
+	double period_bandwidth;
+
+	struct scale_space_entry {
+		struct period_scale_space_sensor sensor;
+		struct scale_space_value         value;
+	} scale_space_entries[1024];
+
+	struct period_scale_space_sensor scale_space_sensors[1024];
+	unsigned int scale_space_sensor_count;
+
+	
+};
+
 
 
 

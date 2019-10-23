@@ -209,6 +209,12 @@ void lifecycle_iter_init(struct lifecycle_iter *lci_ptr, double max_r);
 double lifecycle_iter_sample(struct lifecycle_iter *lci_ptr, double value);
 
 /* Period Scale-Space */
+struct scale_space_value {
+	struct period_concept *concept_ptr;
+	struct lifecycle *period_lifecycle_ptr;
+	struct lifecycle *beat_lifecycle_ptr;
+};
+
 struct period_scale_space_sensor;
 unsigned int period_scale_space_sensor_monochord_max(struct period_scale_space_sensor *sss_ptr);
 struct receptive_field *period_scale_space_sensor_get_receptive_field(struct period_scale_space_sensor *sss_ptr);
@@ -218,10 +224,21 @@ void period_scale_space_sensor_init(struct period_scale_space_sensor *sss_ptr);
 void period_scale_space_sensor_sample_sensor(struct period_scale_space_sensor *sss_ptr, double time, double value);
 void period_scale_space_sensor_sample_monochords(struct period_scale_space_sensor *sss_ptr);
 void period_scale_space_sensor_sample_lifecycle(struct period_scale_space_sensor *sss_ptr);
-void period_scale_space_sensor_values(struct period_scale_space_sensor *sss_ptr, struct period_concept *concept_ptr, struct lifecycle *period_lifecycle_ptr, struct lifecycle *beat_lifecycle_ptr);
-void period_scale_space_sensor_samples(struct period_scale_space_sensor *sss_ptr, struct period_concept *concept_ptr, struct lifecycle *period_lifecycle_ptr, struct lifecycle *beat_lifecycle_ptr, double time, double value);
+void period_scale_space_sensor_values(struct period_scale_space_sensor *sss_ptr, struct scale_space_value *ss_value);
+void period_scale_space_sensor_sample(struct period_scale_space_sensor *sss_ptr, struct scale_space_value *ss_value, double time, double value);
 void period_scale_space_sensor_init_monochord(struct period_scale_space_sensor *sss_ptr, struct monochord *mc_ptr, struct period_scale_space_sensor *target_sss_ptr, double monochord_ratio);
 void period_scale_space_sensor_superimpose_monochord_on(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *target_sss_ptr, struct monochord *mc_ptr);
-void period_scale_space_sensor_add_monochord(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *source_sss_ptr, double monochord_ratio);
+int  period_scale_space_sensor_add_monochord(struct period_scale_space_sensor *sss_ptr, struct period_scale_space_sensor *source_sss_ptr, double monochord_ratio);
+
+struct period_array;
+void period_array_init(struct period_array *pa_ptr, double response_period, double octave_bandwidth, double scale_factor, double period_factor, double phase_factor);
+unsigned int period_array_period_sensor_max(struct period_array *pa_ptr);
+int period_array_add_period_sensor(struct period_array *pa_ptr, double period, double bandwidth_factor);
+int period_array_add_monochord(struct period_array *pa_ptr, int source_sss_descriptor, int target_sss_descriptor, double monochord_ratio);
+void period_array_sample(struct period_array *pa_ptr, double time, double value);
+void period_array_sample_sensor(struct period_array *pa_ptr, double time, double value);
+void period_array_sample_lifecycle(struct period_array *pa_ptr);
+void period_array_sample_monochords(struct period_array *pa_ptr);
+void period_array_values(struct period_array *pa_ptr);
 
 #endif
