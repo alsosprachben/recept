@@ -569,7 +569,7 @@ void period_scale_space_sensor_init(struct period_scale_space_sensor *sss_ptr) {
 	for (i = 0; i < 3; i++) {	
 		field_ptr = period_sensor_get_receptive_field(&sss_ptr->period_sensors[i]);
 		*field_ptr = sss_ptr->field;
-		field_ptr->period_factor *= pow(sss_ptr->scale_factor, -1 - i);
+		field_ptr->period_factor *= pow(sss_ptr->scale_factor, -1.0 - i);
 		value_ptr = period_sensor_get_receptive_value(&sss_ptr->period_sensors[i]);
 		value_ptr->cval = CMPLX(0.0, 0.0);
 		period_sensor_init(&sss_ptr->period_sensors[i]);
@@ -650,6 +650,7 @@ void period_array_init(struct period_array *pa_ptr, double response_period, doub
 	pa_ptr->response_period = response_period;
 	pa_ptr->scale_factor = scale_factor;
 	pa_ptr->octave_bandwidth = octave_bandwidth;
+	/* self.period_bandwidth = 1.0 / ((2.0 ** (1.0 / self.octave_bandwidth)) - 1) */
 	pa_ptr->period_bandwidth = 1.0 / (pow(2.0, 1.0 / pa_ptr->octave_bandwidth) - 1);
 	pa_ptr->scale_space_sensor_count = 0;
 }
@@ -676,7 +677,7 @@ int period_array_add_period_sensor(struct period_array *pa_ptr, double period, d
 	field_ptr = period_scale_space_sensor_get_receptive_field(sss_ptr);
 	*field_ptr = pa_ptr->field;
 	field_ptr->period = period;
-	field_ptr->period_factor = bandwidth_factor;
+	field_ptr->period_factor = pa_ptr->period_bandwidth * bandwidth_factor;
 	period_scale_space_sensor_set_response_period(sss_ptr, pa_ptr->response_period);
 	period_scale_space_sensor_set_scale_factor(   sss_ptr, pa_ptr->scale_factor);
 	period_scale_space_sensor_init(sss_ptr);
@@ -814,12 +815,15 @@ int main(int argc, char *argv[]) {
 	double sample_time;
 	int    sample_count;
 	char *rowbuf;
-	union bar_u *bar_rows;
+	union bar_u *c1_rows;
+	union bar_u *c2_rows;
+	union bar_u *c3_rows;
 	union bar_u *phase_rows;
 	struct receptive_field *field_ptr;
 	struct period_array array;
 	struct scale_space_entry *scale_space_entries;
 	struct scale_space_entry *entry_ptr;
+	double cycle_area;
 
 	rc = sampler_ui_getopts(&sampler_ui, argc, argv);
 	if (rc == -1) {
@@ -837,8 +841,18 @@ int main(int argc, char *argv[]) {
 
 	rows = sampler_ui_get_rows(&sampler_ui);
 
-	bar_rows = calloc(rows, sizeof (*bar_rows));
-	if (bar_rows == NULL) {
+	c1_rows = calloc(rows, sizeof (*c1_rows));
+	if (c1_rows == NULL) {
+		perror("calloc");
+		return -1;
+	}
+	c2_rows = calloc(rows, sizeof (*c2_rows));
+	if (c2_rows == NULL) {
+		perror("calloc");
+		return -1;
+	}
+	c3_rows = calloc(rows, sizeof (*c3_rows));
+	if (c3_rows == NULL) {
 		perror("calloc");
 		return -1;
 	}
@@ -848,21 +862,29 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
+	cycle_area = 1.0 / (1.0 - exp(-1.0));
+
 	field_ptr = period_array_get_receptive_field(&array);
-	field_ptr->period = 110.0;
+	field_ptr->period = 44100 / 110.0;
 	field_ptr->phase = 0.0;
-	field_ptr->phase_factor = 1.0;
-	period_array_init(&array, 44100.0 / 1000, 12, 1.75);
-	rc = period_array_populate(&array, 3);
+	field_ptr->phase_factor = cycle_area;
+	period_array_init(&array, 44100.0 / 20, 12, cycle_area);
+	rc = period_array_populate(&array, 4);
 	scale_space_entries = period_array_get_entries(&array);
 	for (row = 0; row < period_array_period_sensor_count(&array); row++) {
 		entry_ptr = &scale_space_entries[row];
 
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 0, row);
-		bar_init_buf(&phase_rows[row], bar_signed, bar_linear, rowbuf, 20);
+		bar_init_buf(&phase_rows[row], bar_signed, bar_logp1, rowbuf, 20);
 
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11, row);
-		bar_init_buf(&bar_rows[row], bar_signed, bar_log, rowbuf, sampler_ui_get_columns(&sampler_ui) - (20 + 11 + 11));
+		bar_init_buf(&c1_rows[row], bar_signed, bar_logp1, rowbuf, 40);
+
+		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 40, row);
+		bar_init_buf(&c2_rows[row], bar_signed, bar_logp1, rowbuf, 40);
+
+		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 40 + 40, row);
+		bar_init_buf(&c3_rows[row], bar_signed, bar_logp1, rowbuf, 40);
 
 	}
 	for (;;) {
@@ -876,7 +898,7 @@ int main(int argc, char *argv[]) {
 			sample_count = filesampler_get_sample_count(sampler_ui_get_sampler(&sampler_ui));
 		} while (rc == 0);
 
-		period_array_sample(&array, (double) sample_count, sample_value * 1000);
+		period_array_sample(&array, (double) sample_count, sample_value * 10000);
 
 		if (filesampler_check_draw(sampler_ui_get_sampler(&sampler_ui))) {
 			filesampler_mark_draw(sampler_ui_get_sampler(&sampler_ui));
@@ -888,8 +910,12 @@ int main(int argc, char *argv[]) {
 				int octave;
 				char *note_name;
 				double cents;
+				struct lifecycle *lc_ptr;
+				double complex pc;
 
 				concept_ptr = entry_ptr->value.concept_ptr;
+				lc_ptr = entry_ptr->value.period_lifecycle_ptr;
+				pc      = cabs(CMPLX(cimag(lc_ptr->cval) < 0.0  ? -cimag(lc_ptr->cval) : 0.0, lc_ptr->F < 0.0 ? lc_ptr->F : 0.0));
 
 				rc = note(sampler_ui_get_sample_rate(&sampler_ui), concept_ptr->recept_ptr->field.period, 440.0, &octave, &note_name, &cents);
 				if (rc == 0) {
@@ -899,12 +925,15 @@ int main(int argc, char *argv[]) {
 				if (rc == 0) {
 					screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11, row, 11, '\0', NOTE_FMT, octave, note_name, cents);
 				}
+				bar_set(&phase_rows[row], lc_ptr->phi, 0.5);
 				/*
-				bar_set(&phase_rows[row], concept_ptr->recept_ptr->phase->value.phi, 0.5);
-				bar_set(&bar_rows[row],   concept_ptr->recept_ptr->phase->value.r,   concept_ptr->recept_ptr->field.period);
+				bar_set(&c1_rows[row],   entry_ptr->sensor.period_sensors[0].percept.value.r, concept_ptr->recept_ptr->field.period);
+				bar_set(&c2_rows[row],   entry_ptr->sensor.period_sensors[1].percept.value.r, concept_ptr->recept_ptr->field.period);
+				bar_set(&c3_rows[row],   entry_ptr->sensor.period_sensors[2].percept.value.r, concept_ptr->recept_ptr->field.period);
 				*/
-				bar_set(&phase_rows[row], entry_ptr->value.period_lifecycle_ptr->phi, 0.5);
-				bar_set(&bar_rows[row],   entry_ptr->value.period_lifecycle_ptr->F,   concept_ptr->recept_ptr->field.period);
+				bar_set(&c1_rows[row],   pc,   lc_ptr->max_r);
+				bar_set(&c2_rows[row],   creal(lc_ptr->cval),   lc_ptr->max_r);
+				bar_set(&c3_rows[row],   cimag(lc_ptr->cval),   lc_ptr->max_r);
 			}
 
 			screen_nprintf(sampler_ui_get_screen(&sampler_ui), sampler_ui_get_columns(&sampler_ui) - 20, 0, 20, '\0', "time: %f", sample_time);
