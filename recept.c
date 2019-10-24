@@ -865,11 +865,11 @@ int main(int argc, char *argv[]) {
 	cycle_area = 1.0 / (1.0 - exp(-1.0));
 
 	field_ptr = period_array_get_receptive_field(&array);
-	field_ptr->period = 44100 / 110.0;
+	field_ptr->period = 2.0 * pow(2.0, 12); /* 44100.0 / 440.0; */
 	field_ptr->phase = 0.0;
 	field_ptr->phase_factor = cycle_area;
-	period_array_init(&array, 44100.0 / 20, 12, cycle_area);
-	rc = period_array_populate(&array, 4);
+	period_array_init(&array, 44100.0 / 20, 4, cycle_area);
+	rc = period_array_populate(&array, 12);
 	scale_space_entries = period_array_get_entries(&array);
 	for (row = 0; row < period_array_period_sensor_count(&array); row++) {
 		entry_ptr = &scale_space_entries[row];
@@ -878,7 +878,7 @@ int main(int argc, char *argv[]) {
 		bar_init_buf(&phase_rows[row], bar_signed, bar_logp1, rowbuf, 20);
 
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11, row);
-		bar_init_buf(&c1_rows[row], bar_signed, bar_logp1, rowbuf, 40);
+		bar_init_buf(&c1_rows[row], bar_positive, bar_log, rowbuf, 40);
 
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 40, row);
 		bar_init_buf(&c2_rows[row], bar_signed, bar_logp1, rowbuf, 40);
@@ -931,7 +931,7 @@ int main(int argc, char *argv[]) {
 				bar_set(&c2_rows[row],   entry_ptr->sensor.period_sensors[1].percept.value.r, concept_ptr->recept_ptr->field.period);
 				bar_set(&c3_rows[row],   entry_ptr->sensor.period_sensors[2].percept.value.r, concept_ptr->recept_ptr->field.period);
 				*/
-				bar_set(&c1_rows[row],   pc,   lc_ptr->max_r);
+				bar_set(&c1_rows[row],   pc * 1000,   lc_ptr->max_r * 1000);
 				bar_set(&c2_rows[row],   creal(lc_ptr->cval),   lc_ptr->max_r);
 				bar_set(&c3_rows[row],   cimag(lc_ptr->cval),   lc_ptr->max_r);
 			}
