@@ -19,6 +19,7 @@ enum bar_orientation {
 enum bar_scale {
 	bar_linear = 0,
 	bar_log,
+	bar_log_signed,
 	bar_logp1
 };
 
