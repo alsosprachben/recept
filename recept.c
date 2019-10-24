@@ -811,6 +811,7 @@ int main(int argc, char *argv[]) {
 	struct sampler_ui sampler_ui;
 	int row;
 	int rows;
+	int columns;
 	double sample_value;
 	double sample_time;
 	int    sample_count;
@@ -824,6 +825,9 @@ int main(int argc, char *argv[]) {
 	struct scale_space_entry *scale_space_entries;
 	struct scale_space_entry *entry_ptr;
 	double cycle_area;
+	int field_count;
+	int octave_bandwidth;
+	double octave_count;
 
 	rc = sampler_ui_getopts(&sampler_ui, argc, argv);
 	if (rc == -1) {
@@ -839,7 +843,8 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	rows = sampler_ui_get_rows(&sampler_ui);
+	rows    = sampler_ui_get_rows(   &sampler_ui);
+	columns = sampler_ui_get_columns(&sampler_ui);
 
 	c1_rows = calloc(rows, sizeof (*c1_rows));
 	if (c1_rows == NULL) {
@@ -863,13 +868,16 @@ int main(int argc, char *argv[]) {
 	}
 
 	cycle_area = 1.0 / (1.0 - exp(-1.0));
+	field_count = 48;
+	octave_bandwidth = 5;
+	octave_count = ((double) field_count) / octave_bandwidth;
 
 	field_ptr = period_array_get_receptive_field(&array);
-	field_ptr->period = 2.0 * pow(2.0, 12); /* 44100.0 / 440.0; */
+	field_ptr->period = 2.0 * pow(2.0, octave_count);
 	field_ptr->phase = 0.0;
 	field_ptr->phase_factor = cycle_area;
-	period_array_init(&array, 44100.0 / 20, 4, cycle_area);
-	rc = period_array_populate(&array, 12);
+	period_array_init(&array, 44100.0 / 20, octave_bandwidth, cycle_area);
+	rc = period_array_populate(&array, octave_count);
 	scale_space_entries = period_array_get_entries(&array);
 	for (row = 0; row < period_array_period_sensor_count(&array); row++) {
 		entry_ptr = &scale_space_entries[row];
@@ -901,15 +909,16 @@ int main(int argc, char *argv[]) {
 		period_array_sample(&array, (double) sample_count, sample_value * 10000);
 
 		if (filesampler_check_draw(sampler_ui_get_sampler(&sampler_ui))) {
+			int octave;
+			char *note_name;
+			double cents;
+
 			filesampler_mark_draw(sampler_ui_get_sampler(&sampler_ui));
 
 			for (row = 0; row < period_array_period_sensor_count(&array); row++) {
 				entry_ptr = &scale_space_entries[row];
 				int rc;
 				struct period_concept *concept_ptr;
-				int octave;
-				char *note_name;
-				double cents;
 				struct lifecycle *lc_ptr;
 				double complex pc;
 
@@ -936,7 +945,11 @@ int main(int argc, char *argv[]) {
 				bar_set(&c3_rows[row],   cimag(lc_ptr->cval),   lc_ptr->max_r);
 			}
 
-			screen_nprintf(sampler_ui_get_screen(&sampler_ui), sampler_ui_get_columns(&sampler_ui) - 20, 0, 20, '\0', "time: %f", sample_time);
+			rc = note(sampler_ui_get_sample_rate(&sampler_ui), 2.0, 440.0, &octave, &note_name, &cents);
+			if (rc == 0) {
+				screen_nprintf(sampler_ui_get_screen(&sampler_ui), columns - 20, 0, 20, '\0', "Nyquist: " NOTE_FMT, octave, note_name, cents);
+			}
+			screen_nprintf(sampler_ui_get_screen(&sampler_ui), columns - 20, 1, 20, '\0', "time: %f", sample_time);
 			screen_draw(sampler_ui_get_screen(&sampler_ui));
 		}
 	}
