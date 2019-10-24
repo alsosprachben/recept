@@ -940,7 +940,7 @@ int main(int argc, char *argv[]) {
 				bar_set(&c2_rows[row],   entry_ptr->sensor.period_sensors[1].percept.value.r, concept_ptr->recept_ptr->field.period);
 				bar_set(&c3_rows[row],   entry_ptr->sensor.period_sensors[2].percept.value.r, concept_ptr->recept_ptr->field.period);
 				*/
-				bar_set(&c1_rows[row],   pc * 1000,   lc_ptr->max_r * 1000);
+				bar_set(&c1_rows[row],   pc * 10000,   lc_ptr->max_r * 10000);
 				bar_set(&c2_rows[row],   creal(lc_ptr->cval),   lc_ptr->max_r);
 				bar_set(&c3_rows[row],   cimag(lc_ptr->cval),   lc_ptr->max_r);
 			}
