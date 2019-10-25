@@ -685,12 +685,12 @@ int period_array_add_period_sensor(struct period_array *pa_ptr, double period, d
 	return pa_ptr->scale_space_sensor_count++;
 }
 
-int period_array_populate(struct period_array *pa_ptr, double octaves) {
+int period_array_populate(struct period_array *pa_ptr, double octaves, double bandwidth_factor) {
 	int rc;
 	int n;
 
 	for (n = - pa_ptr->octave_bandwidth * octaves; n <= 0; n++) {
-		rc = period_array_add_period_sensor(pa_ptr, pa_ptr->field.period * pow(2, n / pa_ptr->octave_bandwidth), 1.0);
+		rc = period_array_add_period_sensor(pa_ptr, pa_ptr->field.period * pow(2, n / pa_ptr->octave_bandwidth), bandwidth_factor);
 		if (rc == -1) {
 			return -1;
 		}
@@ -877,7 +877,7 @@ int main(int argc, char *argv[]) {
 	field_ptr->phase = 0.0;
 	field_ptr->phase_factor = cycle_area;
 	period_array_init(&array, 44100.0 / 20, octave_bandwidth, cycle_area);
-	rc = period_array_populate(&array, octave_count);
+	rc = period_array_populate(&array, octave_count, 1.0);
 	scale_space_entries = period_array_get_entries(&array);
 	for (row = 0; row < period_array_period_sensor_count(&array); row++) {
 		entry_ptr = &scale_space_entries[row];
