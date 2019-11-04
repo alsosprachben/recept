@@ -1,0 +1,3 @@
+[submodule "audioworklet-polyfill"]
+	path = audioworklet-polyfill
+	url = https://github.com/jariseon/audioworklet-polyfill
