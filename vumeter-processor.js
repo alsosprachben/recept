@@ -4,7 +4,8 @@ const MINIMUM_VALUE = 0.00001;
 class PeriodArray extends AudioWorkletProcessor {
   constructor (options) {
     super();
-    this._volume = 0;
+    this._volume_left = 0;
+    this._volume_right = 0;
     this._updateIntervalInMS = options.processorOptions.updateIntervalInMS;
     this._nextUpdateFrame = 0;
     this.port.onmessage = event => {
@@ -20,27 +21,37 @@ class PeriodArray extends AudioWorkletProcessor {
     const input = inputs[0];
     // Note that the input will be down-mixed to mono; however, if no inputs are
     // connected then zero channels will be passed in.
-    if (input.length > 0) {
-      const samples = input[0];
+    if (input.length >= 2) {
+      const samples_left  = input[0];
+      const samples_right = input[1];
       let sum = 0;
       let rms = 0;
+
       // Calculated the squared-sum.
-      for (let i = 0; i < samples.length; ++i)
-        sum += samples[i] * samples[i];
+      for (let i = 0; i < samples_left.length; ++i)
+        sum += samples_left[i] * samples_left[i];
       // Calculate the RMS level and update the volume.
-      rms = Math.sqrt(sum / samples.length);
-      this._volume = Math.max(rms, this._volume * SMOOTHING_FACTOR);
+      rms = Math.sqrt(sum / samples_left.length);
+      this._volume_left = Math.max(rms, this._volume_left * SMOOTHING_FACTOR);
+
+      // Calculated the squared-sum.
+      for (let i = 0; i < samples_right.length; ++i)
+        sum += samples_right[i] * samples_right[i];
+      // Calculate the RMS level and update the volume.
+      rms = Math.sqrt(sum / samples_right.length);
+      this._volume_right = Math.max(rms, this._volume_right * SMOOTHING_FACTOR);
+
       // Update and sync the volume property with the main thread.
-      this._nextUpdateFrame -= samples.length;
+      this._nextUpdateFrame -= samples_left.length;
       if (this._nextUpdateFrame < 0) {
         this._nextUpdateFrame += this.intervalInFrames;
-        this.port.postMessage({volume: this._volume});
+        this.port.postMessage({volume_left: this._volume_left, volume_right: this._volume_right});
       }
     }
     // Keep on processing if the volume is above a threshold, so that
     // disconnecting inputs does not immediately cause the meter to stop
     // computing its smoothed value.
-    //return this._volume >= MINIMUM_VALUE;
+    //return this._volume_left >= MINIMUM_VALUE;
     return true;
   }
 }

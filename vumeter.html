@@ -45,11 +45,12 @@ if (navigator.mediaDevices) {
 					});
 					// States in AudioWorkletNode
 					this._updateIntervalInMS = updateIntervalInMS;
-					this._volume = 0;
+					this._volume_left = 0;
+					this._volume_right = 0;
 					// Handles updated values from AudioWorkletProcessor
 					this.port.onmessage = event => {
-						if (event.data.volume)
-							this._volume = event.data.volume;
+						this._volume_left  = event.data.volume_left;
+						this._volume_right = event.data.volume_right;
 					}
 					this.port.start();
 				}
@@ -61,7 +62,7 @@ if (navigator.mediaDevices) {
 					this.port.postMessage({updateIntervalInMS: updateIntervalInMS});
 				}
 				draw () {
-					pre.innerHTML = 10.0 * Math.log(this._volume).toString() / Math.log(10);
+					pre.innerHTML = `<dl><dt>Left dB</dt><dd>${10.0 * Math.log(this._volume_left) / Math.log(10)}</dd><dt>Right dB</dt><dd>${10.0 * Math.log(this._volume_right) / Math.log(10)}</dd>`;
 					// Draws the VU meter based on the volume value
 					// every |this._updateIntervalInMS| milliseconds.
 				}
