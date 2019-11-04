@@ -829,6 +829,8 @@ int main(int argc, char *argv[]) {
 	int field_count;
 	int octave_bandwidth;
 	double octave_count;
+	double octave_drop;
+	double period_response_Hz;
 
 	rc = sampler_ui_getopts(&sampler_ui, argc, argv);
 	if (rc == -1) {
@@ -873,16 +875,18 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
+	period_response_Hz = 20.0;
 	cycle_area = 1.0 / (1.0 - exp(-1.0));
-	field_count = 8;
+	field_count = 12;
 	octave_bandwidth = 12;
 	octave_count = ((double) field_count) / octave_bandwidth;
+	octave_drop = 4;
 
 	field_ptr = period_array_get_receptive_field(&array);
-	field_ptr->period = 2.0 * pow(2.0, octave_count + 4);
+	field_ptr->period = 2.0 * pow(2.0, octave_count + octave_drop);
 	field_ptr->phase = 0.0;
 	field_ptr->phase_factor = cycle_area;
-	period_array_init(&array, 44100.0 / 20, octave_bandwidth, cycle_area);
+	period_array_init(&array, sampler_ui_get_sample_rate(&sampler_ui) / period_response_Hz, octave_bandwidth, cycle_area);
 	rc = period_array_populate(&array, octave_count, 1.0);
 	scale_space_entries = period_array_get_entries(&array);
 	for (row = 0; row < period_array_period_sensor_count(&array); row++) {

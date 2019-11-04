@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <errno.h>
+#include <stdint.h>
 
 /* beware of integer overflow in buffer allocation */
 int filesampler_init(struct filesampler *sampler_ptr, int fileno, size_t sample_rate, size_t bit_depth, size_t chunk_size) {
