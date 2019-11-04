@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width">
+
+    <title>vumeter example</title>
+
+    <link rel="stylesheet" href="">
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+
+  <body>
+    <h1>vumeter example</h1>
+    <pre></pre>
+  </body>
+<script src="/audioworklet-polyfill/audioworklet.js"></script>
+<script>
+
+var myAudio = document.querySelector('audio');
+var pre = document.querySelector('pre');
+
+if (navigator.mediaDevices) {
+	console.log('getUserMedia supported.');
+	navigator.mediaDevices.getUserMedia ({audio: true, video: false})
+	.then(function(stream) {
+		// Create a MediaStreamAudioSourceNode
+		// Feed the HTMLMediaElement into it
+		var audioCtx = new AudioContext();
+
+		AWPF.polyfill(audioCtx).then( () => {
+
+			class PeriodArrayNode extends AudioWorkletNode {
+				constructor (context, updateIntervalInMS) {
+				super(context, 'PeriodArray', {
+					numberOfInputs: 1,
+					numberOfOutputs: 0,
+					channelCount: 1,
+					processorOptions: {
+						updateIntervalInMS: updateIntervalInMS || 16.67,
+					}
+					});
+					// States in AudioWorkletNode
+					this._updateIntervalInMS = updateIntervalInMS;
+					this._volume = 0;
+					// Handles updated values from AudioWorkletProcessor
+					this.port.onmessage = event => {
+						if (event.data.volume)
+							this._volume = event.data.volume;
+					}
+					this.port.start();
+				}
+				get updateInterval() {
+					return this._updateIntervalInMS;
+				}
+				set updateInterval(updateIntervalInMS) {
+					this._updateIntervalInMS = updateIntervalInMS;
+					this.port.postMessage({updateIntervalInMS: updateIntervalInMS});
+				}
+				draw () {
+					pre.innerHTML = 10.0 * Math.log(this._volume).toString() / Math.log(10);
+					// Draws the VU meter based on the volume value
+					// every |this._updateIntervalInMS| milliseconds.
+				}
+			};
+
+
+			var source = audioCtx.createMediaStreamSource(stream);
+
+			// bind processor
+			audioCtx.audioWorklet.addModule('vumeter-processor.js').then(
+				() => {
+					const paNode = new PeriodArrayNode(audioCtx, 1.0 / 60 * 1000);
+					source.connect(paNode);
+					function drawMeter () {
+						paNode.draw();
+						requestAnimationFrame(drawMeter);
+					}
+					drawMeter();
+				}
+			);
+
+		}
+		);
+	}
+	);
+} else {
+	console.log('getUserMedia not supported on your browser!');
+}
+</script>
+</html>
