@@ -8,11 +8,11 @@
 
 int screen_clear() {
 	int rc;
-	rc = printf("%s", ESCAPE_CLEAR);
+	rc = fprintf(stderr, "%s", ESCAPE_CLEAR);
 	if (rc == -1) {
 		return -1;
 	}
-	rc = fflush(stdout);
+	rc = fflush(stderr);
 	if (rc == -1) {
 		return -1;
 	}
@@ -22,11 +22,11 @@ int screen_clear() {
 
 int screen_draw(struct screen *screen_ptr) {
 	int rc;
-	return printf("%s", screen_ptr->buf);
+	return fprintf(stderr, "%s", screen_ptr->buf);
 	if (rc == -1) {
 		return -1;
 	}
-	rc = fflush(stdout);
+	rc = fflush(stderr);
 	if (rc == -1) {
 		return -1;
 	}
