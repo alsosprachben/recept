@@ -877,10 +877,10 @@ int main(int argc, char *argv[]) {
 
 	period_response_Hz = 20.0;
 	cycle_area = 1.0 / (1.0 - exp(-1.0));
-	field_count = 12;
-	octave_bandwidth = 12;
+	field_count = 48;
+	octave_bandwidth = 6;
 	octave_count = ((double) field_count) / octave_bandwidth;
-	octave_drop = 4;
+	octave_drop = 0;
 
 	field_ptr = period_array_get_receptive_field(&array);
 	field_ptr->period = 2.0 * pow(2.0, octave_count + octave_drop);
@@ -893,7 +893,7 @@ int main(int argc, char *argv[]) {
 		entry_ptr = &scale_space_entries[row];
 
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 0, row);
-		bar_init_buf(&phase_rows[row], bar_signed, bar_log, rowbuf, 20);
+		bar_init_buf(&phase_rows[row], bar_signed, bar_linear, rowbuf, 20);
 
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11, row);
 		bar_init_buf(&c1_rows[row], bar_positive, bar_log, rowbuf, 40);
@@ -957,7 +957,7 @@ int main(int argc, char *argv[]) {
 				bar_set(&c2_rows[row],   entry_ptr->sensor.period_sensors[1].percept.value.r, concept_ptr->recept_ptr->field.period);
 				bar_set(&c3_rows[row],   entry_ptr->sensor.period_sensors[2].percept.value.r, concept_ptr->recept_ptr->field.period);
 				*/
-				bar_set(&c1_rows[row],   pc * 10000,            lc_ptr->max_r * 10000);
+				bar_set(&c1_rows[row],   pc * 100,            lc_ptr->max_r * 10000);
 				bar_set(&c2_rows[row],   creal(lc_ptr->cval),   lc_ptr->max_r);
 				bar_set(&c3_rows[row],   cimag(lc_ptr->cval),   lc_ptr->max_r);
 				bar_set(&c4_rows[row],         lc_ptr->F,       lc_ptr->max_r);
