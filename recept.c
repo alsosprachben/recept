@@ -891,7 +891,7 @@ int main(int argc, char *argv[]) {
 	scale_space_entries = period_array_get_entries(&array);
 	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0,                           0, 20, '\0', "%s", "    Tonal Phase     ");
 	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20,                          0, 22, '\0', "%s", " Sensor <note> Sensed ");
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11,                0, 20, '\0', "%s", "| Force             ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11,                0, 20, '\0', "%s", "| Receptor Model    ");
 	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20,           0, 20, '\0', "%s", "       Entropy      ");
 	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20,      0, 20, '\0', "%s", "      - Energy      ");
 	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20 + 20, 0, 20, '\0', "%s", "     Free Energy    ");
