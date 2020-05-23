@@ -62,7 +62,7 @@ if (navigator.mediaDevices) {
 					this.port.postMessage({updateIntervalInMS: updateIntervalInMS});
 				}
 				draw () {
-					pre.innerHTML = `<dl><dt>Left dB</dt><dd>${10.0 * Math.log(this._volume_left) / Math.log(10)}</dd><dt>Right dB</dt><dd>${10.0 * Math.log(this._volume_right) / Math.log(10)}</dd>`;
+					pre.innerHTML = `<dl><dt>Left dB</dt><dd>${10.0 * Math.log(this._volume_left) / Math.log(10)}</dd><dt>Right dB</dt><dd>${10.0 * Math.log(this._volume_right) / Math.log(10)}</dd><dt>Meters</dt><dd style="background: black; width: ${300 + 3 * 10.0 * Math.log(this._volume_left) / Math.log(10)}px;">-</dd><dd style="background: black; width: ${300 + 3 * 10.0 * Math.log(this._volume_right) / Math.log(10)}px;">-</dd></dl>`;
 					// Draws the VU meter based on the volume value
 					// every |this._updateIntervalInMS| milliseconds.
 				}
