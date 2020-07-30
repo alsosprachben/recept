@@ -1,16 +1,17 @@
 class FileSampler:
-	def __init__(self, f, chunk_size = 16, sample_rate = 48000, channels = 2, encoding = "i"):
+	def __init__(self, f, chunk_size=16, sample_rate=48000, channels=2, encoding="i"):
 		self.f = f
 		self.sample_rate = sample_rate
-		self.channels    = channels
-		self.encoding    = encoding
-		self.chunk_size  = chunk_size
+		self.channels = channels
+		self.encoding = encoding
+		self.chunk_size = chunk_size
+		self.hit_eof = False
 		self._init_buf()
 
 	def _init_buf(self):
 		import array
 		self.hit_eof = False
-		self.buf     = array.array(self.encoding)
+		self.buf = array.array(self.encoding)
 
 	def next(self):
 		if len(self.buf) == 0:
@@ -29,6 +30,7 @@ class FileSampler:
 escape_clear = "\033[2J"
 escape_reset = "\033[;H"
 
+
 class Screen:
 	def __init__(self):
 		self._init()
@@ -39,7 +41,8 @@ class Screen:
 	def printf(self, fmt, *args):
 		self.buf += fmt.format(*args)
 
-	def clear(self):
+	@staticmethod
+	def clear():
 		from sys import stdout
 		stdout.write(escape_clear)
 		stdout.flush()
@@ -53,5 +56,6 @@ class Screen:
 		from sys import stdout
 		self.out()
 		stdout.flush()
+
 
 screen = Screen()

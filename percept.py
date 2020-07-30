@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
+
 def main():
 	import random
-	from time import sleep, time
+	from time import sleep
 	from sys import stdout
 
 	transition = True
