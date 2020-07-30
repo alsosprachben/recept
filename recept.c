@@ -768,7 +768,7 @@ int midi_note(double sample_rate, double period, double A4, double *n_ptr) {
 #define NOTE_FMT "%2i%s%3.0f"
 int note(double sample_rate, double period, double A4, int *octave_ptr, char **note_name_ptr, double *cents_ptr) {
 	int rc;
-	static char *notes[] = {"B#/C ", "C#/Db", "D /D ", "D#/Eb", "E /Fb", "E#/F ", "F#/Gb", "G /G ", "G#/Ab", "A /A ", "A#/Bb", "B /Cb"};
+	static char *notes[] = {"C /B#", "C#/Db", "D /D ", "D#/Eb", "E /Fb", "F /E# ", "F#/Gb", "G /G ", "G#/Ab", "A /A ", "A#/Bb", "B /Cb"};
 	double n;
 	int note;
 	int octave;
