@@ -765,10 +765,10 @@ int midi_note(double sample_rate, double period, double A4, double *n_ptr) {
 	return 0;
 }
 
-#define NOTE_FMT "%2i%s%3.0f"
-int note(double sample_rate, double period, double A4, int *octave_ptr, char **note_name_ptr, double *cents_ptr) {
+#define NOTE_FMT L"%2i%s%3.0f"
+int note(double sample_rate, double period, double A4, int *octave_ptr, wchar_t **note_name_ptr, double *cents_ptr) {
 	int rc;
-	static char *notes[] = {"C /B#", "C#/Db", "D /D ", "D#/Eb", "E /Fb", "F /E#", "F#/Gb", "G /G ", "G#/Ab", "A /A ", "A#/Bb", "B /Cb"};
+	static wchar_t *notes[] = {L"C /B#", L"C#/Db", L"D /D ", L"D#/Eb", L"E /Fb", L"F /E# ", L"F#/Gb", L"G /G ", L"G#/Ab", L"A /A ", L"A#/Bb", L"B /Cb"};
 	double n;
 	int note;
 	int octave;
@@ -815,7 +815,7 @@ int main(int argc, char *argv[]) {
 	double sample_value;
 	double sample_time;
 	int    sample_count;
-	char *rowbuf;
+	wchar_t *rowbuf;
 	union bar_u *c1_rows;
 	union bar_u *c2_rows;
 	union bar_u *c3_rows;
@@ -893,12 +893,12 @@ int main(int argc, char *argv[]) {
 	period_array_init(&array, sampler_ui_get_sample_rate(&sampler_ui) / period_response_Hz, octave_bandwidth, cycle_area);
 	rc = period_array_populate(&array, octave_count, 1.0);
 	scale_space_entries = period_array_get_entries(&array);
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0,                           0, 20, '\0', "%s", "    Tonal Phase     ");
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20,                          0, 22, '\0', "%s", " Sensor <note> Sensed ");
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11,                0, 20, '\0', "%s", "| Receptor Model    ");
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20,           0, 20, '\0', "%s", "       Entropy      ");
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20,      0, 20, '\0', "%s", "      - Energy      ");
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20 + 20, 0, 20, '\0', "%s", "     Free Energy    ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0,                           0, 20, '\0', L"%s", "    Tonal Phase     ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20,                          0, 22, '\0', L"%s", " Sensor <note> Sensed ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11,                0, 20, '\0', L"%s", "| Receptor Model    ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20,           0, 20, '\0', L"%s", "       Entropy      ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20,      0, 20, '\0', L"%s", "      - Energy      ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20 + 20, 0, 20, '\0', L"%s", "     Free Energy    ");
 	for (row = 0; row < period_array_period_sensor_count(&array); row++) {
 		entry_ptr = &scale_space_entries[row];
 
@@ -933,7 +933,7 @@ int main(int argc, char *argv[]) {
 
 		if (filesampler_check_draw(sampler_ui_get_sampler(&sampler_ui))) {
 			int octave;
-			char *note_name;
+			wchar_t *note_name;
 			double cents;
 
 			filesampler_mark_draw(sampler_ui_get_sampler(&sampler_ui));
@@ -954,7 +954,7 @@ int main(int argc, char *argv[]) {
 					screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20, row + 1, 11, '\0', NOTE_FMT, octave, note_name, cents);
 				}
 				if (pc == 0.0) {
-					screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11, row + 1, 11, '\0', "%s", "           ");
+					screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11, row + 1, 11, '\0', L"%s", L"           ");
 				} else {
 					rc = note(sampler_ui_get_sample_rate(&sampler_ui), concept_ptr->avg_instant_period, 440.0, &octave, &note_name, &cents);
 					if (rc == 0) {
@@ -975,9 +975,9 @@ int main(int argc, char *argv[]) {
 
 			rc = note(sampler_ui_get_sample_rate(&sampler_ui), 2.0, 440.0, &octave, &note_name, &cents);
 			if (rc == 0) {
-				screen_nprintf(sampler_ui_get_screen(&sampler_ui), columns - 20, 0, 20, '\0', "Nyquist: " NOTE_FMT, octave, note_name, cents);
+				screen_nprintf(sampler_ui_get_screen(&sampler_ui), columns - 20, 0, 20, '\0', L"Nyquist: " NOTE_FMT, octave, note_name, cents);
 			}
-			screen_nprintf(sampler_ui_get_screen(&sampler_ui), columns - 20, 1, 20, '\0', "time: %f", sample_time);
+			screen_nprintf(sampler_ui_get_screen(&sampler_ui), columns - 20, 1, 20, '\0', L"time: %f", sample_time);
 			screen_draw(sampler_ui_get_screen(&sampler_ui));
 		}
 	}

@@ -19,7 +19,7 @@ void bar_init_size(union bar_u *bar_ptr, enum bar_orientation bar_type, enum bar
 	bar_ptr->barvar.bar_head.bar_size = bar_size;
 	bar_ptr->barvar.bar_head.bar_flags = 0;
 }
-void bar_init_buf(union bar_u *bar_ptr, enum bar_orientation bar_type, enum bar_scale bar_unit, char *buf, uint8_t bar_size) {
+void bar_init_buf(union bar_u *bar_ptr, enum bar_orientation bar_type, enum bar_scale bar_unit, wchar_t *buf, uint8_t bar_size) {
 	bar_ptr->barvar.bar_head.bar_type = bar_type;
 	bar_ptr->barvar.bar_head.bar_unit = bar_unit;
 	bar_ptr->barvar.bar_head.bar_size = bar_size;
@@ -32,8 +32,8 @@ void bar_init_buf(union bar_u *bar_ptr, enum bar_orientation bar_type, enum bar_
  *
  * `bufpos` may overflow buflen, and is constrained by this drawing function.
  */
-void bar_draw(union bar_u *bar_ptr, char *buf, size_t buflen, double bufpos, int left) {
-	static char *remainder_map = BAR_REMAINDER_MAP;
+void bar_draw(union bar_u *bar_ptr, wchar_t *buf, size_t buflen, double bufpos, int left) {
+	static wchar_t *remainder_map = BAR_REMAINDER_MAP;
 
 	int    bufpos_i; /* `bufpos` floored to an int */
 	double bufpos_r; /* `bufpos` remainder of floored value */
@@ -109,14 +109,14 @@ void bar_scale(union bar_u *bar_ptr, double *n_ptr, double *d_ptr) {
 	}
 }
 
-void bar_draw_blank(union bar_u *bar_ptr, char *buf, size_t buflen) {
+void bar_draw_blank(union bar_u *bar_ptr, wchar_t *buf, size_t buflen) {
 	int i;
 
 	for (i = 0; i < buflen; i++) {
 		buf[i] = ' ';
 	}
 }
-void bar_draw_unsigned(union bar_u *bar_ptr, char *buf, size_t buflen, double n, double d, int neg) {
+void bar_draw_unsigned(union bar_u *bar_ptr, wchar_t *buf, size_t buflen, double n, double d, int neg) {
 	double bufpos;
 
 	if (d == 0) {
@@ -136,7 +136,7 @@ void bar_draw_unsigned(union bar_u *bar_ptr, char *buf, size_t buflen, double n,
 		bar_draw(bar_ptr, buf + 1, buflen - 1, bufpos, neg);
 	}
 }
-void bar_draw_signed(union bar_u *bar_ptr, char *buf, size_t buflen, double n, double d) {
+void bar_draw_signed(union bar_u *bar_ptr, wchar_t *buf, size_t buflen, double n, double d) {
 	if (d == 0 || buflen < 3) {
 		bar_draw_blank(bar_ptr, buf, buflen);
 		return;
@@ -168,7 +168,7 @@ void bar_draw_signed(union bar_u *bar_ptr, char *buf, size_t buflen, double n, d
 	}
 }
 
-char *bar_get_buf(union bar_u *bar_ptr) {
+wchar_t *bar_get_buf(union bar_u *bar_ptr) {
 	if (bar_ptr->barvar.bar_head.bar_flags & BAR_BUF_PTR) {
 		return bar_ptr->barptr.buf;
 	} else {
@@ -212,101 +212,101 @@ int main() {
 	bar_init(&bar, bar_signed, bar_linear);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		printf("%s\n", bar_get_buf(&bar));
+		wprintf(L"%sl\n", bar_get_buf(&bar));
 	}
-	printf("\n");
+	wprintf(L"\n");
 
 	bar_init(&bar, bar_signed, bar_log);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		printf("%s\n", bar_get_buf(&bar));
+		wprintf(L"%sl\n", bar_get_buf(&bar));
 	}
-	printf("\n");
+	printf(L"\n");
 
 	bar_init(&bar, bar_positive, bar_linear);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		printf("%s\n", bar_get_buf(&bar));
+		wprintf(L"%sl\n", bar_get_buf(&bar));
 	}
-	printf("\n");
+	printf(L"\n");
 
 	bar_init(&bar, bar_positive, bar_log);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		printf("%s\n", bar_get_buf(&bar));
+		wprintf(L"%sl\n", bar_get_buf(&bar));
 	}
-	printf("\n");
+	printf(L"\n");
 
 	bar_init(&bar, bar_negative, bar_linear);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		printf("%s\n", bar_get_buf(&bar));
+		wprintf(L"%sl\n", bar_get_buf(&bar));
 	}
-	printf("\n");
+	printf(L"\n");
 
 	bar_init(&bar, bar_negative, bar_log);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		printf("%s\n", bar_get_buf(&bar));
+		wprintf(L"%sl\n", bar_get_buf(&bar));
 	}
-	printf("\n");
+	wprintf(L"\n");
 
 
 
 	bar_init_size(&bar, bar_signed, bar_linear, 14);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		printf("%s\n", bar_get_buf(&bar));
+		wprintf(L"%sl\n", bar_get_buf(&bar));
 	}
-	printf("\n");
+	wprintf(L"\n");
 
 	bar_init_size(&bar, bar_signed, bar_log, 14);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		printf("%s\n", bar_get_buf(&bar));
+		wprintf(L"%sl\n", bar_get_buf(&bar));
 	}
-	printf("\n");
+	wprintf(L"\n");
 
 	bar_init_size(&bar, bar_positive, bar_linear, 14);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		printf("%s\n", bar_get_buf(&bar));
+		wprintf(L"%sl\n", bar_get_buf(&bar));
 	}
-	printf("\n");
+	wprintf(L"\n");
 
 	bar_init_size(&bar, bar_positive, bar_log, 14);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		printf("%s\n", bar_get_buf(&bar));
+		wprintf(L"%sl\n", bar_get_buf(&bar));
 	}
-	printf("\n");
+	wprintf(L"\n");
 
 	bar_init_size(&bar, bar_negative, bar_linear, 14);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		printf("%s\n", bar_get_buf(&bar));
+		wprintf(L"%sl\n", bar_get_buf(&bar));
 	}
-	printf("\n");
+	wprintf(L"\n");
 
 	bar_init_size(&bar, bar_negative, bar_log, 14);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		printf("%s\n", bar_get_buf(&bar));
+		wprintf(L"%sl\n", bar_get_buf(&bar));
 	}
-	printf("\n");
-	char buf[15];
+	wprintf(L"\n");
+	wchar_t buf[15];
 	bar_init_buf(&bar, bar_positive, bar_linear, buf, sizeof(buf));
 	bar_set(&bar, 5000, 10000);
-	printf("%s\n", bar_get_buf(&bar));
-	printf("%s\n", buf);
+	wprintf(L"%sl\n", bar_get_buf(&bar));
+	wprintf(L"%sl\n", buf);
 	bar_init_buf(&bar, bar_negative, bar_linear, buf, sizeof(buf));
 	bar_set(&bar, 5000, 10000);
-	printf("%s\n", bar_get_buf(&bar));
-	printf("%s\n", buf);
+	wprintf(L"%sl\n", bar_get_buf(&bar));
+	wprintf(L"%sl\n", buf);
 	bar_init_buf(&bar, bar_signed, bar_linear, buf, sizeof(buf));
 	bar_set(&bar, 5000, 10000);
-	printf("%s\n", bar_get_buf(&bar));
-	printf("%s\n", buf);
+	wprintf(L"%sl\n", bar_get_buf(&bar));
+	wprintf(L"%sl\n", buf);
 
 }
 #endif

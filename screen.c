@@ -1,5 +1,6 @@
 #include "screen.h"
 
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -22,7 +23,7 @@ int screen_clear() {
 
 int screen_draw(struct screen *screen_ptr) {
 	int rc;
-	return fprintf(stderr, "%s", screen_ptr->buf);
+	return fwprintf(stderr, L"%sl", screen_ptr->buf);
 	if (rc == -1) {
 		return -1;
 	}
@@ -34,7 +35,7 @@ int screen_draw(struct screen *screen_ptr) {
 	return 0;
 }
 
-char *screen_pos(struct screen *screen_ptr, int column, int row) {
+wchar_t *screen_pos(struct screen *screen_ptr, int column, int row) {
 	return &screen_ptr->frame[row * screen_ptr->columns + column];
 }
 
@@ -47,15 +48,15 @@ char *screen_pos(struct screen *screen_ptr, int column, int row) {
  *  1. the new_terminator, or
  *  2. the previous character in the terminal position (if new_terminator is null).
  */
-int screen_nprintf(struct screen *screen_ptr, int column, int row, size_t n, char new_terminator, const char *format, ...) {
+int screen_nprintf(struct screen *screen_ptr, int column, int row, size_t n, wchar_t new_terminator, const wchar_t *format, ...) {
 	int rc;
 	va_list args;
-	char *s;
-	char terminator;
+	wchar_t *s;
+	wchar_t terminator;
 	int fmt_n;
 
 	va_start(args, format);
-	rc = vsnprintf(&terminator, 0, format, args);
+	rc = vswprintf(&terminator, 0, format, args);
 	if (rc == -1) {
 		return -1;
 	}
@@ -79,7 +80,7 @@ int screen_nprintf(struct screen *screen_ptr, int column, int row, size_t n, cha
 	}
 
 	va_start(args, format);
-	rc = vsnprintf(s, n, format, args);
+	rc = vswprintf(s, n, format, args);
 	if (rc != -1) {
 		s[fmt_n] = terminator;
 	}
@@ -100,11 +101,12 @@ void screen_blank(struct screen *screen_ptr) {
 }
 
 int screen_init(struct screen *screen_ptr, int columns, int rows) {
+    setlocale(LC_ALL, "en_US.UTF-8");
 	screen_ptr->columns = columns;
 	screen_ptr->rows = rows;
 	screen_ptr->screen_size = columns * rows;
 	screen_ptr->buf_size = sizeof (ESCAPE_RESET) - 1 + screen_ptr->screen_size;
-	screen_ptr->buf = malloc(screen_ptr->buf_size);
+	screen_ptr->buf = calloc(sizeof (wchar_t), screen_ptr->buf_size);
 	screen_ptr->frame = screen_ptr->buf + sizeof (ESCAPE_RESET) - 1;
 	if (screen_ptr->buf == NULL) {
 		errno = ENOMEM;
