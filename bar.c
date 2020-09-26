@@ -45,7 +45,7 @@ void bar_draw(union bar_u *bar_ptr, wchar_t *buf, size_t buflen, double bufpos, 
 
 	if (left) {
 		for (i = buflen - 1; i >= ((int) buflen - 1) - bufpos_i; i--) {
-			buf[i] = '#';
+			buf[i] = BAR_FILL;
 		}
 		for (i = ((int) buflen - 2) - bufpos_i; i >= 0; i--) {
 			buf[i] = ' ';
@@ -54,7 +54,7 @@ void bar_draw(union bar_u *bar_ptr, wchar_t *buf, size_t buflen, double bufpos, 
 		i = buflen - bufpos_i - 1;
 	} else {
 		for (i = 0; i < bufpos_i; i++) {
-			buf[i] = '#';
+			buf[i] = BAR_FILL;
 		}
 		for (i = bufpos_i + 1; i < buflen; i++) {
 			buf[i] = ' ';

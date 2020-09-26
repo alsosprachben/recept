@@ -13,9 +13,9 @@ enum bar_orientation {
 #define BAR_POS_LEGEND '|'
 #define BAR_SIG_LEGEND '|'
 #define BAR_NEG_LEGEND '|'
-#define BAR_REMAINDER_MAP L" -+="
-#define BAR_REMAINDER_LEN 4
-#define BAR_FILL '#'
+#define BAR_REMAINDER_MAP L" \u2581\u2582\u2583\u2584\u2585\u2586\u2587"
+#define BAR_REMAINDER_LEN 8
+#define BAR_FILL L'\u2588'
 
 enum bar_scale {
 	bar_linear = 0,

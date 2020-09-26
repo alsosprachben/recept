@@ -90,10 +90,10 @@ void screen_blank(struct screen *screen_ptr) {
 }
 
 int screen_init(struct screen *screen_ptr, int columns, int rows) {
-    setlocale(LC_ALL, "en_US.UTF-8");
+	setlocale(LC_ALL, "en_US.UTF-8");
 	screen_ptr->columns = columns;
 	screen_ptr->rows = rows;
-	screen_ptr->screen_size = columns * rows;
+	screen_ptr->screen_size = columns * (rows + 1);
 	screen_ptr->buf_size = sizeof (ESCAPE_RESET) - 1 + screen_ptr->screen_size + 1;
 	screen_ptr->buf = calloc(sizeof (wchar_t), screen_ptr->buf_size);
 	screen_ptr->frame = screen_ptr->buf + sizeof (ESCAPE_RESET) - 1;
