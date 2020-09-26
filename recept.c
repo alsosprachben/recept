@@ -766,9 +766,9 @@ int midi_note(double sample_rate, double period, double A4, double *n_ptr) {
 }
 
 #define NOTE_FMT L"%2i%s%3.0f"
-int note(double sample_rate, double period, double A4, int *octave_ptr, wchar_t **note_name_ptr, double *cents_ptr) {
+int note(double sample_rate, double period, double A4, int *octave_ptr, char **note_name_ptr, double *cents_ptr) {
 	int rc;
-	static wchar_t *notes[] = {L"C /B#", L"C#/Db", L"D /D ", L"D#/Eb", L"E /Fb", L"F /E# ", L"F#/Gb", L"G /G ", L"G#/Ab", L"A /A ", L"A#/Bb", L"B /Cb"};
+	static char *notes[] = {"C /B#", "C#/Db", "D /D ", "D#/Eb", "E /Fb", "F /E# ", "F#/Gb", "G /G ", "G#/Ab", "A /A ", "A#/Bb", "B /Cb"};
 	double n;
 	int note;
 	int octave;
@@ -933,7 +933,7 @@ int main(int argc, char *argv[]) {
 
 		if (filesampler_check_draw(sampler_ui_get_sampler(&sampler_ui))) {
 			int octave;
-			wchar_t *note_name;
+			char *note_name;
 			double cents;
 
 			filesampler_mark_draw(sampler_ui_get_sampler(&sampler_ui));
@@ -954,7 +954,7 @@ int main(int argc, char *argv[]) {
 					screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20, row + 1, 11, '\0', NOTE_FMT, octave, note_name, cents);
 				}
 				if (pc == 0.0) {
-					screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11, row + 1, 11, '\0', L"%s", L"           ");
+					screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11, row + 1, 11, '\0', L"%ls", L"           ");
 				} else {
 					rc = note(sampler_ui_get_sample_rate(&sampler_ui), concept_ptr->avg_instant_period, 440.0, &octave, &note_name, &cents);
 					if (rc == 0) {

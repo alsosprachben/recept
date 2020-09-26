@@ -23,7 +23,7 @@ int screen_clear() {
 
 int screen_draw(struct screen *screen_ptr) {
 	int rc;
-	return fprintf(stderr, "%ls", screen_ptr->buf);
+	return fwprintf(stderr, L"%ls", screen_ptr->buf);
 	if (rc == -1) {
 		return -1;
 	}
@@ -40,8 +40,7 @@ wchar_t *screen_pos(struct screen *screen_ptr, int column, int row) {
 }
 
 /*
- * Set `size_t n` to be one larger than the amount of space you want printed,
- * to allow space for interacting with the terminator generated from the underlying `vsnprintf()`.
+ * Set `size_t n` to be exactly the amount of space you want printed,
  * If `new_terminator` is `'\0'` then restore the terminator with what was previously in the frame buffer.
  * Take care at the end of the frame buffer.
  * The string terminator will never be null, but rather either:
@@ -53,28 +52,14 @@ int screen_nprintf(struct screen *screen_ptr, int column, int row, size_t n, wch
 	va_list args;
 	wchar_t *s;
 	wchar_t terminator;
-	int fmt_n;
+	int pad_n;
 
-	va_start(args, format);
-	rc = vswprintf(&terminator, 0, format, args);
-	if (rc == -1) {
-		return -1;
-	}
-	va_end(args);
+	n++;
 
-	fmt_n = rc;
-	if (fmt_n == 0) {
-		return 0;
-	}
-
-	if (fmt_n >= n) {
-		fmt_n = n - 1;
-	}
-	
 	s = screen_pos(screen_ptr, column, row);
 
 	if (new_terminator == '\0') {
-		terminator = s[fmt_n];
+		terminator = s[n];
 	} else {
 		terminator = new_terminator;
 	}
@@ -82,7 +67,10 @@ int screen_nprintf(struct screen *screen_ptr, int column, int row, size_t n, wch
 	va_start(args, format);
 	rc = vswprintf(s, n, format, args);
 	if (rc != -1) {
-		s[fmt_n] = terminator;
+		for (pad_n = rc; pad_n < n; pad_n++) {
+			s[pad_n] = ' ';
+		}
+		s[n] = terminator;
 	}
 	va_end(args);
 
@@ -98,6 +86,7 @@ void screen_blank(struct screen *screen_ptr) {
 			*screen_pos(screen_ptr, column, row) = ' ';
 		}
 	}
+	*screen_pos(screen_ptr, screen_ptr->columns + 1, screen_ptr->rows) = '\0';
 }
 
 int screen_init(struct screen *screen_ptr, int columns, int rows) {
@@ -105,7 +94,7 @@ int screen_init(struct screen *screen_ptr, int columns, int rows) {
 	screen_ptr->columns = columns;
 	screen_ptr->rows = rows;
 	screen_ptr->screen_size = columns * rows;
-	screen_ptr->buf_size = sizeof (ESCAPE_RESET) - 1 + screen_ptr->screen_size;
+	screen_ptr->buf_size = sizeof (ESCAPE_RESET) - 1 + screen_ptr->screen_size + 1;
 	screen_ptr->buf = calloc(sizeof (wchar_t), screen_ptr->buf_size);
 	screen_ptr->frame = screen_ptr->buf + sizeof (ESCAPE_RESET) - 1;
 	if (screen_ptr->buf == NULL) {
