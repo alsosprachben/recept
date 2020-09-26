@@ -13,7 +13,7 @@ enum bar_orientation {
 #define BAR_POS_LEGEND '|'
 #define BAR_SIG_LEGEND '|'
 #define BAR_NEG_LEGEND '|'
-#define BAR_REMAINDER_MAP L" \u2581\u2582\u2583\u2584\u2585\u2586\u2587"
+#define BAR_REMAINDER_MAP L" \u258F\u258E\u258D\u258C\u258B\u258A\u2589"
 #define BAR_REMAINDER_LEN 8
 #define BAR_FILL L'\u2588'
 
