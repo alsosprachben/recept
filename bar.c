@@ -212,101 +212,101 @@ int main() {
 	bar_init(&bar, bar_signed, bar_linear);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		wprintf(L"%sl\n", bar_get_buf(&bar));
+		printf("%ls\n", bar_get_buf(&bar));
 	}
-	wprintf(L"\n");
+	printf("\n");
 
 	bar_init(&bar, bar_signed, bar_log);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		wprintf(L"%sl\n", bar_get_buf(&bar));
+		printf("%ls\n", bar_get_buf(&bar));
 	}
-	printf(L"\n");
+	printf("\n");
 
 	bar_init(&bar, bar_positive, bar_linear);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		wprintf(L"%sl\n", bar_get_buf(&bar));
+		printf("%ls\n", bar_get_buf(&bar));
 	}
-	printf(L"\n");
+	printf("\n");
 
 	bar_init(&bar, bar_positive, bar_log);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		wprintf(L"%sl\n", bar_get_buf(&bar));
+		printf("%ls\n", bar_get_buf(&bar));
 	}
-	printf(L"\n");
+	printf("\n");
 
 	bar_init(&bar, bar_negative, bar_linear);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		wprintf(L"%sl\n", bar_get_buf(&bar));
+		printf("%ls\n", bar_get_buf(&bar));
 	}
-	printf(L"\n");
+	printf("\n");
 
 	bar_init(&bar, bar_negative, bar_log);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		wprintf(L"%sl\n", bar_get_buf(&bar));
+		printf("%ls\n", bar_get_buf(&bar));
 	}
-	wprintf(L"\n");
+	printf("\n");
 
 
 
 	bar_init_size(&bar, bar_signed, bar_linear, 14);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		wprintf(L"%sl\n", bar_get_buf(&bar));
+		printf("%ls\n", bar_get_buf(&bar));
 	}
-	wprintf(L"\n");
+	printf("\n");
 
 	bar_init_size(&bar, bar_signed, bar_log, 14);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		wprintf(L"%sl\n", bar_get_buf(&bar));
+		printf("%ls\n", bar_get_buf(&bar));
 	}
-	wprintf(L"\n");
+	printf("\n");
 
 	bar_init_size(&bar, bar_positive, bar_linear, 14);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		wprintf(L"%sl\n", bar_get_buf(&bar));
+		printf("%ls\n", bar_get_buf(&bar));
 	}
-	wprintf(L"\n");
+	printf("\n");
 
 	bar_init_size(&bar, bar_positive, bar_log, 14);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		wprintf(L"%sl\n", bar_get_buf(&bar));
+		printf("%ls\n", bar_get_buf(&bar));
 	}
-	wprintf(L"\n");
+	printf("\n");
 
 	bar_init_size(&bar, bar_negative, bar_linear, 14);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		wprintf(L"%sl\n", bar_get_buf(&bar));
+		printf("%ls\n", bar_get_buf(&bar));
 	}
-	wprintf(L"\n");
+	printf("\n");
 
 	bar_init_size(&bar, bar_negative, bar_log, 14);
 	for (s = -10000; s <= 10000; s += 1000) {
 		bar_set(&bar, s, 10000);
-		wprintf(L"%sl\n", bar_get_buf(&bar));
+		printf("%ls\n", bar_get_buf(&bar));
 	}
-	wprintf(L"\n");
+	printf("\n");
 	wchar_t buf[15];
 	bar_init_buf(&bar, bar_positive, bar_linear, buf, sizeof(buf));
 	bar_set(&bar, 5000, 10000);
-	wprintf(L"%sl\n", bar_get_buf(&bar));
-	wprintf(L"%sl\n", buf);
+	printf("%ls\n", bar_get_buf(&bar));
+	printf("%ls\n", buf);
 	bar_init_buf(&bar, bar_negative, bar_linear, buf, sizeof(buf));
 	bar_set(&bar, 5000, 10000);
-	wprintf(L"%sl\n", bar_get_buf(&bar));
-	wprintf(L"%sl\n", buf);
+	printf("%ls\n", bar_get_buf(&bar));
+	printf("%ls\n", buf);
 	bar_init_buf(&bar, bar_signed, bar_linear, buf, sizeof(buf));
 	bar_set(&bar, 5000, 10000);
-	wprintf(L"%sl\n", bar_get_buf(&bar));
-	wprintf(L"%sl\n", buf);
+	printf("%ls\n", bar_get_buf(&bar));
+	printf("%ls\n", buf);
 
 }
 #endif

@@ -23,7 +23,7 @@ int screen_clear() {
 
 int screen_draw(struct screen *screen_ptr) {
 	int rc;
-	return fwprintf(stderr, L"%sl", screen_ptr->buf);
+	return fprintf(stderr, "%ls", screen_ptr->buf);
 	if (rc == -1) {
 		return -1;
 	}
