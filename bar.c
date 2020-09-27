@@ -51,6 +51,7 @@ void bar_draw(union bar_u *bar_ptr, wchar_t *buf, size_t buflen, double bufpos, 
 			buf[i] = BAR_FILL;
 		}
 		i = buflen - bufpos_i - 1;
+		bufpos_r = 1.0 - bufpos_r;
 	} else {
 		for (i = 0; i < bufpos_i; i++) {
 			buf[i] = BAR_FILL;
