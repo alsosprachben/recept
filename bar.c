@@ -45,12 +45,11 @@ void bar_draw(union bar_u *bar_ptr, wchar_t *buf, size_t buflen, double bufpos, 
 
 	if (left) {
 		for (i = buflen - 1; i >= ((int) buflen - 1) - bufpos_i; i--) {
-			buf[i] = BAR_FILL;
-		}
-		for (i = ((int) buflen - 2) - bufpos_i; i >= 0; i--) {
 			buf[i] = ' ';
 		}
-		/* bufpos_r = 1.0 - bufpos_r; */
+		for (i = ((int) buflen - 2) - bufpos_i; i >= 0; i--) {
+			buf[i] = BAR_FILL;
+		}
 		i = buflen - bufpos_i - 1;
 	} else {
 		for (i = 0; i < bufpos_i; i++) {
@@ -109,18 +108,18 @@ void bar_scale(union bar_u *bar_ptr, double *n_ptr, double *d_ptr) {
 	}
 }
 
-void bar_draw_blank(union bar_u *bar_ptr, wchar_t *buf, size_t buflen) {
+void bar_draw_blank(union bar_u *bar_ptr, wchar_t *buf, size_t buflen, wchar_t c) {
 	int i;
 
 	for (i = 0; i < buflen; i++) {
-		buf[i] = ' ';
+		buf[i] = c;
 	}
 }
 void bar_draw_unsigned(union bar_u *bar_ptr, wchar_t *buf, size_t buflen, double n, double d, int neg) {
 	double bufpos;
 
 	if (d == 0) {
-		bar_draw_blank(bar_ptr, buf, buflen);
+		bar_draw_blank(bar_ptr, buf, buflen, ' ');
 		return;
 	}
 
@@ -138,7 +137,7 @@ void bar_draw_unsigned(union bar_u *bar_ptr, wchar_t *buf, size_t buflen, double
 }
 void bar_draw_signed(union bar_u *bar_ptr, wchar_t *buf, size_t buflen, double n, double d) {
 	if (d == 0 || buflen < 3) {
-		bar_draw_blank(bar_ptr, buf, buflen);
+		bar_draw_blank(bar_ptr, buf, buflen, ' ');
 		return;
 	}
 
@@ -149,10 +148,10 @@ void bar_draw_signed(union bar_u *bar_ptr, wchar_t *buf, size_t buflen, double n
 		buf[buflen / 2] = BAR_SIG_LEGEND;
 		if (n < 0) {
 			bar_draw(      bar_ptr, buf,                    (buflen - 1) / 2, -n * ((buflen - 1) / 2) / d, 1);
-			bar_draw_blank(bar_ptr, buf + (buflen / 2 + 1), (buflen - 1) / 2);
+			bar_draw_blank(bar_ptr, buf + (buflen / 2 + 1), (buflen - 1) / 2, ' ');
 		} else {
 			bar_draw(      bar_ptr, buf + (buflen / 2 + 1), (buflen - 1) / 2,  n * ((buflen - 1) / 2) / d, 0);
-			bar_draw_blank(bar_ptr, buf,                    (buflen - 1) / 2);
+			bar_draw_blank(bar_ptr, buf,                    (buflen - 1) / 2, BAR_FILL);
 		}
 	} else {
 		/* even length, use two center characters */
@@ -160,10 +159,10 @@ void bar_draw_signed(union bar_u *bar_ptr, wchar_t *buf, size_t buflen, double n
 		buf[(buflen - 2) / 2 + 1] = BAR_POS_LEGEND;
 		if (n < 0) {
 			bar_draw(      bar_ptr, buf,                          (buflen - 2) / 2, -n * ((buflen - 2) / 2) / d, 1);
-			bar_draw_blank(bar_ptr, buf + ((buflen - 2) / 2) + 2, (buflen - 2) / 2);
+			bar_draw_blank(bar_ptr, buf + ((buflen - 2) / 2) + 2, (buflen - 2) / 2, ' ');
 		} else {
 			bar_draw(      bar_ptr, buf + ((buflen - 2) / 2) + 2, (buflen - 2) / 2,  n * ((buflen - 2) / 2) / d, 0);
-			bar_draw_blank(bar_ptr, buf,                          (buflen - 2) / 2);
+			bar_draw_blank(bar_ptr, buf,                          (buflen - 2) / 2, BAR_FILL);
 		}
 	}
 }
