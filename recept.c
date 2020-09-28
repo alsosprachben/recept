@@ -893,29 +893,33 @@ int main(int argc, char *argv[]) {
 	period_array_init(&array, sampler_ui_get_sample_rate(&sampler_ui) / period_response_Hz, octave_bandwidth, cycle_area);
 	rc = period_array_populate(&array, octave_count, 1.0);
 	scale_space_entries = period_array_get_entries(&array);
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0,                           0, 20, '\0', L"%s", "    Tonal Phase     ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0,                           0, 20, '\0', L"%ls", L"-\u03C4/2 Tonal Phase \u03C4/2");
 	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20,                          0, 22, '\0', L"%s", " Sensor <note> Sensed ");
 	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11,                0, 20, '\0', L"%s", "| Receptor Model    ");
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20,           0, 20, '\0', L"%s", "       Entropy      ");
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20,      0, 20, '\0', L"%s", "      - Energy      ");
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20 + 20, 0, 20, '\0', L"%s", "     Free Energy    ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20,           0, 20, '\0', L"%s", "   log+1(Entropy)   ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20,      0, 20, '\0', L"%s", "  - log+1(Energy)   ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20 + 20, 0, 20, '\0', L"%s", " log+1(Free Energy) ");
 	for (row = 0; row < period_array_period_sensor_count(&array); row++) {
 		entry_ptr = &scale_space_entries[row];
 
-		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 0, row + 1);
-		bar_init_buf(&phase_rows[row], bar_signed, bar_linear, rowbuf, 20);
+		screen_nprintf(sampler_ui_get_screen(&sampler_ui),      0, row + 1, 1, '\0', L"%ls", L"\u03D5");
+		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 1, row + 1);
+		bar_init_buf(&phase_rows[row], bar_signed, bar_linear, rowbuf, 19);
 
 		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11, row + 1);
-		bar_init_buf(&c1_rows[row], bar_positive, bar_log, rowbuf, 40);
+		bar_init_buf(&c1_rows[row], bar_positive, bar_log, rowbuf, 20);
 
-		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20, row + 1);
-		bar_init_buf(&c2_rows[row], bar_signed, bar_logp1, rowbuf, 20);
+		screen_nprintf(sampler_ui_get_screen(&sampler_ui),      20 + 11 + 11 + 20,     row + 1, 1, '\0', L"%ls", L"H");
+		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 1, row + 1);
+		bar_init_buf(&c2_rows[row], bar_signed, bar_logp1, rowbuf, 19);
 
-		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20, row + 1);
-		bar_init_buf(&c3_rows[row], bar_signed, bar_logp1, rowbuf, 20);
+		screen_nprintf(sampler_ui_get_screen(&sampler_ui),      20 + 11 + 11 + 20 + 20,     row + 1, 1, '\0', L"%ls", L"E");
+		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20 + 1, row + 1);
+		bar_init_buf(&c3_rows[row], bar_signed, bar_logp1, rowbuf, 19);
 
-		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20 + 20, row + 1);
-		bar_init_buf(&c4_rows[row], bar_signed, bar_logp1, rowbuf, 20);
+		screen_nprintf(sampler_ui_get_screen(&sampler_ui),      20 + 11 + 11 + 20 + 20 + 20,     row + 1, 1, '\0', L"%ls", L"F");
+		rowbuf = screen_pos(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20 + 20 + 1, row + 1);
+		bar_init_buf(&c4_rows[row], bar_signed, bar_logp1, rowbuf, 19);
 
 	}
 	for (;;) {
