@@ -896,9 +896,9 @@ int main(int argc, char *argv[]) {
 	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 0,                           0, 20, '\0', L"%ls", L"-\u03C4/2 Tonal Phase \u03C4/2");
 	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20,                          0, 22, '\0', L"%s", " Sensor <note> Sensed ");
 	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11,                0, 20, '\0', L"%s", "| Receptor Model    ");
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20,           0, 20, '\0', L"%s", "   log+1(Entropy)   ");
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20,      0, 20, '\0', L"%s", "  - log+1(Energy)   ");
-	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20 + 20, 0, 20, '\0', L"%s", " log+1(Free Energy) ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20,           0, 20, '\0', L"%s", "   log(Entropy+1)   ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20,      0, 20, '\0', L"%s", "  - log(Energy+1)   ");
+	screen_nprintf(sampler_ui_get_screen(&sampler_ui), 20 + 11 + 11 + 20 + 20 + 20, 0, 20, '\0', L"%s", " log(Free Energy+1) ");
 	for (row = 0; row < period_array_period_sensor_count(&array); row++) {
 		entry_ptr = &scale_space_entries[row];
 
