@@ -1057,8 +1057,8 @@ def periodic_test(generate=False):
     cycle_area = 1.0 / (1.0 - exp(-1))
 
     log_base_period = float(sample_rate) / C4
-    log_octave_steps = 4
-    log_octave_count = 1
+    log_octave_steps = 12
+    log_octave_count = 3
     log_sub_octave_count = 1
 
     # wave_change_rate = 0.1
@@ -1073,7 +1073,7 @@ def periodic_test(generate=False):
     for o in range(log_sub_octave_count):
         bit = 1 << o
         pa_octaves.append(
-            LogPeriodArray(log_base_period, float(sample_rate) / bit / 20, log_octave_count, log_octave_steps,
+            LogPeriodArray(log_base_period, float(sample_rate) / bit / 60, log_octave_count, log_octave_steps,
                            cycle_area))
 
     pa_samplers = OctaveSamplers(len(pa_octaves))

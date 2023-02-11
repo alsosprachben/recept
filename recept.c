@@ -768,7 +768,7 @@ int midi_note(double sample_rate, double period, double A4, double *n_ptr) {
 #define NOTE_FMT "%2i%s%3.0f"
 int note(double sample_rate, double period, double A4, int *octave_ptr, char **note_name_ptr, double *cents_ptr) {
 	int rc;
-	static char *notes[] = {"C /B#", "C#/Db", "D /D ", "D#/Eb", "E /Fb", "F /E# ", "F#/Gb", "G /G ", "G#/Ab", "A /A ", "A#/Bb", "B /Cb"};
+	static char *notes[] = {"C /B#", "C#/Db", "D /D ", "D#/Eb", "E /Fb", "F /E#", "F#/Gb", "G /G ", "G#/Ab", "A /A ", "A#/Bb", "B /Cb"};
 	double n;
 	int note;
 	int octave;
@@ -875,12 +875,12 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	period_response_Hz = 20.0;
+	period_response_Hz = 60.0;
 	cycle_area = 1.0 / (1.0 - exp(-1.0));
-	field_count = 4;
-	octave_bandwidth = 1;
+	field_count = 96;
+	octave_bandwidth = 12;
 	octave_count = ((double) field_count) / octave_bandwidth;
-	octave_drop = 4;
+	octave_drop = 0;
 
 	field_ptr = period_array_get_receptive_field(&array);
 	field_ptr->period = 2.0 * pow(2.0, octave_count + octave_drop);
