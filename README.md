@@ -20,6 +20,8 @@ Need to use bitmap fonts, so use xterm. That is, on OS X, install xquarts, and u
 ./recept_test.sh
 ```
 
+Look for `BEGIN CONFIG` in `recept.c`.
+
 ### `recept.py`
 ```
 ./recept_mic.py
