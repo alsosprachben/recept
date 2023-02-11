@@ -951,7 +951,8 @@ int main(int argc, char *argv[]) {
 
 				concept_ptr = entry_ptr->value.concept_ptr;
 				lc_ptr = entry_ptr->value.period_lifecycle_ptr;
-				pc      = cabs(CMPLX(cimag(lc_ptr->cval) < 0.0  ? -cimag(lc_ptr->cval) : 0.0, lc_ptr->F < 0.0 ? lc_ptr->F : 0.0));
+				// pc      = cabs(CMPLX(cimag(lc_ptr->cval) < 0.0  ? -cimag(lc_ptr->cval) : 0.0, lc_ptr->F < 0.0 ? lc_ptr->F : 0.0));
+				pc      = cimag(lc_ptr->cval) < 0.0 ? cabs(CMPLX(cimag(lc_ptr->cval), lc_ptr->F)) : 0;
 
 				rc = note(sampler_ui_get_sample_rate(&sampler_ui), concept_ptr->recept_ptr->field.period, 440.0, &octave, &note_name, &cents);
 				if (rc == 0) {
