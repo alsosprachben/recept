@@ -8,11 +8,11 @@ Do once:
 mkfifo input.sock
 ```
 
-That will allow one terminal to read the mic, and another to display the app. On OS X, a different kind of app program is needed for each of these cases.
+That will allow one terminal to read the mic, and another to display the app. On OS X, a different kind of terminal app program is needed for each of these cases.
 
 ## Apps
 
-Need to use bitmap fonts. So need to use xterm. That is, on OS X, install xquarts, and use the xterm it provides.
+Need to use bitmap fonts, so use xterm. That is, on OS X, install xquarts, and use the xterm it provides.
 
 ### `recept.c` (C port of `recept.py`)
 ```
@@ -34,4 +34,4 @@ In another terminal, where access to mic device is easiest. That is, on OS X, us
 ./rec.sh
 ```
 
-The app in xterm will now start.
+The app in xterm will now start. When the app stops, this process will also stop, because the pipe will be broken across the fifo. So start this again each time you start the app in the other terminal.
