@@ -9,7 +9,7 @@
 
 int screen_clear() {
 	int rc;
-	rc = fprintf(stderr, "%s", ESCAPE_CLEAR);
+	rc = fwprintf(stderr, L"%ls", ESCAPE_CLEAR);
 	if (rc == -1) {
 		return -1;
 	}
@@ -68,7 +68,7 @@ int screen_nprintf(struct screen *screen_ptr, int column, int row, size_t n, wch
 	rc = vswprintf(s, n, format, args);
 	if (rc != -1) {
 		for (pad_n = rc; pad_n < n; pad_n++) {
-			s[pad_n] = ' ';
+			s[pad_n] = L' ';
 		}
 		s[n] = terminator;
 	}
@@ -83,7 +83,7 @@ void screen_blank(struct screen *screen_ptr) {
 
 	for (column = 0; column < screen_ptr->columns; column++) {
 		for (row = 0; row < screen_ptr->rows; row++) {
-			*screen_pos(screen_ptr, column, row) = ' ';
+			*screen_pos(screen_ptr, column, row) = L' ';
 		}
 	}
 	*screen_pos(screen_ptr, screen_ptr->columns + 1, screen_ptr->rows) = '\0';
@@ -94,18 +94,17 @@ int screen_init(struct screen *screen_ptr, int columns, int rows) {
 	screen_ptr->columns = columns;
 	screen_ptr->rows = rows;
 	screen_ptr->screen_size = columns * (rows + 1);
-	screen_ptr->buf_size = sizeof (ESCAPE_RESET) - 1 + screen_ptr->screen_size + 1;
+	screen_ptr->buf_size = ESCAPE_RESET_LEN + screen_ptr->screen_size + 1;
 	screen_ptr->buf = calloc(sizeof (wchar_t), screen_ptr->buf_size);
-	screen_ptr->frame = screen_ptr->buf + sizeof (ESCAPE_RESET) - 1;
+	screen_ptr->frame = screen_ptr->buf + ESCAPE_RESET_LEN;
 	if (screen_ptr->buf == NULL) {
 		errno = ENOMEM;
 		return -1;
 	}
 
-	screen_ptr->buf[0] = ESCAPE_RESET[0];
-	screen_ptr->buf[1] = ESCAPE_RESET[1];
-	screen_ptr->buf[2] = ESCAPE_RESET[2];
-	screen_ptr->buf[3] = ESCAPE_RESET[3];
+	for (int i = 0; i < ESCAPE_RESET_LEN; i++) {
+		screen_ptr->buf[i] = ESCAPE_RESET[i];
+	}
 	screen_blank(screen_ptr);
 
 	screen_clear();

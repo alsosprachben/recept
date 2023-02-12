@@ -1,8 +1,10 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 
-#define ESCAPE_CLEAR "\033[2J"
-#define ESCAPE_RESET "\033[;H"
+#define ESCAPE_CLEAR L"\033[2J"
+#define ESCAPE_CLEAR_LEN 4
+#define ESCAPE_RESET L"\033[;H"
+#define ESCAPE_RESET_LEN 4
 
 #include <unistd.h>
 #include <wchar.h>
