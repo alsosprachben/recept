@@ -1,0 +1,16 @@
+<html>
+<head>
+    <title>WASM test</title>
+    <script type="text/javascript" src="wasm_test.js"></script>
+    <script type="text/javascript">
+        const api = {};
+        Module.onRuntimeInitialized = async () => {
+            api.wasm_test = Module.cwrap("wasm_test", "number", []);
+            console.log(api.wasm_test());
+        };
+      </script>
+</head>
+<body>
+    <h1>WASM test</h1>
+</body>
+</html>
