@@ -1,5 +1,5 @@
 /* vumeter-processor.js: AudioWorkletGlobalScope */
-const SMOOTHING_FACTOR = 0.9;
+const SMOOTHING_FACTOR = 0.5;
 const MINIMUM_VALUE = 0.00001;
 class PeriodArray extends AudioWorkletProcessor {
   constructor (options) {
