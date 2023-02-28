@@ -6,7 +6,8 @@
         const api = {};
         Module.onRuntimeInitialized = async () => {
             api.wasm_test = Module.cwrap("wasm_test", "number", []);
-            console.log(api.wasm_test());
+            api.wasm_test_direct = Module._wasm_test;
+            console.log(api.wasm_test_direct());
         };
       </script>
 </head>
