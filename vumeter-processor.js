@@ -8,6 +8,13 @@ class PeriodArray extends AudioWorkletProcessor {
     this._volume_right = 0;
     this._updateIntervalInMS = options.processorOptions.updateIntervalInMS;
     this._nextUpdateFrame = 0;
+
+    /*
+    self._sampleArray = new Float64Array(128);
+    self._sampleWasmBuf = Module._malloc(self._sampleArray.BYTES_PER_ELEMENT * 128);
+    self._sampleWasmProcess = Module.cwrap("process_rms", "number", ["number", null, "number"]);
+    */
+
     this.port.onmessage = event => {
       if (event.data.updateIntervalInMS)
         this._updateIntervalInMS = event.data.updateIntervalInMS;
@@ -24,6 +31,22 @@ class PeriodArray extends AudioWorkletProcessor {
     if (input.length >= 2) {
       const samples_left  = input[0];
       const samples_right = input[1];
+
+      /*
+      for (let i = 0; i < 128; ++i) {
+        self._sampleArray[i] = samples_left;
+      }
+      Module.HEAPF64.set(self._sampleArray, self._sampleWasmBuf >> 3);
+      this._volume_left = this._sampleWasmProcess(this._volume_left, self._sampleWasmBuf, 128);
+
+      for (let i = 0; i < 128; ++i) {
+        self._sampleArray[i] = samples_right;
+      }
+      Module.HEAPF64.set(self._sampleArray, self._sampleWasmBuf >> 3);
+      this._volume_right = this._sampleWasmProcess(this._volume_right, self._sampleWasmBuf, 128);
+      */
+
+      /**/
       let sum = 0;
       let rms = 0;
 
@@ -40,6 +63,7 @@ class PeriodArray extends AudioWorkletProcessor {
       // Calculate the RMS level and update the volume.
       rms = Math.sqrt(sum / samples_right.length);
       this._volume_right = Math.max(rms, this._volume_right * SMOOTHING_FACTOR);
+      /**/
 
       // Update and sync the volume property with the main thread.
       this._nextUpdateFrame -= samples_left.length;

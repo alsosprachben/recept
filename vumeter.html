@@ -65,17 +65,21 @@ if (navigator.mediaDevices) {
 		var source = audioCtx.createMediaStreamSource(stream);
 
 		// bind processor
-		audioCtx.audioWorklet.addModule('vumeter-processor.js').then(
+		audioCtx.audioWorklet.addModule('wasm_test.js').then(
 			() => {
-				const paNode = new PeriodArrayNode(audioCtx, 1.0 / 60 * 1000);
-				source.connect(paNode);
-				function drawMeter () {
-					paNode.draw();
-					requestAnimationFrame(drawMeter);
-				}
-				drawMeter();
+				audioCtx.audioWorklet.addModule('vumeter-processor.js').then(
+					() => {
+						const paNode = new PeriodArrayNode(audioCtx, 1.0 / 60 * 1000);
+						source.connect(paNode);
+						function drawMeter () {
+							paNode.draw();
+							requestAnimationFrame(drawMeter);
+						}
+						drawMeter();
+					}
+				);
 			}
-		);
+		)
 	}
 	);
 } else {

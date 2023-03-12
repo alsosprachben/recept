@@ -7,6 +7,7 @@
         Module.onRuntimeInitialized = async () => {
             api.wasm_test = Module.cwrap("wasm_test", "number", []);
             api.wasm_test_direct = Module._wasm_test;
+            api.process_rms = Module.cwrap("process_rms", "number", ["number", "array", "number"]);
             console.log(api.wasm_test_direct());
         };
       </script>
