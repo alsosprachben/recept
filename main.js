@@ -1,6 +1,8 @@
 // Main thread script for uke tuner demo
 
 const output = document.getElementById('output');
+const header = document.getElementById('header');
+header.textContent = 'note          F         entropy    -energy      phase     amplitude   onset-amp      cycle';
 
 function bar(n, d, size = 14) {
   const mn = Math.max(0, Math.min(n, d));
@@ -24,8 +26,11 @@ if (navigator.mediaDevices) {
         const names = ['C4', 'E4', 'G4', 'A4'];
         let lines = '';
         for (let i = 0; i < vals.length; i++) {
-          const F = vals[i].F;
-          lines += `${names[i]} F:${F.toFixed(4)} ${bar(Math.abs(F), 1.0)}\n`;
+          const v = vals[i];
+          lines += `${names[i]} F:${v.F.toFixed(4)} E:${v.entropy.toFixed(4)} ` +
+                   `NE:${v.neg_energy.toFixed(4)} P:${v.phase.toFixed(4)} ` +
+                   `A:${v.amp.toFixed(4)} O:${v.onset_amp.toFixed(4)} ` +
+                   `C:${v.cycle.toFixed(4)}\n`;
         }
         output.textContent = lines;
       };
