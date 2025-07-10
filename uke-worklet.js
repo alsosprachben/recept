@@ -129,7 +129,7 @@ class UkeProcessor extends AudioWorkletProcessor {
     if (input.length === 0) return true;
     const channel = input[0];
     for (let i = 0; i < channel.length; ++i) {
-      const t = this.frame / sampleRate;
+      const t = this.frame; // use sample index to match period units
       this.uke.sample(t, channel[i]);
       this.frame += 1;
     }
