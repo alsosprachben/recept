@@ -137,7 +137,15 @@ class UkeProcessor extends AudioWorkletProcessor {
     this._nextUpdateFrame -= channel.length;
     if (this._nextUpdateFrame < 0) {
       this._nextUpdateFrame += this.intervalInFrames;
-      const values = this.uke.values().map(lc => ({ F: lc.F, amp: lc.r }));
+      const values = this.uke.values().map(lc => ({
+        F: lc.F,
+        entropy: lc.cval.re,
+        neg_energy: lc.cval.im,
+        phase: lc.phi,
+        amp: lc.r,
+        onset_amp: lc.phi < 0 ? lc.r : 0,
+        cycle: lc.lifecycle,
+      }));
       this.port.postMessage({ values });
     }
     return true;
