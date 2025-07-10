@@ -18,10 +18,24 @@ class ExponentialSmoother {
     this.v = initialValue;
   }
   sample(value, factor) {
-    this.v += (value - this.v) / factor;
+    // Support smoothing of plain numbers and Complex values.
+    if (value instanceof Complex ||
+        (value && typeof value === 'object' && 're' in value && 'im' in value)) {
+      const re = this.v.re !== undefined ? this.v.re : 0;
+      const im = this.v.im !== undefined ? this.v.im : 0;
+      const vre = re + (value.re - re) / factor;
+      const vim = im + (value.im - im) / factor;
+      this.v = new Complex(vre, vim);
+    } else {
+      this.v += (value - this.v) / factor;
+    }
     return this.v;
   }
   toString() {
+    if (this.v instanceof Complex ||
+        (this.v && typeof this.v === 'object' && 're' in this.v && 'im' in this.v)) {
+      return `${this.v.re.toFixed(3)}+${this.v.im.toFixed(3)}j`;
+    }
     return this.v.toFixed(3);
   }
 }
