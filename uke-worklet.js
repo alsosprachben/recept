@@ -1,14 +1,18 @@
 // AudioWorkletProcessor for ukulele string detection using recept.js primitives
 
 function loadModule(url) {
-  const prevModule = self.module;
-  const prevExports = self.exports;
-  self.module = { exports: {} };
-  self.exports = self.module.exports;
+  // `self` is the global object inside an AudioWorkletProcessor but it may not
+  // be defined if this script is executed in another environment (e.g. Node).
+  const g = typeof self !== 'undefined' ? self : globalThis;
+
+  const prevModule = g.module;
+  const prevExports = g.exports;
+  g.module = { exports: {} };
+  g.exports = g.module.exports;
   importScripts(url);
-  const exports = self.module.exports;
-  self.module = prevModule;
-  self.exports = prevExports;
+  const exports = g.module.exports;
+  g.module = prevModule;
+  g.exports = prevExports;
   return exports;
 }
 
