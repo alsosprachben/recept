@@ -1,7 +1,7 @@
 // JavaScript port of bar.py
 const defaultBarSize = 14;
 
-function bar(n, d, s = defaultBarSize, left = false) {
+export function bar(n, d, s = defaultBarSize, left = false) {
   try {
     let mn = Math.max(0, Math.min(n, d));
     if (left) {
@@ -33,7 +33,7 @@ function bar(n, d, s = defaultBarSize, left = false) {
   }
 }
 
-function barLog(n, d, s = defaultBarSize, base = Math.E, start = 1.0, left = false) {
+export function barLog(n, d, s = defaultBarSize, base = Math.E, start = 1.0, left = false) {
   try {
     const logBase = Math.log(base);
     return bar(Math.log(start + n) / logBase, Math.log(start + d) / logBase, s, left);
@@ -42,7 +42,7 @@ function barLog(n, d, s = defaultBarSize, base = Math.E, start = 1.0, left = fal
   }
 }
 
-function signedBar(n, d, s = defaultBarSize / 2) {
+export function signedBar(n, d, s = defaultBarSize / 2) {
   if (n >= 0.0) {
     return ' '.repeat(s) + '|' + bar(n, d, s);
   } else {
@@ -50,7 +50,7 @@ function signedBar(n, d, s = defaultBarSize / 2) {
   }
 }
 
-function signedBarLog(n, d, s = defaultBarSize / 2, base = Math.E, start = 1.0) {
+export function signedBarLog(n, d, s = defaultBarSize / 2, base = Math.E, start = 1.0) {
   if (n > 0.0) {
     return ' '.repeat(s) + '|' + barLog(n, d, s, base, start);
   } else if (n < 0.0) {
@@ -60,9 +60,3 @@ function signedBarLog(n, d, s = defaultBarSize / 2, base = Math.E, start = 1.0) 
   }
 }
 
-module.exports = {
-  bar,
-  barLog,
-  signedBar,
-  signedBarLog,
-};

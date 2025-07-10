@@ -1,9 +1,9 @@
 // JavaScript port of recept.py. This is a partial port focusing on the
 // signal processing utilities used by other modules.
 
-const bar = require('./bar.js');
-const tau = require('./tau.js');
-const Complex = require('./complex.js');
+import * as bar from './bar.js';
+import * as tau from './tau.js';
+import Complex from './complex.js';
 
 function complexDelta(cval, priorCval) {
   if (priorCval.re !== 0 || priorCval.im !== 0) {
@@ -258,7 +258,7 @@ class ApexTimeSmoothing extends DynamicTimeSmoothing {
   }
 }
 
-module.exports = {
+export {
   complexDelta,
   ExponentialSmoother,
   ExponentialSmoothing,
