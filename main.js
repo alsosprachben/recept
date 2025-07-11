@@ -29,12 +29,16 @@
             if (lc.energy > 0) {
               pc = 0; // ensure pc is non-negative
             }
+            let phase = lc.phi;
+            if (phase < 0) {
+              phase += 1;
+            }
             lines += `${sensorName} ` +
                      `${barLog(   pc,          lc.max_r || 1)} ` +
                      `${signedBarLogp1(lc.F,        lc.max_r || 1)} ` +
                      `${signedBarLogp1(lc.entropy,  lc.max_r || 1)} ` +
                      `${signedBarLogp1(lc.energy,   lc.max_r || 1)} ` +
-                     `${signedBar(     lc.phi,       0.5)} ` +
+                     `${bar(           phase,       1)} ` +
                      `${(-lc.cycle).toFixed(3).padStart(10)}\n`;
           }
           output.textContent = lines;
