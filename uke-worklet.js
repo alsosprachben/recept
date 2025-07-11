@@ -278,6 +278,50 @@ class UkePeriodArray {
   }
 }
 
+class GuitarPeriodArray {
+  constructor(sampleRate, octaveBandwidth = 12, bandwidthFactor = 1.0) {
+    this.sampleRate = sampleRate
+    this.octaveBandwidth = octaveBandwidth
+    this.bandwidthFactor = bandwidthFactor
+
+    // smoothing interval (Hz)
+    const resp = sampleRate / 60
+    // match C's cycle_area
+    const cycleArea = 1.0 / (1.0 - Math.exp(-1.0))
+    // derive period bandwidth from octave bandwidth
+    const periodBandwidth = cycleArea / (Math.pow(2.0, 1.0 / octaveBandwidth) - 1.0)
+
+    // standard guitar tuning: E2, A2, D3, G3, B3, E4
+    const stringMidis = [40, 45, 50, 55, 59, 64]
+    this.names = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
+
+    this.sensors = stringMidis.map(midi => {
+      const freq = 440 * Math.pow(2, (midi - 69) / 12)
+      const period = sampleRate / freq
+      return new PeriodScaleSpaceSensor(
+        period, 0, resp, cycleArea, periodBandwidth * bandwidthFactor
+      )
+    })
+
+    // superimpose the low E string (index 0) onto all others via monochords
+    for (let i = 1; i < this.sensors.length; i++) {
+      const semitoneDiff = stringMidis[i] - stringMidis[0]
+      const ratio = Math.pow(2, semitoneDiff / 12)
+      this.sensors[i].addMonochord(this.sensors[0], ratio)
+    }
+  }
+
+  sample(time, value) {
+    for (const s of this.sensors) {
+      s.sample(time, value)
+    }
+  }
+
+  values() {
+    return this.sensors.map(s => s.period_lifecycle)
+  }
+}
+
 class HarpsichordPeriodArray {
   constructor(sampleRate, lowMidi = 24, highMidi = 96, octaveBandwidth = 12, bandwidthFactor = 1.0) {
     this.sampleRate = sampleRate;
@@ -323,8 +367,9 @@ class UkeProcessor extends AudioWorkletProcessor {
     super();
     const sr = globalThis.sampleRate;  // Worklet global audio context sample rate
     console.log(`UkeProcessor initialized with sample rate: ${sr}`);
-    this.uke = new UkePeriodArray(sr);
-    this.harpsichord = new HarpsichordPeriodArray(sr, 48, 52); //24, 96); // MIDI range for harpsichord
+    this.guitar = new GuitarPeriodArray(sr, 12); // 12 semitones per octave
+    // this.uke = new UkePeriodArray(sr);
+    // this.harpsichord = new HarpsichordPeriodArray(sr, 48, 52); //24, 96); // MIDI range for harpsichord
     this.sampleRate = sr;
     this._updateIntervalInMS = (options.processorOptions && options.processorOptions.updateIntervalInMS) || 16.67;
     this._nextUpdateFrame = 0;
@@ -375,7 +420,8 @@ class UkeProcessor extends AudioWorkletProcessor {
       // normalize between 0 and 1 by dividing by the max sample value, using the worklet bit depth
       sample *= 32768.0; // assuming 16-bit audio input
 
-      this.uke.sample(t, sample); // scale to match python example
+      this.guitar.sample(t, sample); // scale to match python example
+      //this.uke.sample(t, sample); // scale to match python example
       //this.harpsichord.sample(t, sample); // scale to match python example
       this.frame += 1;
     }
@@ -383,10 +429,16 @@ class UkeProcessor extends AudioWorkletProcessor {
     this._nextUpdateFrame -= channel.length;
     if (this._nextUpdateFrame < 0) {
       this._nextUpdateFrame += this.intervalInFrames;
-      const names = this.uke.names;
-      const values = this.uke.values();
-      //const names = this.harpsichord.names;
-      //const values = this.harpsichord.values();
+      
+      const names = this.guitar.names;
+      const values = this.guitar.values();
+
+      // const names = this.uke.names;
+      // const values = this.uke.values();
+      
+      // const names = this.harpsichord.names;
+      // const values = this.harpsichord.values();
+      
       const dict = {};
       for (let i = 0; i < names.length; i++) {
         dict[names[i]] = values[i];
