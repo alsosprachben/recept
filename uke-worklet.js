@@ -4,6 +4,28 @@ import Complex from './complex.js';
 import * as tau from './tau.js';
 import { ExponentialSmoother, TimeSmoothing } from './recept.js';
 
+// Utility class for transposing one sensor's complex value onto another
+class Monochord {
+  constructor(sourcePeriod, targetPeriod, ratio) {
+    this.source_period = sourcePeriod;
+    this.target_period = targetPeriod;
+    this.ratio = ratio;
+    this._construct();
+  }
+
+  _construct() {
+    this.period = this.source_period * this.ratio;
+    this.offset = this.target_period - this.period;
+    this.phi_offset = this.offset / this.target_period;
+    this.value = tau.rect(this.phi_offset);
+  }
+
+  rotate(cval) {
+    const rot = new Complex(this.value.re, this.value.im);
+    return cval.mul(rot);
+  }
+}
+
 function complexDelta(cval, priorCval) {
   const a = cval.re, b = cval.im;
   const c = priorCval.re, d = priorCval.im;
@@ -133,31 +155,86 @@ class IterLifecycle extends Lifecycle {
 class PeriodSensor {
   constructor(period, phase, windowFactor = 1.0) {
     this.period = period;
+    this.phase = phase;
     this.smoother = new TimeSmoothing(period, phase, windowFactor, new Complex(0, 0));
+    this.cval = new Complex(0, 0);
     this.r = 0;
   }
   sample(time, value) {
     const [, cval] = this.smoother.sample(time, value);
+    this.cval = cval;
     const [r] = tau.polar(cval);
     this.r = r;
-    return r;
+    return cval;
+  }
+
+  addCval(cval) {
+    this.cval = this.cval.add(cval);
+    const [r] = tau.polar(this.cval);
+    this.r = r;
   }
 }
 
 class PeriodScaleSpaceSensor {
   constructor(period, phase, response_period, scale_factor = 1.75, period_factor = 1.0) {
+    this.period = period;
+    this.phase = phase;
+    this.response_period = response_period;
+    this.scale_factor = scale_factor;
     this.period_sensors = [
       new PeriodSensor(period, phase, period_factor * Math.pow(scale_factor, -1)),
       new PeriodSensor(period, phase, period_factor * Math.pow(scale_factor, -2)),
       new PeriodSensor(period, phase, period_factor * Math.pow(scale_factor, -3))
     ];
     this.period_lifecycle = new DeriveLifecycle(period, response_period);
-    this.beat_lifecycle = new IterLifecycle(this.period);
+    this.beat_lifecycle = new IterLifecycle(period);
+    this.monochords = [];
   }
-  sample(time, value) {
-    const r = this.period_sensors.map(ps => ps.sample(time, value));
+
+  sampleSensor(time, value) {
+    for (const ps of this.period_sensors) {
+      ps.sample(time, value);
+    }
+  }
+
+  sampleMonochords() {
+    for (const { source, mc } of this.monochords) {
+      for (let i = 0; i < this.period_sensors.length; i++) {
+        const rotated = mc.rotate(source.period_sensors[i].cval);
+        this.period_sensors[i].addCval(rotated);
+      }
+    }
+  }
+
+  sampleLifecycle() {
+    const r = this.period_sensors.map(ps => {
+      const [mag] = tau.polar(ps.cval);
+      ps.r = mag;
+      return mag;
+    });
     this.period_lifecycle.sample(r[0], r[1], r[2]);
     this.beat_lifecycle.sample(this.period_lifecycle.lifecycle);
+  }
+
+  sample(time, value) {
+    this.sampleSensor(time, value);
+    this.sampleMonochords();
+    this.sampleLifecycle();
+  }
+
+  getMonochord(targetSensor, ratio) {
+    return new Monochord(this.period, targetSensor.period, ratio);
+  }
+
+  superimposeMonochordOn(targetSensor, mc) {
+    for (let i = 0; i < this.period_sensors.length; i++) {
+      const rotated = mc.rotate(this.period_sensors[i].cval);
+      targetSensor.period_sensors[i].addCval(rotated);
+    }
+  }
+
+  addMonochord(sourceSensor, ratio) {
+    this.monochords.push({ source: sourceSensor, mc: sourceSensor.getMonochord(this, ratio) });
   }
 }
 
@@ -185,6 +262,10 @@ class UkePeriodArray {
       new PeriodScaleSpaceSensor(sample_rate / G4, 0, resp, cycleArea, periodBandwidth * bandwidthFactor),
       new PeriodScaleSpaceSensor(sample_rate / A4, 0, resp, cycleArea, periodBandwidth * bandwidthFactor)
     ];
+    // Mix the C string into the higher strings using monochords
+    this.sensors[1].addMonochord(this.sensors[0], ratio_M3rd);
+    this.sensors[2].addMonochord(this.sensors[0], ratio_5th);
+    this.sensors[3].addMonochord(this.sensors[0], ratio_M6th);
     this.names = ['C4', 'E4', 'G4', 'A4'];
   }
   sample(time, value) {
