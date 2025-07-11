@@ -877,7 +877,7 @@ int main(int argc, char *argv[]) {
 
 	/* BEGIN CONFIG */
 	period_response_Hz = 60.0; /* averages results at this rate, for smoothing */
-	field_count = 48; /* number of receptor fields */
+	field_count = 24; /* number of receptor fields */
 	octave_bandwidth = 12; /* how many receptor fields per octave */
 	starting_note = -9 -12; /* where 0 is A=440 */
 	/* END CONFIG */
