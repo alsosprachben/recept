@@ -159,12 +159,24 @@ class PeriodSensor {
     this.smoother = new TimeSmoothing(period, phase, windowFactor, new Complex(0, 0));
     this.cval = new Complex(0, 0);
     this.r = 0;
+    this.phaseDelta = new PhaseDelta();
+    this.phi_t = 0;
+    this.instant_frequency = 0;
   }
   sample(time, value) {
     const [, cval] = this.smoother.sample(time, value);
     this.cval = cval;
     const [r] = tau.polar(cval);
     this.r = r;
+
+    const delta = this.phaseDelta.sample(cval);
+    if (delta !== null) {
+      const [, dphi] = tau.polar(delta);
+      this.phi_t = dphi;
+    } else {
+      this.phi_t = 0;
+    }
+    this.instant_frequency = (1 / this.period) - this.phi_t;
     return cval;
   }
 
@@ -176,11 +188,12 @@ class PeriodSensor {
 }
 
 class PeriodScaleSpaceSensor {
-  constructor(period, phase, response_period, scale_factor = 1.75, period_factor = 1.0) {
+  constructor(period, phase, response_period, scale_factor = 1.75, period_factor = 1.0, sample_rate = 1.0) {
     this.period = period;
     this.phase = phase;
     this.response_period = response_period;
     this.scale_factor = scale_factor;
+    this.sample_rate = sample_rate;
     this.period_sensors = [
       new PeriodSensor(period, phase, period_factor * Math.pow(scale_factor, -1)),
       new PeriodSensor(period, phase, period_factor * Math.pow(scale_factor, -2)),
@@ -214,6 +227,9 @@ class PeriodScaleSpaceSensor {
     });
     this.period_lifecycle.sample(r[0], r[1], r[2]);
     this.beat_lifecycle.sample(this.period_lifecycle.lifecycle);
+    const phi_t = this.period_sensors[0].phi_t;
+    const instFreqCycles = (1 / this.period) - phi_t;
+    this.period_lifecycle.instant_frequency = instFreqCycles * this.sample_rate;
   }
 
   sample(time, value) {
@@ -257,10 +273,10 @@ class UkePeriodArray {
     const A4 = C4 * ratio_M6th;
     // construct sensors with bandwidth-scaled period factor
     this.sensors = [
-      new PeriodScaleSpaceSensor(sample_rate / C4, 0, resp, cycleArea, periodBandwidth * bandwidthFactor),
-      new PeriodScaleSpaceSensor(sample_rate / E4, 0, resp, cycleArea, periodBandwidth * bandwidthFactor),
-      new PeriodScaleSpaceSensor(sample_rate / G4, 0, resp, cycleArea, periodBandwidth * bandwidthFactor),
-      new PeriodScaleSpaceSensor(sample_rate / A4, 0, resp, cycleArea, periodBandwidth * bandwidthFactor)
+      new PeriodScaleSpaceSensor(sample_rate / C4, 0, resp, cycleArea, periodBandwidth * bandwidthFactor, sample_rate),
+      new PeriodScaleSpaceSensor(sample_rate / E4, 0, resp, cycleArea, periodBandwidth * bandwidthFactor, sample_rate),
+      new PeriodScaleSpaceSensor(sample_rate / G4, 0, resp, cycleArea, periodBandwidth * bandwidthFactor, sample_rate),
+      new PeriodScaleSpaceSensor(sample_rate / A4, 0, resp, cycleArea, periodBandwidth * bandwidthFactor, sample_rate)
     ];
     // Mix the C string into the higher strings using monochords
     this.sensors[1].addMonochord(this.sensors[0], ratio_M3rd);
@@ -299,7 +315,7 @@ class GuitarPeriodArray {
       const freq = 440 * Math.pow(2, (midi - 69) / 12)
       const period = sampleRate / freq
       return new PeriodScaleSpaceSensor(
-        period, 0, resp, cycleArea, periodBandwidth * bandwidthFactor
+        period, 0, resp, cycleArea, periodBandwidth * bandwidthFactor, sampleRate
       )
     })
 
@@ -343,7 +359,7 @@ class HarpsichordPeriodArray {
       const period = sampleRate / freq;
       // sensor with bandwidth-scaled period factor
       this.sensors.push(
-        new PeriodScaleSpaceSensor(period, 0, resp, cycleArea, periodBandwidth * bandwidthFactor)
+        new PeriodScaleSpaceSensor(period, 0, resp, cycleArea, periodBandwidth * bandwidthFactor, sampleRate)
       );
       this.names.push(`MIDI ${midi}`);
     }
