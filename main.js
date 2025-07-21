@@ -3,11 +3,12 @@
 (async function() {
   // dynamically import shared bar rendering routines
   const { bar, barLog, signedBar, signedBarLogp1, barLogp1 } = await import('./bar.js');
+  const { noteFromFreq } = await import('./pitch.js');
 
   const output = document.getElementById('output');
   const header = document.getElementById('header');
   header.textContent =
-    '  receptor        free energy         entropy       energy          phase         cycle';
+    '  receptor        note        free energy         entropy       energy          phase         cycle';
 
   if (navigator.mediaDevices) {
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
@@ -33,7 +34,16 @@
             if (phase < 0) {
               phase += 1;
             }
-            lines += `${sensorName} ` +
+
+            let noteStr = '          ';
+            if (lc.instant_frequency && lc.instant_frequency > 0) {
+              const { note, octave, cents } = noteFromFreq(lc.instant_frequency);
+              const sign = cents < 0 ? '-' : cents > 0 ? '+' : ' ';
+              const centsVal = Math.abs(Math.round(cents)).toString().padStart(2, '0');
+              noteStr = `${String(octave).padStart(2)}${note}${sign}${centsVal}`;
+            }
+
+            lines += `${sensorName} ${noteStr} ` +
                      `${barLog(   pc,          lc.max_r || 1)} ` +
                      `${signedBarLogp1(lc.F,        lc.max_r || 1)} ` +
                      `${signedBarLogp1(lc.entropy,  lc.max_r || 1)} ` +
