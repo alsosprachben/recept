@@ -80,6 +80,10 @@ class Lifecycle {
     this.phi = 0;
     this.cycle = 0;
     this.lifecycle = 0;
+    this.instant_frequency = 0; // define default before sampling
+  }
+  updateInstantFrequency(instant_frequency) {
+    this.instant_frequency = instant_frequency;
   }
   sample(cval) {
     this.cval = cval;
@@ -202,6 +206,7 @@ class PeriodScaleSpaceSensor {
     this.period_lifecycle = new DeriveLifecycle(period, response_period);
     this.beat_lifecycle = new IterLifecycle(period);
     this.monochords = [];
+    this.instFreqState = new ExponentialSmoother(0.0);  // smoother for instantaneous frequency
   }
 
   sampleSensor(time, value) {
@@ -227,14 +232,16 @@ class PeriodScaleSpaceSensor {
     });
     this.period_lifecycle.sample(r[0], r[1], r[2]);
     this.beat_lifecycle.sample(this.period_lifecycle.lifecycle);
-    const phi_t = this.period_sensors[0].phi_t;
-    const instFreqCycles = (1 / this.period) - phi_t;
-    this.period_lifecycle.instant_frequency = instFreqCycles * this.sample_rate;
+    // raw instantaneous frequency (Hz) -> smooth
+    const rawFreq = this.period_sensors[0].instant_frequency * this.sample_rate;
+    const smoothedFreq = this.instFreqState.sample(rawFreq, this.response_period * 10);
+    this.period_lifecycle.updateInstantFrequency(smoothedFreq);
   }
 
   sample(time, value) {
     this.sampleSensor(time, value);
     this.sampleMonochords();
+    // compute lifecycle and instantaneous frequency
     this.sampleLifecycle();
   }
 
@@ -455,11 +462,14 @@ class UkeProcessor extends AudioWorkletProcessor {
       // const names = this.harpsichord.names;
       // const values = this.harpsichord.values();
       
+      // convert lifecycle objects to plain data before postMessage
       const dict = {};
       for (let i = 0; i < names.length; i++) {
-        dict[names[i]] = values[i];
+        const lc = { ...values[i] };
+        // shallow-copy own props (including instant_frequency) into a plain object
+        dict[names[i]] = { ...lc };
       }
-      this.port.postMessage({ type: 'receptions', values: dict });
+      this.port.postMessage({ type: 'receptions', values: { ...dict} });
     }
     return true;
   }

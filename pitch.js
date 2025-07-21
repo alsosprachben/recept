@@ -13,5 +13,5 @@ export function noteFromFreq(freq, A4 = 440.0) {
   const octave = Math.floor(intN / 12) - 1;
   const octaveNote = ((intN % 12) + 12) % 12;
   const cents = 100.0 * (((n + 0.5) % 1) - 0.5);
-  return { note: notes[octaveNote], octave, cents };
+  return { intN, note: notes[octaveNote], octave, cents };
 }

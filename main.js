@@ -8,7 +8,7 @@
   const output = document.getElementById('output');
   const header = document.getElementById('header');
   header.textContent =
-    '  receptor        note        free energy         entropy       energy          phase         cycle';
+    '    note           receptor       free energy         entropy       energy        phase           cycle';
 
   if (navigator.mediaDevices) {
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
@@ -35,12 +35,12 @@
               phase += 1;
             }
 
-            let noteStr = '          ';
+            let noteStr = '             ';
             if (lc.instant_frequency && lc.instant_frequency > 0) {
-              const { note, octave, cents } = noteFromFreq(lc.instant_frequency);
+              const { intN, note, octave, cents } = noteFromFreq(lc.instant_frequency);
               const sign = cents < 0 ? '-' : cents > 0 ? '+' : ' ';
               const centsVal = Math.abs(Math.round(cents)).toString().padStart(2, '0');
-              noteStr = `${String(octave).padStart(2)}${note}${sign}${centsVal}`;
+              noteStr = `${note}${String(octave).padStart(2)} ${String(intN).padStart(2)}${sign}${centsVal.padEnd(3, ' ')}`;
             }
 
             lines += `${sensorName} ${noteStr} ` +
