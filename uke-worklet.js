@@ -423,6 +423,7 @@ class UkeProcessor extends AudioWorkletProcessor {
   process(inputs, outputs, parameters) {
     const input = inputs[0];
     const channel = input[0];
+    if (input.length === 0) return true;
     this.sample_n += channel.length;
     this.logical_sample_time = this.sample_n / this.sampleRate + this.start_time;
 
@@ -431,7 +432,6 @@ class UkeProcessor extends AudioWorkletProcessor {
       console.log(`Ahead of time by ${this.current_time - this.logical_sample_time} seconds`);
       return true;
     }
-    if (input.length === 0) return true;
     for (let i = 0; i < input[0].length; ++i) {
       const t = this.frame; // use sample index to match period units
       // average all input channels
